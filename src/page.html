@@ -167,7 +167,11 @@ td.prjnow{box-shadow:inset 3px 0 0 var(--good)}
 .prjsched label{display:grid;gap:3px}
 .prjdays{width:92px;border:1px solid var(--line);border-radius:8px;padding:6px 8px;font:inherit;background:var(--card);color:var(--ink)}
 .wfrdue{display:flex;gap:6px;align-items:center;margin-top:4px}
-td.prjch{background:var(--warn-soft, #fff4d6)}
+.prjboard td.pg-nl{background:#edf4fc}.prjboard td.pg-ch{background:#f4effb}
+.prjboard th.pg-nl{background:#dfeaf8;color:#1d4f91}.prjboard th.pg-ch{background:#e9e0f6;color:#5b3a9a}
+tr.prjgrp th{font-size:.8rem;text-transform:uppercase;letter-spacing:.04em;padding:6px 10px;text-align:center}
+.prjboard tr.prjfill td.pg-nl{background:#e8f0fa}.prjboard tr.prjfill td.pg-ch{background:#efe8f8}
+.prjboard td.prjch{background:var(--warn-soft, #fff4d6)}
 tr.prjbad td{background:var(--bad-soft)}
 .wfst.late{background:var(--bad-soft);color:var(--bad)}
 .libpanel h4{margin:6px 0 2px}
@@ -717,7 +721,7 @@ pre{max-width:100%;overflow-x:auto}
   .clmodes{gap:4px}
   .wfbar{padding:8px 10px}
   .libtab,.libtab tbody,.libtab tr,.libtab td,.libtab th{display:block;width:auto}
-  .libtab tr:first-child{display:none}
+  .libtab tr:first-child,.prjboard tr.prjgrp,.prjboard tr.prjgrp + tr{display:none}
   .libtab tr{border-top:1px solid var(--line);padding:8px 0}
   .libtab td{padding:2px 0}
   .libpanel{max-height:none;overflow:visible}
