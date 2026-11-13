@@ -24,6 +24,32 @@ var SPEC = {
 /* ô ngày đang gõ dở: trình duyệt báo "change" ngay khi năm mới có 1–3 chữ số (0002, 0020, 0202);
    bỏ qua cho tới khi năm đủ 4 chữ số và từ 1900 trở đi, để trang không vẽ lại bảng giữa chừng */
 function dateTyping(t){ return !!t && t.type === "date" && !!t.value && parseInt(t.value.slice(0, 4), 10) < 1900; }
+/* ô ngày đang mở bảng chọn: iPhone báo "change" ngay khi chạm/cuộn bảng chọn, Chrome báo khi gõ xong một ngày hợp lệ.
+   Nếu xử lý ngay thì trang vẽ lại bảng, thay mất ô đang mở và bảng chọn ngày tự tắt. Vì vậy giữ lại, chỉ áp dụng
+   khi rời ô (hoặc bấm Enter); nếu đang nhấn chuột/chạm thì đợi nhả ra để cú bấm (vd "Lưu phân công") không bị mất. */
+var DATEQ = {el:null, ptr:false, wait:[]};
+document.addEventListener("pointerdown", function(){ DATEQ.ptr = true; }, true);
+["pointerup", "pointercancel"].forEach(function(n){ document.addEventListener(n, function(){ DATEQ.ptr = false; var w = DATEQ.wait; DATEQ.wait = []; w.forEach(function(f){ setTimeout(f, 0); }); }, true); });
+function dateWhenFree(f){ if(DATEQ.ptr) DATEQ.wait.push(f); else setTimeout(f, 0); }
+// true = giữ lại thay đổi này (ô vẫn đang được chọn); hàm xử lý "change" nên return ngay
+function dateHold(t){
+  if(!t || t.type !== "date" || t.__dateFire || document.activeElement !== t) return false;
+  DATEQ.el = t;
+  if(!t.__dateHold){
+    t.__dateHold = true;
+    var kd = function(e){ if(e.key === "Enter"){ e.preventDefault(); t.blur(); } };
+    var go = function(){ t.removeEventListener("blur", go); t.removeEventListener("keydown", kd); t.__dateHold = false; dateWhenFree(dateFlush); };
+    t.addEventListener("blur", go); t.addEventListener("keydown", kd);
+  }
+  return true;
+}
+// áp dụng thay đổi ngày đang giữ (gọi trước khi vẽ lại hoặc khi bấm nút); trả về true nếu có
+function dateFlush(){
+  var t = DATEQ.el; if(!t || document.activeElement === t) return false;
+  DATEQ.el = null; t.__dateFire = true;
+  try{ t.dispatchEvent(new Event("change", {bubbles:true})); } finally { t.__dateFire = false; }
+  return true;
+}
 var SKILLCODES = "RE quy chiếu · DE chi tiết · DE[P] chi tiết diễn đạt khác · MI ý chính cả bài · MI[P] ý chính một đoạn · IN suy luận · VO đoán nghĩa từ · VO(ID) thành ngữ · OP quan điểm, thái độ · TO giọng điệu · RP mục đích · LO định vị thông tin · IS chèn câu";
 
 /* ---------- Input slots (shared between steps) ---------- */

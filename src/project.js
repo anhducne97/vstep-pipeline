@@ -448,15 +448,16 @@ function hubBadge(){
    vì vẽ lại sẽ thay ô ngày mới và làm bảng chọn ngày tự tắt (thông báo tải lại mỗi phút, tên người tải xong…) */
 function hubDateBusy(el){
   var ae = document.activeElement;
-  if(!ae || ae.type !== "date" || !el.contains(ae) || HUB.inChange) return false;
+  if(!ae || ae.type !== "date" || !el.contains(ae)) return false;
   HUB.pendRender = true;
-  if(!ae.__hubWait){ ae.__hubWait = true; var go = function(){ ae.removeEventListener("blur", go); ae.__hubWait = false; if(HUB.pendRender){ HUB.pendRender = false; setTimeout(hubRender, 0); } }; ae.addEventListener("blur", go); }
+  if(!ae.__hubWait){ ae.__hubWait = true; var go = function(){ ae.removeEventListener("blur", go); ae.__hubWait = false; dateWhenFree(function(){ if(HUB.pendRender){ HUB.pendRender = false; hubRender(); } }); }; ae.addEventListener("blur", go); }
   return true;
 }
 function hubRender(){
   hubBadge();
   var el = hubEl(); if(!el || !HUB.open) return;
   if(hubDateBusy(el)) return;
+  dateFlush(); // áp dụng ngày vừa chọn trước khi vẽ lại, kẻo mất
   HUB.pendRender = false;
   var me = prjMe(), signed = LIB.user && LIB.role && LIB.role !== "none" && LIB.role !== "blocked";
   var frN = typeof frNewCount === "function" ? frNewCount() : 0;
@@ -922,6 +923,7 @@ function bindPrj(){
     var card = e.target.closest ? e.target.closest(".hpcard[data-prjgo]") : null;
     if(card && !e.target.closest("button")){ var pid0 = card.getAttribute("data-prjgo"); prjGuard(function(){ PRJ.cur = pid0; PRJ.tab = "tien-do"; PRJ.sel = {}; PRJ.msg = ""; HUB.page = "duan-ct"; hubRender(); el.scrollTop = 0; }); return; }
     var t = e.target.closest ? e.target.closest("button") : null; if(!t) return;
+    dateFlush(); // ngày vừa chọn mà chưa áp dụng (vd bấm thẳng "Lưu phân công")
     var id = t.id, p = prjById(PRJ.cur);
     if(t.hasAttribute("data-hubask")){ var k = t.getAttribute("data-hubask"), a = HUB.ask; HUB.ask = null; hubRender(); if(k !== "x" && a && a.btns[+k]) a.btns[+k].fn(); return; }
     if(t.hasAttribute("data-hubpage")){ var pg = t.getAttribute("data-hubpage"); prjGuard(function(){ HUB.page = pg; PRJ.msg = ""; HUB.newOpen = false; hubRender(); el.scrollTop = 0; }); return; }
@@ -966,9 +968,7 @@ function bindPrj(){
     if(id === "prj-del"){ prjDelete(p); return; }
   });
   el.addEventListener("change", function(e){
-    var t = e.target, p = prjById(PRJ.cur); if(!t.getAttribute || dateTyping(t)) return;
-    // thay đổi do chính ô này: vẽ lại ngay (không hoãn như các lần vẽ lại từ nơi khác)
-    HUB.inChange = true; setTimeout(function(){ HUB.inChange = false; }, 0);
+    var t = e.target, p = prjById(PRJ.cur); if(!t.getAttribute || dateTyping(t) || dateHold(t)) return;
     var a = t.getAttribute("data-prjas"), dd = t.getAttribute("data-prjdue"), sl = t.getAttribute("data-prjsel"), hr = t.getAttribute("data-hubrole");
     var find = function(id){ return LIB.items.filter(function(y){ return y.id === id; })[0]; };
     if(hr){ hubSetRole(hr, t.value); return; }

@@ -378,7 +378,8 @@ function wfRender(){
   var box = document.getElementById("wfbar"); if(!box) return;
   // đang mở bảng chọn ngày ở thanh Quy trình: hoãn vẽ lại tới khi rời ô (vẽ lại làm bảng chọn ngày tự tắt)
   var ae = document.activeElement;
-  if(ae && ae.type === "date" && box.contains(ae) && !wfRender.now){ if(!ae.__wfWait){ ae.__wfWait = true; var go = function(){ ae.removeEventListener("blur", go); ae.__wfWait = false; setTimeout(wfRender, 0); }; ae.addEventListener("blur", go); } return; }
+  if(ae && ae.type === "date" && box.contains(ae)){ if(!ae.__wfWait){ ae.__wfWait = true; var go = function(){ ae.removeEventListener("blur", go); ae.__wfWait = false; dateWhenFree(wfRender); }; ae.addEventListener("blur", go); } return; }
+  dateFlush();
   wfApplyLock();
   var w = wfData(), me = wfMe(), dev = wfDevOn(), openK = {}; box.querySelectorAll("details[data-k]").forEach(function(d){ openK[d.getAttribute("data-k")] = d.open; });
   var mine = WF_ROLE_ORDER.filter(function(r){ return !dev && me && (r === "coord" ? wfIsCoordUser() : w.as[r] === me); });
@@ -647,14 +648,14 @@ function bindWf(){
   var box = document.getElementById("wfbar"); if(!box) return;
   box.addEventListener("click", function(e){
     var b = e.target.closest("button"); if(!b) return;
+    dateFlush();
     var g = b.getAttribute("data-wfgo");
     if(g){ var isR = g[0] === "r", t = (isR ? WF_R : WF_T)[+g.slice(1)], ta = box.querySelector('[data-wfnote="' + g + '"]'); wfDo(t, ta ? ta.value : "", isR); return; }
     var r = b.getAttribute("data-wfrole"); if(r){ var d = wfDev(); d.role = r; wfDevSet(d); wfRender(); try{ clRender(); renderQ(); }catch(x){} return; }
     if(b.id === "wf-auto"){ var w = wfData(), nx = WF_T.filter(function(t){ return wfApplies(t) && t.from.indexOf(w.st||"") >= 0 && !t.back && t.id.slice(-1) !== "c" && !/no$/.test(t.id); })[0] || WF_R.filter(function(t){ return t.when(w) && t.id !== "rqcancel"; })[0]; if(nx){ var d2 = wfDev(); d2.role = nx.role; wfDevSet(d2); toast("Đổi vai: " + WF_ROLES[nx.role] + "."); } wfRender(); try{ clRender(); renderQ(); }catch(x){} return; }
   });
   box.addEventListener("change", function(e){
-    var t = e.target; if(dateTyping(t)) return;
-    wfRender.now = true; setTimeout(function(){ wfRender.now = false; }, 0);
+    var t = e.target; if(dateTyping(t) || dateHold(t)) return;
     if(t.id === "wf-dev"){ var d = wfDev(); d.on = t.checked; if(!d.role) d.role = "nl"; wfDevSet(d); wfRender(); try{ clRender(); renderQ(); }catch(x){} return; }
     var rd = t.getAttribute && t.getAttribute("data-wfrdue"); if(rd){ var wr = wfData(); wr.dues = wr.dues || {}; var nd = Object.assign({}, wr.dues); if(t.value) nd[rd] = t.value; else delete nd[rd]; var badO = typeof prjDueOrderOf === "function" ? prjDueOrderOf(nd, wr.due || (S.prj && prjById(S.prj.id) && prjById(S.prj.id).due) || "") : ""; if(badO){ toast("Không đổi được: " + badO + ". Phần sau chỉ bắt đầu khi phần trước xong."); wfRender(); return; } if(t.value) wr.dues[rd] = t.value; else delete wr.dues[rd]; wr.asAt = Date.now(); wr.log.push({at:Date.now(), by:wfWho(), dev:wfDevOn(), from:wr.st, to:wr.st, act:"Đổi hạn " + WF_ROLES[rd], note:t.value ? prjFmt(t.value) : "(bỏ hạn)"}); save(); wfRender(); return; }
     if(t.id === "wf-due"){ var wd = wfData(); if(t.value && typeof prjDueOrderOf === "function"){ var bd = prjDueOrderOf(wd.dues || {}, t.value); if(bd){ toast("Không đổi được hạn hoàn thiện: " + bd + "."); wfRender(); return; } } wd.due = t.value || ""; wd.asAt = Date.now(); wd.log.push({at:Date.now(), by:wfWho(), dev:wfDevOn(), from:wd.st, to:wd.st, act:"Đổi hạn", note:t.value ? prjFmt(t.value) : "(bỏ hạn)"}); save(); wfRender(); return; }
