@@ -45,7 +45,7 @@ function xpLevelText(which){
   var parts = [], D = (typeof sbData === "function") ? sbData(which) : null;
   if(which === "a" && S.slots.pfLvl95 && S.slots.pfLvl95 !== "chưa đo") parts.push(S.slots.pfLvl95 + " (EC Text Profiler, mức từ vựng ở ngưỡng 95%)");
   var ext = (typeof sbSummary === "function") ? sbSummary(which) : ""; if(ext) parts.push(ext);
-  if(!parts.length && D && D.voc !== null) parts.push("… (trang ước lượng: từ vựng ở ngưỡng 95% " + sbLvName(D.voc) + ", 98% " + sbLvName(D.voc98) + "; thay bằng số của công cụ)");
+  if(!parts.length && D && D.voc !== null) parts.push("… (trang ước lượng: từ vựng ở ngưỡng 95% " + sbLvName(D.voc) + ", 96% tính cả từ ngoài danh sách " + sbLvName(D.voc98) + "; thay bằng số của công cụ)");
   return parts.length ? parts.join("; ") : "…";
 }
 function xpReadability(text){

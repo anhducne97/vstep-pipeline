@@ -55,10 +55,10 @@ var CL_ROWS = {NL:[
     var E = clE(); if(!E) return clNoDraft(); var H = E.C.hard, cv = E.sp.cov;
     return {s:H.ok ? "ok" : "fail", d:"Độ phủ ở " + S.level + ": " + clNum(H.now,1) + "% (cần ≥ " + cv + "%, " + H.src + ")." + (H.ok ? "" : covGapText(H.now, cv, S.level).need.replace(/^ \(tức là /, " Tức là ").replace(/\)$/, ".") + aboveTopText(E.vp, E.ti, 6)), keep:"Độ phủ ở mức " + S.level + " đang " + clNum(H.now,1) + "%, phải giữ từ " + cv + "% trở lên: không thêm từ trên mức " + S.level + "."};
   }},
-  {c:"NL-B4", g:"B", t:"Mức từ vựng ở ngưỡng 98% không thấp hơn sàn đã đặt (mặc định đúng mức mục tiêu)", src:"Quy ước nhóm: thử nghiệm 22 bài đối chiếu Cathoven (Nick chốt 13/11/2026)", tier:"dx", who:"M", ev:function(){
+  {c:"NL-B4", g:"B", t:"Mức từ vựng ở ngưỡng 96%, tính cả từ ngoài danh sách, không thấp hơn sàn đã đặt (mặc định đúng mức mục tiêu)", src:"Quy ước nhóm: thử nghiệm 42 bài đối chiếu Cathoven (Nick chốt 13/11/2026)", tier:"dx", who:"M", ev:function(){
     var E = clE(); if(!E) return clNoDraft(); var Y = E.C.easy;
     if(!Y.floor) return {s:"ok", d:"Không đặt sàn (mức tối thiểu)."};
-    return {s:Y.ok ? "ok" : "fail", d:"Mức ở ngưỡng " + EASY_TH + "%: " + (LVL[Y.now]||"?") + " (sàn " + LVL[Y.floor] + ", " + Y.src + ")." + (Y.ok ? "" : easyGapText(E.vp, Y.floor, E.ti)), keep:"Mức ở ngưỡng " + EASY_TH + "% đang " + (LVL[Y.now]||"?") + ", không để thấp hơn " + LVL[Y.floor] + ": không thay từ đúng mức bằng từ dễ hẳn."};
+    return {s:Y.ok ? "ok" : "fail", d:"Mức ở ngưỡng " + EASY_TH + "%: " + lvlName(Y.now) + " (sàn " + LVL[Y.floor] + ", " + Y.src + ")." + (Y.ok ? "" : easyGapText(E.vp, Y.floor, E.ti)), keep:"Mức ở ngưỡng " + EASY_TH + "% đang " + lvlName(Y.now) + ", không để thấp hơn " + LVL[Y.floor] + ": không thay từ đúng mức bằng từ dễ hẳn."};
   }},
   {c:"NL-B5", g:"B", t:"Flesch Reading Ease trong khoảng của bậc", src:"Khoảng của bậc theo bảng quy đổi Flesch–CEFR của Linguapress", tier:"spec", who:"M", ev:function(){
     var E = clE(); if(!E) return clNoDraft(); var F = E.C.fre; if(!F) return {s:"na", d:"Chưa tính được Flesch."};

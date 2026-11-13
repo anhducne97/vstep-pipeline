@@ -85,9 +85,11 @@ function vocabProfile(text){
   offList.sort(function(x,y){ return y.n-x.n; });
   return {N:N, off:off, counts:counts, cum:cum, cumIn:cumIn, lvl95:lvlAt(cum,95), lvl95In:lvlAt(cumIn,95), lvl98:lvlAt(cum,98), lvl98In:lvlAt(cumIn,98), lemmas:above, offList:offList, proper:Object.keys(proper)};
 }
-/* chặn dưới "không dễ quá": mức thấp nhất phủ được 98% số lượt từ có trong danh sách (quy ước nhóm, thử nghiệm 22 bài đối chiếu Cathoven, Nick chốt 13/11/2026) */
-var EASY_TH = 98;
-function easyLvl(vp){ return vp ? vp.lvl98In : 6; }
+/* chặn dưới "không dễ quá": mức thấp nhất phủ được 96% tổng số lượt từ, từ ngoài danh sách tính là từ khó (tên riêng vẫn loại) — quy ước nhóm, thử nghiệm 42 bài đối chiếu Cathoven, Nick chốt 13/11/2026 */
+var EASY_TH = 96;
+function easyLvl(vp){ if(!vp || !vp.N) return 6; for(var k = 0; k < 6; k++) if(vp.cum[k] >= EASY_TH) return k; return 6; }
+/* số lượt từ ở mức fl trở lên, cộng từ ngoài danh sách */
+function easyUpto(vp, fl){ var u = vp.off || 0; for(var k = fl; k < 6; k++) u += vp.counts[k] || 0; return u; }
 function covAt(vp, levelName, ignoreOff){ var i = LVL.indexOf(levelName); if(i<0) return null; return (ignoreOff ? vp.cumIn : vp.cum)[i]; }
 function lvlName(i){ return i>=6 ? "trên C2" : LVL[i]; }
 
