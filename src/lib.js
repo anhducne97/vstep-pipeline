@@ -572,6 +572,7 @@ function libNeed(x){
   var w = x.wf; if(!w) return "";
   if(!w.st) return (w.as && w.as.nl) || x.prj ? "nl" : "";
   var need = {"Chủ đề đề xuất":"coord","Đang adapt":"nl","Chờ thẩm định ngữ liệu":"tdnl","Ngữ liệu cần sửa":"nl","Ngữ liệu đã duyệt (khoá)":"ch","Đang soạn câu hỏi":"ch","Chờ thẩm định câu hỏi":"tdch","Câu hỏi cần sửa":"ch","Câu hỏi đã duyệt":"coord"}[w.st];
+  var sk = (x.meta && x.meta.skill) || (SPEC[S.spec] || {}).skill; if((sk === "W" || sk === "S") && w.st === "Ngữ liệu đã duyệt (khoá)") need = "coord";
   if(w.req === "chờ sửa" || w.req === "đang sửa") need = "nl"; else if(w.req === "chờ duyệt") need = "tdnl";
   return need || "";
 }

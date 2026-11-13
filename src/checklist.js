@@ -185,8 +185,8 @@ var CL_QMAP = [
 ];
 var CL_QGMAP = [[/^Có \d+ câu, cần/,"CH-A1"], [/Phân bố bậc/,"CH-A2"], [/Đáp án dồn/,"CH-A3"], [/chưa có câu hỏi/,"CH-B5"], [/thử mù/i,"CH-E4"]];
 function clQCode(msg, map){ for(var i = 0; i < map.length; i++) if(map[i][0].test(msg)) return map[i][1]; return "CH-D6"; }
-function clRows(sc){ var sk = SPEC[S.spec].skill; return CL_ROWS[sc].filter(function(r){ return !r.off && (!r.sk || r.sk===sk); }); }
-function clAllCodes(){ return CL_ROWS.NL.concat(CL_ROWS.CH).map(function(r){ return r.c; }); }
+function clRows(sc){ var sk = SPEC[S.spec].skill; return (CL_ROWS[sc] || []).filter(function(r){ return !r.off && (!r.sp || r.sp.indexOf(S.spec) >= 0) && (!r.sk || r.sk===sk); }); }
+function clAllCodes(){ return CL_ROWS.NL.concat(CL_ROWS.CH, CL_ROWS.WS || []).map(function(r){ return r.c; }); }
 
 /* ---- đơn vị để biết người đánh dấu có còn hiệu lực ---- */
 function clUnits(){
@@ -222,6 +222,7 @@ function clReadState(sc){
 }
 function clReadMark(sc){ S.cl = S.cl || {}; S.cl.read = S.cl.read || {}; S.cl.read[sc] = {u:clReadUnits(sc).map(function(x){ return qHash(sc === "CH" ? x.t : normQ(x.t)); }), by:wfWho(), at:Date.now()}; save(); }
 function clReadHTML(sc){
+  if(sc === "WS") return "";
   var R = clReadState(sc); if(R.none) return "";
   var st = R.ok ? '<span class="cls ok">✓ Đã đọc toàn ' + (sc === "CH" ? "bộ" : "bài") + (R.r.by ? " · " + esc(R.r.by) : "") + " · " + esc(libWhenMs(R.r.at)) + '</span>' : (R.r ? '<span class="cls recheck">↺ ' + (sc === "CH" ? "Bộ câu hỏi" : "Bài") + ' đã sửa sau lần đọc: đọc lại ' + esc(R.changed.join(", ")) + '</span>' : '<span class="cls todo">○ Chưa đọc toàn ' + (sc === "CH" ? "bộ" : "bài") + '</span>');
   var body = "", ch = {}; R.changed.forEach(function(k){ ch[k] = 1; });
@@ -290,8 +291,8 @@ function clEval(sc){
     }
     if(m){ res.s = m.s; res.d = m.d; res.keep = m.keep || ""; res.list = m.list; }
     if(r.who==="H" || r.who==="MH"){
-      var t = tk[r.c], humanNA = (sc==="CH" && !R) || (sc==="NL" && r.g!=="A" && !(S.slots.draft||"").trim());
-      if(humanNA){ if(r.who==="H"){ res.s = "na"; res.d = sc==="CH" ? "Chưa có câu hỏi." : "Chưa có bài."; } }
+      var t = tk[r.c], humanNA = (sc==="CH" && !R) || (sc==="NL" && r.g!=="A" && !(S.slots.draft||"").trim()) || (sc==="WS" && !(S.slots.draft||"").trim());
+      if(humanNA){ if(r.who==="H"){ res.s = "na"; res.d = sc==="CH" ? "Chưa có câu hỏi." : sc==="WS" ? "Chưa có đề." : "Chưa có bài."; } }
       else if(res.s !== "fail"){
         var hs;
         if(!t) hs = "todo";
@@ -313,7 +314,7 @@ function clSummary(sc, ev){
   ev = ev || clEval(sc); var cnt = {ok:0, fail:0, warn:0, na:0, todo:0, recheck:0};
   Object.keys(ev).forEach(function(k){ cnt[ev[k].s]++; });
   var open = clNotes(sc).filter(function(n){ return n.st==="Mở" && n.sev==="PHẢI SỬA"; }).length;
-  return {cnt:cnt, open:open, pass: !cnt.fail && !cnt.todo && !cnt.recheck && !open && (sc!=="CH" || !!(S.slots.questions||"").trim()) && (sc!=="NL" || !!(S.slots.draft||"").trim())};
+  return {cnt:cnt, open:open, pass: !cnt.fail && !cnt.todo && !cnt.recheck && !open && (sc!=="CH" || !!(S.slots.questions||"").trim()) && (sc==="CH" || !!(S.slots.draft||"").trim())};
 }
 
 /* ---- ghi chú ---- */
@@ -627,7 +628,7 @@ function clNoteHTML(n, i){
     + CL_FIELDS.filter(function(f){ return String(n[f[0]]||"").trim(); }).map(function(f){ return '<div class="row"><b>' + f[1] + ':</b> ' + (f[0]==="quote" ? "<i>\"" + esc(n[f[0]]) + "\"</i>" : esc(n[f[0]])) + '</div>'; }).join("")
     + (where ? '<div>' + where + '</div>' : '') + '</div>';
 }
-var clForm = {NL:null, CH:null};
+var clForm = {NL:null, CH:null, WS:null};
 function clFormHTML(sc){
   var f = clForm[sc] || {code:"", sev:"PHẢI SỬA"}, codes = clRows(sc).map(function(r){ return r.c; }).concat(["KHÁC"]);
   return '<div class="clform" data-clform="' + sc + '"><div class="grid2">'
@@ -654,7 +655,7 @@ function clDiffHTML(D, title){
   return '<div class="' + (bad.length ? "note" : "info") + ' small"><b>' + esc(title) + '</b> ' + (bad.length ? '<span class="no">Tiêu chí bị xấu đi: ' + bad.map(function(x){ return esc(x.c) + " (" + lab(x) + ")"; }).join(", ") + '.</span> ' : 'Không tiêu chí nào bị xấu đi. ') + (re.length ? 'Cần người soát lại phần vừa sửa: ' + re.map(function(x){ return esc(x.c); }).join(", ") + '. ' : '') + (D.better.length ? 'Đã tốt lên: ' + D.better.map(function(x){ return esc(x.c) + " (" + lab(x) + ")"; }).join(", ") + '.' : '') + '</div>';
 }
 function clGateSync(sc, sum){
-  var id = sc==="NL" ? "cl-ck" : "ch-ck", g = document.querySelector('input[data-gate="' + id + '"]');
+  var id = sc==="NL" ? "cl-ck" : sc==="WS" ? "ws-ck" : "ch-ck", g = document.querySelector('input[data-gate="' + id + '"]');
   S.gates = S.gates || {}; S.gates[id] = !!sum.pass; if(g) g.checked = !!sum.pass;
 }
 function clRender(){
@@ -683,7 +684,8 @@ function clRender(){
     h += '<div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" class="btn quiet" data-clcopy="' + sc + '">Sao chép báo cáo checklist và ghi chú</button>' + (notes.length ? '<button type="button" class="btn quiet" data-clbase="' + sc + '">Lấy trạng thái hiện tại làm mốc so sánh</button>' : '') + '</div>';
     h += '<details class="box" data-k="form"' + (keepOpen.form || clForm[sc] ? " open" : "") + '><summary>' + (clForm[sc] && clForm[sc].id ? "Sửa ghi chú" : "Thêm ghi chú") + '</summary>' + clFormHTML(sc) + '</details>';
     h += '<details class="box" data-k="paste"' + (keepOpen.paste ? " open" : "") + '><summary>Dán ghi chú theo khuôn, hoặc nhập bình luận từ file Word</summary><div style="display:grid;gap:10px;margin-top:10px"><pre class="small">[Mã] · [PHẢI SỬA / GỢI Ý]\nVị trí: … | Trích: "…" | Vấn đề: … | Cần đạt: … | Đề xuất (gợi ý): … | Phạm vi: … Giữ: …</pre><textarea rows="5" data-clpaste="' + sc + '" placeholder="Dán một hoặc nhiều ghi chú; mỗi ghi chú bắt đầu bằng [Mã]."></textarea><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><button type="button" class="btn" data-clparse="' + sc + '">Đọc ghi chú</button><label class="btn quiet">Nhập bình luận từ file Word (.docx)<input type="file" accept=".docx" data-cldocx="' + sc + '" hidden></label><span class="small muted" data-clmsg></span></div><p class="small muted">Bình luận trong Word nên mở đầu bằng [Mã] và mức, ví dụ "[CH-C5] · PHẢI SỬA · Vấn đề: …". Chỗ bôi chọn khi bình luận được lấy làm đoạn trích. Bình luận trả lời (reply) được bỏ qua.</p></div></details>';
-    var pr = nOpen ? clFixPrompt(sc) : "";
+    var pr = nOpen && sc !== "WS" ? clFixPrompt(sc) : "";
+    if(sc === "WS"){ box.innerHTML = h; box.dataset.drawn = "1"; bindRemind(box); return; }
     h += '<details class="box" data-k="ai"' + (keepOpen.ai ? " open" : "") + '><summary>Sửa theo ghi chú bằng AI (' + nOpen + ' ghi chú mở)</summary><div style="display:grid;gap:10px;margin-top:10px">'
       + (nOpen ? '<p class="small muted">Câu lệnh gồm các ghi chú đang mở, các tiêu chí đang đạt kèm con số phải giữ, và các phần bị khoá. AI chỉ trả các cặp THAY / BẰNG, không trả cả bài; trang áp từng cặp khớp đúng một chỗ, rồi chấm lại toàn bộ checklist và báo tiêu chí nào bị xấu đi.</p><div style="display:flex;gap:10px"><button type="button" class="btn primary" data-clprompt="' + sc + '">Sao chép câu lệnh</button></div><details><summary class="small">Xem câu lệnh</summary><pre class="small clpre">' + esc(pr) + '</pre></details>'
         + '<textarea rows="6" data-clpatch="' + sc + '" placeholder="Dán kết quả của AI (nút Copy của khối code)">' + esc((S.cl && S.cl.patchRaw && S.cl.patchRaw[sc]) || "") + '</textarea>' + clPatchHTML(sc) : '<p class="small muted">Chưa có ghi chú mở.</p>')

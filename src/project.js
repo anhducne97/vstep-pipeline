@@ -15,9 +15,12 @@ var PRJ_TREE = {
   R:[{part:"Part 1", note:"1 bài · 10 câu", items:[["R1","",""]]}, {part:"Part 2", note:"1 bài · 10 câu", items:[["R2","",""]]}, {part:"Part 3", note:"1 bài · 10 câu", items:[["R3","",""]]}, {part:"Part 4", note:"1 bài · 10 câu", items:[["R4","",""]]}],
   L:[{part:"Part 1", note:"8 bài ngắn · mỗi bài 1 câu", items:[1,2,3,4,5,6,7,8].map(function(n){ return ["L1", String(n), "Bài " + n]; })},
      {part:"Part 2", note:"3 hội thoại · mỗi hội thoại 4 câu", items:[["L2a","","Hội thoại 1"],["L2b","","Hội thoại 2"],["L2c","","Hội thoại 3"]]},
-     {part:"Part 3", note:"3 bài nói · mỗi bài 5 câu", items:[["L3a","","Bài nói 1"],["L3b","","Bài nói 2"],["L3c","","Bài nói 3"]]}]
+     {part:"Part 3", note:"3 bài nói · mỗi bài 5 câu", items:[["L3a","","Bài nói 1"],["L3b","","Bài nói 2"],["L3c","","Bài nói 3"]]}],
+  W:[{part:"Task 1", note:"thư/email · tối thiểu 120 từ", items:[["W1","",""]]}, {part:"Task 2", note:"bài luận · tối thiểu 250 từ", items:[["W2","",""]]}],
+  S:[{part:"Part 1", note:"giao tiếp xã hội · 2 chủ đề", items:[["S1","",""]]}, {part:"Part 2", note:"thảo luận giải pháp", items:[["S2","",""]]}, {part:"Part 3", note:"phát triển chủ đề", items:[["S3","",""]]}]
 };
-var PRJ_KIND = {R:"Đề Đọc", L:"Đề Nghe"};
+var PRJ_KIND = {R:"Đề Đọc", L:"Đề Nghe", W:"Đề Viết", S:"Đề Nói"};
+var PRJ_SKN = {R:"Đọc ", L:"Nghe ", W:"Viết ", S:"Nói "}, PRJ_ICO = {R:"📖 ", L:"🎧 ", W:"✍️ ", S:"🗣️ "};
 // vị trí của một bài trong cây: phần thi + bài nhỏ
 function prjNode(spec, slot){ var k = (SPEC[spec] || {}).skill || "R", out = null; PRJ_TREE[k].forEach(function(pt){ pt.items.forEach(function(it){ if(it[0] === spec && (it[1] || "") === (slot || "")) out = {kind:k, part:pt.part, sub:it[2], note:pt.note}; }); }); if(!out && spec === "L1") out = {kind:"L", part:"Part 1", sub:"Bài " + (slot || "1"), note:""}; return out || {kind:k, part:(SPEC[spec] || {}).label || spec, sub:"", note:""}; }
 // danh sách bộ đề kèm loại (Đọc / Nghe); dự án cũ chỉ có tên thì đoán loại theo tên hoặc theo bài đã có
@@ -27,11 +30,13 @@ function prjSetList(p){
   return (p.sets || []).map(function(n){
     var k = kinds[n];
     if(!k){ var xs = LIB.items.filter(function(x){ return x.prj === p.id && (x.meta || {}).set === n; }), sk = {}; xs.forEach(function(x){ sk[(x.meta || {}).skill] = 1; });
-      k = /nghe|listen/i.test(n) ? "L" : /đọc|doc|read/i.test(n) ? "R" : (sk.L && !sk.R ? "L" : sk.R && !sk.L ? "R" : (sk.R && sk.L ? "RL" : "")); }
+      k = /nghe|listen/i.test(n) ? "L" : /đọc|doc|read/i.test(n) ? "R" : /viết|writ/i.test(n) ? "W" : /nói|speak/i.test(n) ? "S" : sk.W && !sk.R && !sk.L && !sk.S ? "W" : sk.S && !sk.R && !sk.L && !sk.W ? "S" : (sk.L && !sk.R ? "L" : sk.R && !sk.L ? "R" : (sk.R && sk.L ? "RL" : "")); }
     return {name:n, kind:k};
   });
 }
 var PRJ_ROLES = ["nl","tdnl","ch","tdch"];
+/* bài Viết, Nói không có phần câu hỏi: không giao Soạn CH, Thẩm định CH */
+function prjNoRole(x, r){ var k = (x.meta || {}).skill; return (k === "W" || k === "S") && (r === "ch" || r === "tdch"); }
 var PRJ_SHORT = {coord:"Điều phối", nl:"Soạn NL", tdnl:"TĐ NL", ch:"Soạn CH", tdch:"TĐ CH"};
 var PRJ_STAGE = {"":0,"Chủ đề đề xuất":1,"Đang adapt":2,"Ngữ liệu cần sửa":2,"Chờ thẩm định ngữ liệu":3,"Ngữ liệu đã duyệt (khoá)":4,"Đang soạn câu hỏi":4,"Câu hỏi cần sửa":4,"Chờ thẩm định câu hỏi":5,"Câu hỏi đã duyệt":6,"Đã hoàn thiện":7};
 var PRJ_DONE_AT = {nl:4, tdnl:4, ch:6, tdch:6, coord:7};
@@ -63,7 +68,7 @@ function prjItems(id){
   });
 }
 function prjShortLabel(x){ var m = x.meta || {}, n = prjNode(m.spec, m.slot); return n.part + (n.sub ? " · " + n.sub : ""); }
-function prjLabel(x){ var m = x.meta || {}, n = prjNode(m.spec, m.slot); return (m.set ? m.set + " · " : "") + (n.kind === "L" ? "Nghe " : "Đọc ") + n.part + (n.sub ? " · " + n.sub : ""); }
+function prjLabel(x){ var m = x.meta || {}, n = prjNode(m.spec, m.slot); return (m.set ? m.set + " · " : "") + (PRJ_SKN[n.kind] || "") + n.part + (n.sub ? " · " + n.sub : ""); }
 function prjAs(x){ var e = PRJ.edit[x.id]; return Object.assign({}, (x.wf && x.wf.as) || {}, e ? e.as : {}); }
 function prjDue(x){ var e = PRJ.edit[x.id]; if(e && e.due !== undefined) return e.due; return x.due || ""; }
 function prjEffDue(x, p){ return prjDue(x) || (p && p.due) || ""; }
@@ -191,7 +196,7 @@ function prjSetCoord(p, em){
     toast("Đã giao Điều phối dự án cho " + peopleName(em) + "."); return prjReload();
   }).catch(prjErr);
 }
-function prjNewSets(n){ var names = [], kinds = {}, pad = function(i){ return String(i).padStart(2, "0"); }; if(typeof n === "string"){ prjSplit(n).forEach(function(x){ names.push(x); }); return {names:names, kinds:kinds}; } ["R","L"].forEach(function(k){ for(var i = 1; i <= Math.min(20, n[k] || 0); i++){ var nm = PRJ_KIND[k] + " " + pad(i); names.push(nm); kinds[nm] = k; } }); return {names:names, kinds:kinds}; }
+function prjNewSets(n){ var names = [], kinds = {}, pad = function(i){ return String(i).padStart(2, "0"); }; if(typeof n === "string"){ prjSplit(n).forEach(function(x){ names.push(x); }); return {names:names, kinds:kinds}; } ["R","L","W","S"].forEach(function(k){ for(var i = 1; i <= Math.min(20, n[k] || 0); i++){ var nm = PRJ_KIND[k] + " " + pad(i); names.push(nm); kinds[nm] = k; } }); return {names:names, kinds:kinds}; }
 function prjSplit(s){ var out = String(s||"").split(/[\n,;]+/).map(function(x){ return x.trim(); }).filter(Boolean); return out.filter(function(x, i){ return out.indexOf(x) === i; }); }
 function prjUpdate(p, patch, msg){
   var fb = LIB.fb; patch.updatedAt = fb.serverTimestamp(); PRJ.busy = true; hubRender();
@@ -247,7 +252,7 @@ function prjMakeItems(p, list){
     var sp = SPEC[it.spec], lv = LEVEL_BY_SPEC[it.spec] || {level:"B2", floor:"0"}, nd = prjNode(it.spec, it.slot);
     var wf = {st:"", as:{coord:p.owner}, log:[{at:now, by:me, from:"", to:"", act:"Tạo khung bài trong dự án " + p.name, note:""}], rounds:{nl:0, ch:0}, lock:null, req:null, take:{}, dec:{}, qVer:0, due:"", asAt:now};
     var st = {step:"bat-dau", srcLang:"en", srcMode:"text", fixOpen:{}, spec:it.spec, level:lv.level, floor:lv.floor, spelling:"Anh–Anh", paras:"5", poly:"2–3", code:"", gates:{}, fields:{}, slots:{}, l1slot:it.slot || "1", libSet:it.set, prj:{id:p.id, name:p.name}, wf:wf};
-    var json = JSON.stringify(st), t = it.set + " · " + (nd.kind === "L" ? "Nghe " : "Đọc ") + nd.part + (nd.sub ? " · " + nd.sub : "");
+    var json = JSON.stringify(st), t = it.set + " · " + (PRJ_SKN[nd.kind] || "") + nd.part + (nd.sub ? " · " + nd.sub : "");
     var ref = fb.doc(fb.collection(LIB.db, "materials"));
     var meta = {spec:it.spec, specLabel:sp.label, skill:sp.skill, level:lv.level, topic:"", code:"", set:it.set, url:"", asia:false, words:0, questions:0, step:"bat-dau", slot:it.slot || ""};
     var rec = {title:t, owner:me, ownerName:name, createdAt:fb.serverTimestamp(), status:"", wf:{st:"", as:wf.as, req:"", lockVer:0, rounds:wf.rounds, due:"", stAt:0}, rev:1, updatedAt:fb.serverTimestamp(), updatedBy:me, updatedByName:name, meta:meta, state:json, prj:p.id, team:prjPeople(p.id), due:"", asg:{as:{coord:p.owner}, at:now, by:me, due:""}};
@@ -322,7 +327,7 @@ function prjSchedule(p, start, days){
   var skip = [];
   xs.forEach(function(x){
     var cur = start, snap = PRJ.edit[x.id] ? JSON.parse(JSON.stringify(PRJ.edit[x.id])) : null;
-    PRJ_DUE_ROLES.forEach(function(r){ if(days[r] > 0){ cur = prjAddDays(cur, days[r]); prjSetEdit(x, "due:" + r, cur); } });
+    PRJ_DUE_ROLES.forEach(function(r){ if(days[r] > 0 && !prjNoRole(x, r)){ cur = prjAddDays(cur, days[r]); prjSetEdit(x, "due:" + r, cur); } });
     if(days.coord > 0){ cur = prjAddDays(cur, days.coord); prjSetEdit(x, "due", cur); }
     var bad = prjDueOrder(x, p);
     if(bad){ if(snap) PRJ.edit[x.id] = snap; else delete PRJ.edit[x.id]; skip.push(prjShortLabel(x) + ": " + bad); } else n++;
@@ -341,7 +346,7 @@ function prjAuto(p){
   xs.forEach(function(x){
     var as = prjAs(x);
     PRJ_ROLES.forEach(function(r){
-      if(as[r]) return;
+      if(as[r] || prjNoRole(x, r)) return;
       var avoid = {nl:[as.tdnl], tdnl:[as.nl], ch:[as.tdch], tdch:[as.ch]}[r], prefer = {ch:[as.nl], nl:[as.ch]}[r] || [];
       var cand = people.filter(function(e){ return avoid.indexOf(e) < 0; }), better = cand.filter(function(e){ return prefer.indexOf(e) < 0; });
       if(better.length) cand = better; if(!cand.length) return;
@@ -460,7 +465,7 @@ function hubRender(){
   }
   h += '</main>';
   if(HUB.ask) h += '<div class="hubmodal"><div class="hubcard"><p>' + HUB.ask.text + '</p><div class="hubbtns">' + HUB.ask.btns.map(function(b, i){ return '<button class="btn ' + (b.cls || "") + '" type="button" data-hubask="' + i + '">' + esc(b.label) + '</button>'; }).join("") + '<button class="btn quiet" type="button" data-hubask="x">Huỷ</button></div></div></div>';
-  var keep = {}; el.querySelectorAll("input[id], textarea[id]").forEach(function(i){ if(i.type !== "checkbox" && i.type !== "radio" && i.value && /^(prj-n|prj-nr|prj-nl|prj-d|prj-inv|prj-sstart|prj-bdue|prj-setn)$/.test(i.id)) keep[i.id] = i.value; });
+  var keep = {}; el.querySelectorAll("input[id], textarea[id]").forEach(function(i){ if(i.type !== "checkbox" && i.type !== "radio" && i.value && /^(prj-n|prj-nr|prj-nl|prj-nw|prj-ns|prj-d|prj-inv|prj-sstart|prj-bdue|prj-setn)$/.test(i.id)) keep[i.id] = i.value; });
   var keepDays = {}; el.querySelectorAll("[data-prjdays]").forEach(function(i){ if(i.value) keepDays[i.getAttribute("data-prjdays")] = i.value; });
   var keepSel = {}; ["prj-brole","prj-bwho","prj-bduerole"].forEach(function(k){ var i = el.querySelector("#" + k); if(i) keepSel[k] = i.value; });
   el.innerHTML = h;
@@ -509,7 +514,7 @@ function prjListHTML(){
   var h = '<div class="hubrow"><h2>Dự án</h2><button class="btn primary" type="button" id="prj-newtoggle">+ Dự án mới</button></div>';
   if(HUB.newOpen || !vis.length) h += '<div class="hubcard"><h3>Tạo dự án mới</h3><p class="small muted">' + (libIsAdmin() ? 'Quản trị tạo dự án và giao Điều phối cho một người; để trống ô Điều phối thì bạn làm Điều phối. ' : 'Bạn là Điều phối của dự án mình tạo. ') + 'Điều phối mời thành viên, tạo khung bài, giao việc và duyệt cổng 1, cổng 4.</p><div class="prjform">'
     + '<label class="small">Tên dự án<input type="text" id="prj-n" placeholder="Ví dụ: Đợt soạn tháng 12/2026"></label>'
-    + '<div class="prjrow"><label class="small">Số đề Đọc<input type="number" min="0" max="20" id="prj-nr" placeholder="0" class="prjdays"></label><label class="small">Số đề Nghe<input type="number" min="0" max="20" id="prj-nl" placeholder="0" class="prjdays"></label><span class="small muted">Trang đặt tên Đề Đọc 01, Đề Nghe 01…; thêm, bớt sau ở mục Thiết lập được.</span></div>'
+    + '<div class="prjrow"><label class="small">Số đề Đọc<input type="number" min="0" max="20" id="prj-nr" placeholder="0" class="prjdays"></label><label class="small">Số đề Nghe<input type="number" min="0" max="20" id="prj-nl" placeholder="0" class="prjdays"></label><label class="small">Số đề Viết<input type="number" min="0" max="20" id="prj-nw" placeholder="0" class="prjdays"></label><label class="small">Số đề Nói<input type="number" min="0" max="20" id="prj-ns" placeholder="0" class="prjdays"></label><span class="small muted">Trang đặt tên Đề Đọc 01, Đề Nghe 01, Đề Viết 01, Đề Nói 01…; thêm, bớt sau ở mục Thiết lập được.</span></div>'
     + '<label class="small">Hạn hoàn thành dự án<input type="date" id="prj-d"></label>'
     + (libIsAdmin() ? '<label class="small">Điều phối (để trống: bạn làm Điều phối)<input type="text" id="prj-c" list="prj-coords" placeholder="Email Google của người làm Điều phối">' + prjStaffList("prj-coords") + '</label>' : '')
     + '<div class="hubbtns"><button class="btn primary" type="button" id="prj-new">Tạo dự án</button>' + (vis.length ? '<button class="btn quiet" type="button" id="prj-newtoggle">Đóng</button>' : '') + '</div></div></div>';
@@ -697,12 +702,12 @@ function prjBoardHTML(p, coord){
   xs.forEach(function(x){
     var set = (x.meta || {}).set || "";
     var nd = prjNode((x.meta || {}).spec, (x.meta || {}).slot);
-    if(set !== lastSet){ lastSet = set; lastPart = null; h += '<tr class="prjsetrow"><td colspan="6">' + (nd.kind === "L" ? "🎧 " : "📖 ") + '<b>' + esc(set || "(chưa gắn bộ đề)") + '</b></td></tr>'; }
+    if(set !== lastSet){ lastSet = set; lastPart = null; h += '<tr class="prjsetrow"><td colspan="6">' + (PRJ_ICO[nd.kind] || "") + '<b>' + esc(set || "(chưa gắn bộ đề)") + '</b></td></tr>'; }
     if(nd.sub && nd.part !== lastPart){ lastPart = nd.part; h += '<tr class="prjpartrow"><td colspan="6"><b>' + esc(nd.part) + '</b> <span class="small muted">' + esc(nd.note) + '</span></td></tr>'; }
     if(!nd.sub) lastPart = null;
     var as = prjAs(x), e = PRJ.edit[x.id] || {as:{}, dues:{}}, cf = prjConflicts(as), done = prjDone(x) || prjStop(x), ord = prjDueOrder(x, p);
     h += '<tr class="' + (cf.hard.length ? "prjbad" : "") + '"><td><b>' + esc(nd.sub ? nd.sub : nd.part) + '</b><div><span class="hst ' + prjStCls(x) + '">' + esc(prjStLabel(x)) + '</span></div>' + (cf.hard.length ? '<div class="small no">' + cf.hard.join("; ") + '</div>' : '') + (cf.soft.length ? '<div class="small warnc">' + cf.soft.join("; ") + '</div>' : '') + (ord ? '<div class="small no">Sai thứ tự hạn: ' + esc(ord) + '</div>' : '') + '</td>'
-      + PRJ_ROLES.map(function(r){ var st = prjRoleState(x, r), rd = prjDues(x)[r] || "", ef = prjRoleDue(x, r, p), late = st === "now" && ef && ef < prjToday(); return '<td class="' + (e.as[r] !== undefined || (e.dues || {})[r] !== undefined ? "prjch" : "") + (st === "now" ? " prjnow" : "") + '"><label><span class="prjlbl">' + PRJ_SHORT[r] + ' </span><select data-prjas="' + esc(x.id) + '|' + r + '"' + dis + (done ? " disabled" : "") + '>' + opt(as[r] || "") + '</select></label><label class="prjrdue"><span class="small muted">xong trước</span><input type="date" data-prjrdue="' + esc(x.id) + '|' + r + '" value="' + esc(rd) + '"' + (function(){ var g = prjDueRange(x, r, p); return (g.lo ? ' min="' + g.lo + '"' : '') + (g.hi ? ' max="' + g.hi + '"' : ''); })() + dis + (done ? " disabled" : "") + '></label>' + (st === "now" ? '<div class="small libok">● đang đến lượt</div>' + (ef ? prjDueChip(ef, true, rd ? "Hạn" : "Hạn bài") : '') : st === "done" ? '<div class="small muted">✓ xong</div>' : '') + '</td>'; }).join("")
+      + PRJ_ROLES.map(function(r){ if(prjNoRole(x, r)) return '<td class="small muted">không có phần câu hỏi</td>'; var st = prjRoleState(x, r), rd = prjDues(x)[r] || "", ef = prjRoleDue(x, r, p), late = st === "now" && ef && ef < prjToday(); return '<td class="' + (e.as[r] !== undefined || (e.dues || {})[r] !== undefined ? "prjch" : "") + (st === "now" ? " prjnow" : "") + '"><label><span class="prjlbl">' + PRJ_SHORT[r] + ' </span><select data-prjas="' + esc(x.id) + '|' + r + '"' + dis + (done ? " disabled" : "") + '>' + opt(as[r] || "") + '</select></label><label class="prjrdue"><span class="small muted">xong trước</span><input type="date" data-prjrdue="' + esc(x.id) + '|' + r + '" value="' + esc(rd) + '"' + (function(){ var g = prjDueRange(x, r, p); return (g.lo ? ' min="' + g.lo + '"' : '') + (g.hi ? ' max="' + g.hi + '"' : ''); })() + dis + (done ? " disabled" : "") + '></label>' + (st === "now" ? '<div class="small libok">● đang đến lượt</div>' + (ef ? prjDueChip(ef, true, rd ? "Hạn" : "Hạn bài") : '') : st === "done" ? '<div class="small muted">✓ xong</div>' : '') + '</td>'; }).join("")
       + '<td class="' + (e.due !== undefined ? "prjch" : "") + '"><label><span class="prjlbl">Hạn hoàn thiện </span><input type="date" data-prjdue="' + esc(x.id) + '" value="' + esc(prjDue(x)) + '"' + (function(){ var g = prjDueRange(x, "due", p); return g.lo ? ' min="' + g.lo + '"' : ''; })() + dis + '></label>' + (!prjDue(x) && p.due ? '<div class="small muted">theo dự án ' + esc(prjFmt(p.due)) + '</div>' : '') + '</td></tr>';
   });
   h += '</table></div>';
@@ -737,13 +742,13 @@ function prjSetupHTML(p, coord){
 function prjTreeHTML(p, coord){
   var sets = prjSetList(p), have = prjHave(p), byKey = {};
   prjItems(p.id).forEach(function(x){ var m = x.meta || {}; byKey[m.set + "|" + m.spec + "|" + (m.slot || "")] = x; });
-  var h = '<div class="hubcard"><h3>Bộ đề và khung bài</h3><p class="small muted">Mỗi bộ đề là một <b>Đề Đọc</b> (Part 1–4) hoặc một <b>Đề Nghe</b> (Part 1: 8 bài ngắn; Part 2: 3 hội thoại; Part 3: 3 bài nói), theo QĐ 730. Đánh dấu phần cần tạo rồi bấm <b>Tạo khung bài</b>: trang tạo sẵn bài trống để giao việc. Phần đã có bài hiện dấu ✓.</p>';
+  var h = '<div class="hubcard"><h3>Bộ đề và khung bài</h3><p class="small muted">Mỗi bộ đề là một <b>Đề Đọc</b> (Part 1–4), một <b>Đề Nghe</b> (Part 1: 8 bài ngắn; Part 2: 3 hội thoại; Part 3: 3 bài nói), một <b>Đề Viết</b> (Task 1, Task 2) hoặc một <b>Đề Nói</b> (Part 1–3), theo QĐ 730. Đánh dấu phần cần tạo rồi bấm <b>Tạo khung bài</b>: trang tạo sẵn bài trống để giao việc. Phần đã có bài hiện dấu ✓.</p>';
   if(!sets.length) h += '<div class="hubempty">Dự án chưa có bộ đề. Thêm bộ đề ở dưới.</div>';
   h += '<div class="ptree">' + sets.map(function(st){
     var nItems = prjItems(p.id).filter(function(x){ return (x.meta || {}).set === st.name; }).length;
-    var head = '<div class="ptset"><span class="ptkind k' + (st.kind || "x") + '">' + (st.kind === "R" ? "📖 Đề Đọc" : st.kind === "L" ? "🎧 Đề Nghe" : st.kind === "RL" ? "Đọc + Nghe" : "Chưa rõ loại") + '</span><b>' + esc(st.name) + '</b><span class="small muted">' + nItems + ' bài đã tạo</span>' + (coord && !nItems ? '<button class="btn quiet sm danger" type="button" data-prjdelset="' + esc(st.name) + '">Bỏ bộ đề</button>' : '') + '</div>';
+    var head = '<div class="ptset"><span class="ptkind k' + (st.kind || "x") + '">' + (PRJ_KIND[st.kind] ? PRJ_ICO[st.kind] + PRJ_KIND[st.kind] : st.kind === "RL" ? "Đọc + Nghe" : "Chưa rõ loại") + '</span><b>' + esc(st.name) + '</b><span class="small muted">' + nItems + ' bài đã tạo</span>' + (coord && !nItems ? '<button class="btn quiet sm danger" type="button" data-prjdelset="' + esc(st.name) + '">Bỏ bộ đề</button>' : '') + '</div>';
     if(!st.kind || st.kind === "RL"){
-      return '<div class="ptbox">' + head + (coord ? '<div class="prjrow small">Bộ đề này là: <button class="btn sm" type="button" data-prjsetkind="' + esc(st.name) + '|R">📖 Đề Đọc</button><button class="btn sm" type="button" data-prjsetkind="' + esc(st.name) + '|L">🎧 Đề Nghe</button>' + (st.kind === "RL" ? '<span class="muted">(bộ đề này đang có cả bài Đọc và Nghe từ trước)</span>' : '') + '</div>' : '') + '</div>';
+      return '<div class="ptbox">' + head + (coord ? '<div class="prjrow small">Bộ đề này là: <button class="btn sm" type="button" data-prjsetkind="' + esc(st.name) + '|R">📖 Đề Đọc</button><button class="btn sm" type="button" data-prjsetkind="' + esc(st.name) + '|L">🎧 Đề Nghe</button><button class="btn sm" type="button" data-prjsetkind="' + esc(st.name) + '|W">✍️ Đề Viết</button><button class="btn sm" type="button" data-prjsetkind="' + esc(st.name) + '|S">🗣️ Đề Nói</button>' + (st.kind === "RL" ? '<span class="muted">(bộ đề này đang có cả bài Đọc và Nghe từ trước)</span>' : '') + '</div>' : '') + '</div>';
     }
     return '<div class="ptbox">' + head + PRJ_TREE[st.kind].map(function(pt){
       var subs = pt.items.map(function(it){ var key = st.name + "|" + it[0] + "|" + (it[1] || ""), x = byKey[key]; return {it:it, key:key, x:x}; });
@@ -754,7 +759,7 @@ function prjTreeHTML(p, coord){
       return '<div class="ptrow">' + partBox + '<div class="ptsubs">' + subs.map(function(v){ return '<label class="hcheck ptsub' + (v.x ? " done" : "") + '"><input type="checkbox" data-prjmk="' + esc(v.key) + '" data-prjmkof="' + esc(st.name + "|" + pt.part) + '"' + (v.x ? " checked disabled" : (coord ? " checked" : " disabled")) + '> ' + esc(v.it[2]) + (v.x ? " ✓" : "") + '</label>'; }).join("") + '</div></div>';
     }).join("") + '</div>';
   }).join("") + '</div>';
-  if(coord) h += '<div class="prjrow ptadd"><b class="small">Thêm bộ đề</b><input type="text" id="prj-setn" placeholder="Tên, ví dụ: Đề Đọc 03"><button class="btn" type="button" data-prjaddset="R">＋ 📖 Đề Đọc</button><button class="btn" type="button" data-prjaddset="L">＋ 🎧 Đề Nghe</button></div>'
+  if(coord) h += '<div class="prjrow ptadd"><b class="small">Thêm bộ đề</b><input type="text" id="prj-setn" placeholder="Tên, ví dụ: Đề Đọc 03"><button class="btn" type="button" data-prjaddset="R">＋ 📖 Đề Đọc</button><button class="btn" type="button" data-prjaddset="L">＋ 🎧 Đề Nghe</button><button class="btn" type="button" data-prjaddset="W">＋ ✍️ Đề Viết</button><button class="btn" type="button" data-prjaddset="S">＋ 🗣️ Đề Nói</button></div>'
     + '<div class="small muted" id="prj-mkplan"></div><div class="hubbtns"><button class="btn primary" type="button" id="prj-mk"' + (sets.length ? "" : " disabled") + '>Tạo khung bài</button></div>';
   return h + '</div>';
 }
@@ -854,7 +859,7 @@ function bindPrj(){
     if(id === "prj-home"){ prjGuard(function(){ PRJ.sel = {}; HUB.page = "duan"; PRJ.msg = ""; hubRender(); }); return; }
     if(id === "spec-save"){ var ta = document.getElementById("spec-json"); if(!ta || !ta.value.trim()){ toast("Chưa dán nội dung."); return; } PRJ.busy = true; specsSave(ta.value).then(function(){ PRJ.busy = false; toast("Đã lưu đặc tả riêng."); hubRender(); }, function(err){ PRJ.busy = false; toast("Không lưu được: " + (err && err.message ? err.message : err)); hubRender(); }); return; }
     if(id === "prj-reload"){ prjReload(); return; }
-    if(id === "prj-new"){ var pc = el.querySelector("#prj-c"); HUB.newOpen = false; prjCreate(el.querySelector("#prj-n").value, el.querySelector("#prj-d").value, {R:parseInt(el.querySelector("#prj-nr").value, 10) || 0, L:parseInt(el.querySelector("#prj-nl").value, 10) || 0}, pc ? pc.value : ""); return; }
+    if(id === "prj-new"){ var pc = el.querySelector("#prj-c"); HUB.newOpen = false; prjCreate(el.querySelector("#prj-n").value, el.querySelector("#prj-d").value, {R:parseInt(el.querySelector("#prj-nr").value, 10) || 0, L:parseInt(el.querySelector("#prj-nl").value, 10) || 0, W:parseInt((el.querySelector("#prj-nw") || {}).value, 10) || 0, S:parseInt((el.querySelector("#prj-ns") || {}).value, 10) || 0}, pc ? pc.value : ""); return; }
     if(t.hasAttribute("data-prjtab")){ PRJ.tab = t.getAttribute("data-prjtab"); PRJ.msg = ""; hubRender(); return; }
     if(t.hasAttribute("data-prjitem")){ prjOpenItem(t.getAttribute("data-prjitem")); return; }
     if(!p) return;
@@ -897,7 +902,7 @@ function bindPrj(){
     if(sl){ PRJ.sel[sl] = t.checked; hubRender(); return; }
     var col = t.getAttribute("data-prjcol"), cold = t.getAttribute("data-prjcoldue");
     if((col || cold) && p){
-      var n = 0, skipC = []; prjItems(p.id).forEach(function(x){ if(prjDone(x) || prjStop(x)) return; if(col){ if(t.value){ prjSetEdit(x, col, t.value); n++; } } else { if(prjTryEdit(x, cold === "due" ? "due" : "due:" + cold, t.value, p)) skipC.push(prjShortLabel(x)); else n++; } });
+      var n = 0, skipC = []; prjItems(p.id).forEach(function(x){ if(prjDone(x) || prjStop(x)) return; if(col){ if(t.value && !prjNoRole(x, col)){ prjSetEdit(x, col, t.value); n++; } } else { if(prjNoRole(x, cold)) return; if(prjTryEdit(x, cold === "due" ? "due" : "due:" + cold, t.value, p)) skipC.push(prjShortLabel(x)); else n++; } });
       PRJ.msg = n ? (col ? "Đã giao cột " + WF_ROLES[col] + " cho " + peopleName(t.value) : "Đã điền hạn cả cột " + (cold === "due" ? "hoàn thiện" : WF_ROLES[cold])) + " ở " + n + " bài (chưa lưu). Kiểm tra ô đỏ nếu có, rồi bấm Lưu phân công." : "";
       if(skipC.length) PRJ.msg += " Bỏ qua " + skipC.length + " bài vì ngày đó làm sai thứ tự hạn (" + skipC.slice(0, 3).join(", ") + (skipC.length > 3 ? "…" : "") + ").";
       hubRender(); return;

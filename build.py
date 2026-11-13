@@ -10,7 +10,7 @@ def rd(name):
         return f.read()
 
 core = rd('core.js')
-ui = rd('vocab.js').replace('/*LEXDATA*/', rd('lexdata.json')) + "\n" + rd('ui.js') + rd('qstep.js') + rd('lib.js') + rd('checklist.js') + rd('cefr.js') + rd('export.js') + rd('compare.js') + rd('workflow.js') + rd('project.js') + rd('forum.js') + rd('notify.js') + '\nspecsFromSession();\ninit();\nbindLib();\nbindCl();\nbindWf();\nbindPrj();\nbindForum();\nbindNtf();\nbindLv();\nbindSb();\nbindXp();\nclRender();\n'
+ui = rd('vocab.js').replace('/*LEXDATA*/', rd('lexdata.json')) + "\n" + rd('ui.js') + rd('qstep.js') + rd('lib.js') + rd('checklist.js') + rd('cefr.js') + rd('export.js') + rd('ws.js') + rd('compare.js') + rd('workflow.js') + rd('project.js') + rd('forum.js') + rd('notify.js') + '\nspecsFromSession();\ninit();\nbindLib();\nbindCl();\nbindWf();\nbindPrj();\nbindForum();\nbindNtf();\nbindLv();\nbindSb();\nbindXp();\nbindWs();\nclRender();\n'
 page = rd('page.html')
 for ph in ('/*CORE*/', '/*UI*/', '/*BUILD*/'):
     assert page.count(ph) == 1, 'page.html phải có đúng một ' + ph

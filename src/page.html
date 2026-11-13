@@ -733,6 +733,15 @@ pre{max-width:100%;overflow-x:auto}
   h1{font-size:1.1rem}
   .toprow{gap:8px}
 }
+.wsgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:860px){.wsgrid{grid-template-columns:1fr}}
+.wspaper{border:1px solid var(--line,#d8dde3);border-radius:10px;padding:14px 16px;background:#fff;font-family:"Times New Roman",Georgia,serif;font-size:15px;line-height:1.45;position:sticky;top:calc(var(--toph,60px) + 12px)}
+.wspaper p{margin:0 0 8px}.wspaper .wsh{font-weight:700}.wspaper .wsi{font-style:italic}
+.wspaper ul,.wspaper ol{margin:0 0 8px;padding-left:1.4em}
+.wsbox{border:1px solid #999;padding:8px 10px;margin:0 0 8px}
+.wsmind{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:6px 0 10px}
+.wsmind .wsmt{grid-column:1/-1;text-align:center;font-weight:700;border:2px solid #555;border-radius:20px;padding:6px}
+.wsmind .wsmi{text-align:center;border:1px solid #999;border-radius:8px;padding:6px}.wsmind .own{font-style:italic;color:#555}
 </style>
 </head>
 <body>
@@ -800,11 +809,17 @@ pre{max-width:100%;overflow-x:auto}
           <option value="L2a">Nghe · Part 2 · hội thoại 1</option><option value="L2b">Nghe · Part 2 · hội thoại 2</option><option value="L2c">Nghe · Part 2 · hội thoại 3</option>
           <option value="L3a">Nghe · Part 3 · bài nói 1</option><option value="L3b">Nghe · Part 3 · bài nói 2</option><option value="L3c">Nghe · Part 3 · bài nói 3</option>
         </optgroup>
+        <optgroup label="Viết">
+          <option value="W1">Viết · Task 1 (thư/email)</option><option value="W2">Viết · Task 2 (bài luận)</option>
+        </optgroup>
+        <optgroup label="Nói">
+          <option value="S1">Nói · Part 1 (giao tiếp xã hội)</option><option value="S2">Nói · Part 2 (thảo luận giải pháp)</option><option value="S3">Nói · Part 3 (phát triển chủ đề)</option>
+        </optgroup>
       </select>
     </label>
   </div></div>
 
-  <div class="card act"><div class="n">2</div><div class="actbody">
+  <div class="card act" data-skills="R L"><div class="n">2</div><div class="actbody">
     <h3 class="acttitle">Đặt mức từ vựng và tuỳ chọn</h3>
     <label class="field" for="set-level"><span class="lab">Mức từ vựng mục tiêu</span>
       <span class="hint" id="level-hint"></span>
@@ -825,7 +840,7 @@ pre{max-width:100%;overflow-x:auto}
     </div>
   </details>
 
-  <div class="card">
+  <div class="card" data-skills="R L">
     <h3>Cần chuẩn bị</h3>
     <ul class="small" style="margin:8px 0 0;padding-left:1.2em;display:grid;gap:4px">
       <li>Một AI chatbot: ChatGPT, Gemini, Copilot… Bước tìm nguồn cần bật chế độ tìm kiếm web.</li>
@@ -842,7 +857,7 @@ pre{max-width:100%;overflow-x:auto}
 </section>
 
 <!-- 2. CHỦ ĐỀ -->
-<section class="screen hidden" id="chu-de" data-branch="all" data-name="Chủ đề">
+<section class="screen hidden" id="chu-de" data-branch="R L" data-name="Chủ đề">
   <div class="kicker">Bước 2</div>
   <h2>Chọn chủ đề</h2>
   <p class="lead">AI đề xuất 12 chủ đề phù hợp với phần thi. Bạn chọn một.</p>
@@ -871,7 +886,7 @@ pre{max-width:100%;overflow-x:auto}
 </section>
 
 <!-- 3. NGUỒN -->
-<section class="screen hidden" id="nguon" data-branch="all" data-name="Nguồn">
+<section class="screen hidden" id="nguon" data-branch="R L" data-name="Nguồn">
   <div class="kicker">Bước 3</div>
   <h2>Tìm và kiểm tra nguồn</h2>
   <p class="lead">AI gợi ý nguồn. Bạn tự mở từng nguồn để kiểm tra, rồi lấy văn bản từ trang gốc.</p>
@@ -1052,7 +1067,7 @@ pre{max-width:100%;overflow-x:auto}
 </section>
 
 <!-- 5. ĐỘ DÀI -->
-<section class="screen hidden" id="do-dai" data-branch="all" data-name="Kiểm nhanh" data-approve>
+<section class="screen hidden" id="do-dai" data-branch="R L" data-name="Kiểm nhanh" data-approve>
   <div class="kicker">Bước 5</div>
   <h2>Kiểm độ dài, câu và từ vựng</h2>
   <p class="lead">Trang tự đếm theo cách của Text Profiler và tự tra từng từ trong danh sách CEFR-J/Octanove (cùng nguồn Text Profiler dùng). Nếu có dòng màu đỏ, phần sửa sẽ hiện ra bên dưới. Số liệu từ vựng ở đây là ước lượng; bước 6 xác nhận trên Text Profiler. Flesch Reading Ease tính như Text Profiler (không tính tiêu đề, âm tiết theo từ điển CMU), có thể lệch vài phần mười điểm.</p>
@@ -1101,7 +1116,7 @@ pre{max-width:100%;overflow-x:auto}
 </section>
 
 <!-- 6. TỪ VỰNG -->
-<section class="screen hidden" id="tu-vung" data-branch="all" data-name="Từ vựng" data-approve>
+<section class="screen hidden" id="tu-vung" data-branch="R L" data-name="Từ vựng" data-approve>
   <div class="kicker">Bước 6</div>
   <h2>Kiểm từ vựng trên Text Profiler</h2>
   <p class="lead">Bài cần nằm trong khoảng: <b>không khó quá</b> và <b>không dễ quá</b> so với mức <b data-v="level"></b>.</p>
@@ -1176,7 +1191,7 @@ pre{max-width:100%;overflow-x:auto}
 </section>
 
 <!-- 7. NỘI DUNG -->
-<section class="screen hidden" id="noi-dung" data-branch="all" data-name="Nội dung" data-approve>
+<section class="screen hidden" id="noi-dung" data-branch="R L" data-name="Nội dung" data-approve>
   <div class="kicker">Bước 7</div>
   <h2>Kiểm nội dung so với nguồn</h2>
   <p class="lead">Kiểm hai điều: AI có thêm hoặc đổi thông tin không, và bài có chép nguyên văn nguồn quá nhiều không. Bạn không cần sửa tay: AI đề xuất câu sửa, trang tự thay vào bài rồi kiểm lại độ dài và từ vựng.</p>
@@ -1242,7 +1257,7 @@ pre{max-width:100%;overflow-x:auto}
 </section>
 
 <!-- 8. CHẤT LIỆU -->
-<section class="screen hidden" id="chat-lieu" data-branch="all" data-name="Chất liệu" data-approve>
+<section class="screen hidden" id="chat-lieu" data-branch="R L" data-name="Chất liệu" data-approve>
   <div class="kicker">Bước 8</div>
   <h2>Kiểm bài có đủ chất liệu ra câu hỏi</h2>
   <p class="lead">AI đề xuất chỗ hỏi cho từng câu của bảng phân bố (không soạn câu hỏi). Dán kết quả vào là trang tự điền bản đồ chất liệu; bạn chỉ kiểm và chỉnh từng dòng.</p>
@@ -1289,7 +1304,7 @@ pre{max-width:100%;overflow-x:auto}
 </section>
 
 <!-- 9. CÂU HỎI -->
-<section class="screen hidden" id="cau-hoi" data-branch="all" data-name="Câu hỏi">
+<section class="screen hidden" id="cau-hoi" data-branch="R L" data-name="Câu hỏi">
   <div class="kicker">Bước 9</div>
   <h2>Soạn câu hỏi</h2>
   <p class="lead">AI soạn câu hỏi theo bảng phân bố của QĐ 730; trang kiểm từng câu: đúng khuôn, đúng bậc, căn cứ có trong bài, và các quy tắc riêng của từng dạng câu.</p>
@@ -1381,7 +1396,7 @@ pre{max-width:100%;overflow-x:auto}
 </section>
 
 <!-- 10. NỘP -->
-<section class="screen hidden" id="nop" data-branch="all" data-name="Nộp">
+<section class="screen hidden" id="nop" data-branch="R L" data-name="Nộp">
   <div class="kicker">Bước 10</div>
   <h2>Điền phiếu và nộp</h2>
   <div class="card"><h3 class="acttitle">Bảng level CEFR</h3><div class="cefrsb"></div></div>
@@ -1416,6 +1431,29 @@ pre{max-width:100%;overflow-x:auto}
   </div>
   <div class="navrow"><button class="btn quiet" type="button" data-prev>← Quay lại</button><span class="navmsg"></span><span></span></div>
 </section>
+
+<!-- VIẾT, NÓI: SOẠN ĐỀ -->
+<section class="screen hidden" id="ws-soan" data-branch="W S" data-name="Soạn đề">
+  <div class="kicker">Bước 2</div>
+  <h2>Soạn đề</h2>
+  <p class="lead">Điền từng phần của đề theo biểu mẫu đề hoàn chỉnh. Khung bên phải hiện đề như khi in; các dòng cố định (thời gian, số từ, tiêu chí chấm) trang tự thêm.</p>
+  <div id="ws-form"></div>
+  <div class="navrow"><button class="btn quiet" type="button" data-prev>← Quay lại</button><span class="navmsg"></span><button class="btn primary big" type="button" data-next>Tiếp tục →</button></div>
+</section>
+
+<!-- VIẾT, NÓI: KIỂM VÀ XUẤT -->
+<section class="screen hidden" id="ws-kiem" data-branch="W S" data-name="Kiểm và xuất">
+  <div class="kicker">Bước 3</div>
+  <h2>Kiểm và xuất file</h2>
+  <p class="lead">Dòng "Máy" trang tự chấm theo đặc tả. Dòng "Người" do người thẩm định xét và bấm Đạt hoặc Chưa đạt; chưa đạt thì thêm ghi chú để người soạn sửa.</p>
+  <div class="clbox" data-cl="WS"></div>
+  <div class="card"><h3>Xuất file Word</h3><p class="small muted">Theo bố cục phần WRITING, SPEAKING của biểu mẫu đề hoàn chỉnh. Mỗi nhiệm vụ một file; ghép vào file đề chung của nhóm.</p><button class="btn primary" type="button" data-wsdocx>Tải file Word</button></div>
+  <div class="checks"><h3>Trước khi nộp</h3>
+    <label><input type="checkbox" data-gate="ws-ck" disabled><span>Checklist đạt (trang tự đánh dấu).</span></label>
+  </div>
+  <div class="navrow"><button class="btn quiet" type="button" data-prev>← Quay lại</button><span class="navmsg"></span><span></span></div>
+</section>
+
 
 </main>
 <button type="button" class="rvfab hidden" id="rvfab" aria-controls="rvdrawer" aria-expanded="false"></button>

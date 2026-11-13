@@ -884,7 +884,7 @@ function renderHave(){
 }
 
 /* ---------- Settings summary ---------- */
-function renderChip(){ var sp = SPEC[S.spec]; document.getElementById("curbai").textContent = sp.label + " · " + S.level + (slotVal("topic") ? " · " + slotVal("topic").slice(0,40) : ""); }
+function renderChip(){ var sp = SPEC[S.spec]; document.getElementById("curbai").textContent = sp.label + (sp.skill === "W" || sp.skill === "S" ? "" : " · " + S.level) + (slotVal("topic") ? " · " + slotVal("topic").slice(0,40) : ""); }
 function renderFilenames(){
   var sp = SPEC[S.spec], code = S.code ? slug(S.code) : S.spec, t = S.slots.topic ? slug(S.slots.topic) : "chu-de";
   var names = sp.skill==="R" ? ["nguon","bientap","chot"] : ["nguon","dukien","kichban","chot"];
@@ -912,11 +912,13 @@ function renderSpec(){
 }
 
 /* ---------- Branch + navigation ---------- */
-function screens(){ return Array.prototype.filter.call(document.querySelectorAll(".screen"), function(s){ var b = s.getAttribute("data-branch"); return b==="all" || b===SPEC[S.spec].skill; }); }
+function screens(){ var sk = SPEC[S.spec].skill; return Array.prototype.filter.call(document.querySelectorAll(".screen"), function(s){ var b = s.getAttribute("data-branch"); return b==="all" || b.split(" ").indexOf(sk) >= 0; }); }
 function applyBranch(){
   var sp = SPEC[S.spec], b = sp.skill;
   document.querySelectorAll("[data-branchtext]").forEach(function(el){ el.classList.toggle("hidden", el.getAttribute("data-branchtext")!==b); });
   document.querySelectorAll("[data-grp]").forEach(function(el){ el.classList.toggle("hidden", String(sp.grp)!==el.getAttribute("data-grp")); });
+  document.querySelectorAll("[data-skills]").forEach(function(el){ el.classList.toggle("hidden", el.getAttribute("data-skills").split(" ").indexOf(b) < 0); });
+  try{ wsSync(); wsRenderForm(); }catch(e){}
   var list = screens();
   if(list.map(function(s){return s.id;}).indexOf(S.step)===-1){
     if(S.step==="viet-bai" && b==="L") S.step = "viet-kich-ban";
@@ -942,7 +944,7 @@ function show(id, noScroll){
   document.querySelectorAll(".screen").forEach(function(s){ s.classList.toggle("hidden", s.id!==id); });
   S.step = id; save();
   if(id==="nop" && (typeof wfCanEditScreen !== "function" || wfCanEditScreen("nop"))) try{ fillAuto(); }catch(e){}
-  if(id==="chat-lieu" || id==="cau-hoi") try{ clRender(); }catch(e){}
+  if(id==="chat-lieu" || id==="cau-hoi" || id==="ws-kiem") try{ clRender(); }catch(e){}
   if(id==="nguon" && typeof wfG1Render === "function") try{ wfG1Render(); }catch(e){}
   try{ cmpRenderMounts(); }catch(e){}
   try{ if(location.hash !== "#"+id) history.replaceState(null, "", "#"+id); }catch(e){}

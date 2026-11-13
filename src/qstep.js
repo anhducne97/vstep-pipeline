@@ -1,6 +1,8 @@
 
 /* ================= Bước soạn câu hỏi (theo QĐ 730, mục 2.1.2–2.1.3 và 2.2.2–2.2.4) ================= */
 var LEVEL_BY_SPEC = {
+  W1:{level:"B1", floor:"0", why:"ngữ liệu đầu vào của bài Viết viết ở trình độ bậc 3 (QĐ 730)"}, W2:{level:"B1", floor:"0", why:"ngữ liệu đầu vào của bài Viết viết ở trình độ bậc 3 (QĐ 730)"},
+  S1:{level:"B1", floor:"0", why:"câu hỏi Nói dùng ngôn ngữ thí sinh bậc 3 hiểu được"}, S2:{level:"B1", floor:"0", why:"câu hỏi Nói dùng ngôn ngữ thí sinh bậc 3 hiểu được"}, S3:{level:"B1", floor:"0", why:"câu hỏi Nói dùng ngôn ngữ thí sinh bậc 3 hiểu được"},
   R1:{level:"B1", floor:"0", why:"văn bản bậc 3"}, R2:{level:"B2", floor:"0", why:"văn bản bậc 4"}, R3:{level:"B2", floor:"0", why:"văn bản bậc 4"}, R4:{level:"C1", floor:"0", why:"văn bản bậc 5"},
   L1:{level:"B1", floor:"1", why:"ngữ liệu bậc 2 và bậc 3"},
   L2a:{level:"B1", floor:"0", why:"Part 2 có 3 hội thoại ở bậc 3, 4, 5; hội thoại 1 lấy bậc 3"}, L2b:{level:"B2", floor:"0", why:"Part 2 có 3 hội thoại ở bậc 3, 4, 5; hội thoại 2 lấy bậc 4"}, L2c:{level:"C1", floor:"0", why:"Part 2 có 3 hội thoại ở bậc 3, 4, 5; hội thoại 3 lấy bậc 5"},
