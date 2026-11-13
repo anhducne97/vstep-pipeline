@@ -88,15 +88,16 @@ function prjPhaseDueOf(x, r, p){
   return {d:prjRoleDue(x, r, p), label:"Hạn"};
 }
 // thứ tự hạn: Soạn NL ≤ TĐ NL ≤ Soạn CH ≤ TĐ CH ≤ hoàn thiện (phần sau chỉ bắt đầu khi phần trước xong)
-function prjDueOrderOf(d, fin){
+function prjDueOrderOf(d, fin, finLbl){
   var seq = PRJ_DUE_ROLES.map(function(r){ return [r, d[r]]; }).filter(function(v){ return v[1]; });
   // không dùng Array.at(): Safari trên iPhone đời iOS dưới 15.4 không có, ô hạn sẽ không đổi được
   for(var i = 1; i < seq.length; i++) if(seq[i][1] < seq[i - 1][1]) return "hạn " + PRJ_SHORT[seq[i][0]] + " (" + prjFmt(seq[i][1]) + ") sớm hơn hạn " + PRJ_SHORT[seq[i - 1][0]] + " (" + prjFmt(seq[i - 1][1]) + ")";
   var last = seq[seq.length - 1];
-  if(fin && last && last[1] > fin) return "hạn " + PRJ_SHORT[last[0]] + " (" + prjFmt(last[1]) + ") muộn hơn hạn hoàn thiện (" + prjFmt(fin) + ")";
+  if(fin && last && last[1] > fin) return "hạn " + PRJ_SHORT[last[0]] + " (" + prjFmt(last[1]) + ") muộn hơn " + (finLbl || "hạn hoàn thiện") + " (" + prjFmt(fin) + ")";
   return "";
 }
-function prjDueOrder(x, p){ return prjDueOrderOf(prjDues(x), prjEffDue(x, p)); }
+// bài chưa có hạn hoàn thiện riêng thì theo hạn dự án: nói rõ để người dùng biết phải đổi ở đâu
+function prjDueOrder(x, p){ return prjDueOrderOf(prjDues(x), prjEffDue(x, p), prjDue(x) ? "hạn hoàn thiện của bài" : "hạn dự án"); }
 // khoảng ngày được chọn cho hạn một vai (ô ngày dùng làm min, max)
 function prjDueRange(x, r, p){
   var d = prjDues(x), i = PRJ_DUE_ROLES.indexOf(r), lo = "", hi = "";
@@ -979,9 +980,9 @@ function bindPrj(){
     if(sl){ PRJ.sel[sl] = t.checked; hubRender(); return; }
     var col = t.getAttribute("data-prjcol"), cold = t.getAttribute("data-prjcoldue");
     if((col || cold) && p){
-      var n = 0, skipC = []; prjItems(p.id).forEach(function(x){ if(prjDone(x) || prjStop(x)) return; if(col){ if(t.value && !prjNoRole(x, col)){ prjSetEdit(x, col, t.value); n++; } } else { if(prjNoRole(x, cold)) return; if(prjTryEdit(x, cold === "due" ? "due" : "due:" + cold, t.value, p)) skipC.push(prjShortLabel(x)); else n++; } });
+      var n = 0, skipC = []; prjItems(p.id).forEach(function(x){ if(prjDone(x) || prjStop(x)) return; if(col){ if(t.value && !prjNoRole(x, col)){ prjSetEdit(x, col, t.value); n++; } } else { if(prjNoRole(x, cold)) return; var whyC = prjTryEdit(x, cold === "due" ? "due" : "due:" + cold, t.value, p); if(whyC){ skipC.push(prjShortLabel(x)); if(!skipC.why) skipC.why = whyC; } else n++; } });
       PRJ.msg = n ? (col ? "Đã giao cột " + WF_ROLES[col] + " cho " + peopleName(t.value) : "Đã điền hạn cả cột " + (cold === "due" ? "hoàn thiện" : WF_ROLES[cold])) + " ở " + n + " bài (chưa lưu). Kiểm tra ô đỏ nếu có, rồi bấm Lưu phân công." : "";
-      if(skipC.length){ PRJ.msg += " Bỏ qua " + skipC.length + " bài vì ngày đó làm sai thứ tự hạn (" + skipC.slice(0, 3).join(", ") + (skipC.length > 3 ? "…" : "") + ")."; toast(PRJ.msg); }
+      if(skipC.length){ PRJ.msg += (PRJ.msg ? " " : "") + "Không điền được " + prjFmt(t.value) + " cho " + skipC.length + " bài (" + skipC.slice(0, 3).join(", ") + (skipC.length > 3 ? "…" : "") + ") vì sai thứ tự hạn, ví dụ " + skipC[0] + ": " + skipC.why + ". Phần sau không được có hạn sớm hơn phần trước, và mọi phần phải xong trước hạn hoàn thiện."; toast(PRJ.msg); }
       hubRender(); return;
     }
     // đánh dấu cả Part thì đánh dấu mọi bài nhỏ của nó, và ngược lại
