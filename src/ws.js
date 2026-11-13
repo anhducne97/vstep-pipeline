@@ -100,7 +100,7 @@ function wsSync(){
 }
 
 /* ---------- checklist WS (dùng chung khung checklist có mã) ---------- */
-function wsMiss(){ return (WS_F[S.spec] || []).filter(function(f){ return !f.optional && f.k !== "srcText" && !wsV(f.k); }).map(function(f){ return f.label.replace(/\s*\(.*$/, ""); }); }
+function wsMiss(){ return (WS_F[S.spec] || []).filter(function(f){ return !f.optional && f.k !== "srcText" && f.k !== "theme" && !wsV(f.k); }).map(function(f){ return f.label.replace(/\s*\(.*$/, ""); }); }
 function wsNoContent(){ return wsHasContent() ? null : {s:"na", d:"Chưa có đề."}; }
 function wsCovB1(t){ if(!String(t || "").trim()) return null; var vp = vocabProfile(t); if(!vp || !vp.N) return null; return {cov:vp.cum[2], vp:vp}; }
 function wsAbove(vp, n){ var L = (vp.lemmas || []).filter(function(x){ return x.lv > 2; }).map(function(x){ return x.w + " (" + (LVL[x.lv] || "?") + ")"; }); return L.concat((vp.offList || []).map(function(x){ return x.w + " (ngoài danh sách)"; })).slice(0, n || 10); }
@@ -312,6 +312,18 @@ function wsPreviewHTML(){
   }
   return '<div class="wspaper">' + h + '</div>';
 }
+/* tự kiểm ngay ở bước Soạn đề: dòng máy kiểm chạy theo từng lần gõ; dòng người soát để người soạn tự rà trước khi gửi */
+function wsSelfHTML(){
+  if(!wsHasContent()) return '<p class="small muted">Điền đề ở mục 2, trang chấm ngay các dòng máy kiểm.</p>';
+  var ev = clEval("WS"), R = clRows("WS"), M = R.filter(function(r){ return r.who === "M" || r.who === "MH"; }), H = R.filter(function(r){ return r.who === "H" || r.who === "MH"; });
+  var ico = {ok:"✓", fail:"✗", warn:"!", na:"–"}, nf = M.filter(function(r){ return ev[r.c] && ev[r.c].s === "fail"; }).length;
+  var h = '<div class="small ' + (nf ? "no" : "ok") + '" style="margin-bottom:6px"><b>' + (nf ? nf + " dòng máy kiểm phải sửa trước khi gửi thẩm định." : "Các dòng máy kiểm không còn đỏ.") + '</b></div><div class="wsself">';
+  h += M.map(function(r){ var e = ev[r.c] || {s:"na", d:""}, st = e.s === "todo" || e.s === "recheck" ? "na" : e.s; return '<div class="wsr ' + st + '"><span class="wsi">' + (ico[st] || "–") + '</span><div><b>' + r.c + '</b> ' + esc(r.t) + ' ' + clTierHTML(r) + (e.d ? '<div class="small muted">' + esc(e.d) + '</div>' : '') + '</div></div>'; }).join("");
+  h += '</div><div class="small" style="margin:10px 0 4px"><b>Tự rà trước khi gửi</b> <span class="muted">(người thẩm định sẽ xét các dòng này)</span></div><ul class="wshum">'
+    + H.map(function(r){ return '<li><b>' + r.c + '</b> ' + esc(r.t) + ' ' + clTierHTML(r) + '</li>'; }).join("") + '</ul>';
+  return h;
+}
+function wsRenderSelf(){ var b = document.getElementById("ws-self"); if(b && wsOn()) b.innerHTML = wsSelfHTML(); }
 function wsRenderForm(){
   var box = document.getElementById("ws-form"); if(!box) return;
   if(!wsOn()){ box.innerHTML = ""; return; }
@@ -325,14 +337,15 @@ function wsRenderForm(){
     + '<div><button class="btn" type="button" id="ws-fill">Điền vào các ô</button> <span class="small muted" id="ws-fillmsg"></span></div></div></div>'
     + '<div class="card act"><div class="n">2</div><div class="actbody"><h3 class="acttitle">Các phần của đề</h3><div class="wsgrid"><div>'
     + F.filter(function(f){ return f.k !== "theme" && f.k !== "srcText"; }).map(wsFieldHTML).join("")
-    + '</div><div><div class="small muted">Đề như khi in</div><div id="ws-preview">' + wsPreviewHTML() + '</div></div></div></div></div>';
+    + '</div><div><div class="small muted">Đề như khi in</div><div id="ws-preview">' + wsPreviewHTML() + '</div></div></div></div></div>'
+    + '<div class="card act"><div class="n">3</div><div class="actbody"><h3 class="acttitle">Tự kiểm theo checklist</h3><p class="small muted">Cùng các tiêu chí người thẩm định dùng ở bước Kiểm và xuất. Sửa hết dòng đỏ rồi mới gửi thẩm định.</p><div id="ws-self">' + wsSelfHTML() + '</div></div></div>';
 }
 var wsT = null;
 function wsAfterEdit(full){
   wsSync(); save();
   var pv = document.getElementById("ws-preview"); if(pv) pv.innerHTML = wsPreviewHTML();
   document.querySelectorAll("[data-wswc]").forEach(function(el){ var v = wsV(el.getAttribute("data-wswc")); el.textContent = v ? wc(v) + " từ" : ""; });
-  clearTimeout(wsT); wsT = setTimeout(function(){ try{ clRender(); }catch(e){} try{ renderChip(); }catch(e){} updateStepper(); }, full ? 0 : 400);
+  clearTimeout(wsT); wsT = setTimeout(function(){ try{ wsRenderSelf(); }catch(e){} try{ clRender(); }catch(e){} try{ renderChip(); }catch(e){} updateStepper(); }, full ? 0 : 400);
 }
 function bindWs(){
   document.addEventListener("input", function(e){

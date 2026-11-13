@@ -164,7 +164,12 @@ details.ptn details.ptn > summary{background:var(--bg);padding:6px 10px}
 .wspk{text-align:left;border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 10px;font:inherit;font-size:.92rem;cursor:pointer;line-height:1.35}
 .wspk:hover{border-color:var(--accent)}.wspk.on{border-color:var(--accent);background:var(--accent-soft)}
 .wspl{display:inline-block;font-size:.78rem;font-weight:600;color:var(--accent);margin-right:8px}
-input.flash{background:#fff6cc;transition:background .6s}.ptnset{font-weight:600}
+input.flash{background:#fff6cc;transition:background .6s}
+.wsself{display:flex;flex-direction:column;gap:6px}
+.wsr{display:flex;gap:10px;align-items:flex-start;padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:.93rem}
+.wsr .wsi{flex:0 0 22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;background:var(--bg);color:var(--muted)}
+.wsr.ok .wsi{background:#dcf2e3;color:#1c6b3a}.wsr.fail{border-color:#e8b4ad}.wsr.fail .wsi{background:#fbe1dd;color:#a3271b}.wsr.warn .wsi{background:#fff1c9;color:#8a6200}
+.wshum{margin:0;padding-left:1.2em;font-size:.93rem}.wshum li{margin:3px 0}.ptnset{font-weight:600}
 .prjact{border-top:1px dashed var(--line);margin-top:8px;padding-top:8px;display:grid;gap:6px}
 .prjact label{display:inline-flex;gap:6px;align-items:center}
 .prjact .prjrow label{display:grid;gap:3px}
