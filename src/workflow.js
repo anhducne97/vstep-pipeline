@@ -27,8 +27,11 @@ function wfData(){ if(!S.wf) S.wf = {st:"", as:{}, log:[], rounds:{nl:0, ch:0}, 
 function wfMe(){ return (typeof libEmail==="function" && libEmail()) || ""; }
 function wfWho(){ var me = wfMe(); return wfDevOn() ? (me || "nhà phát triển") + " (vai " + WF_ROLES[wfDevRole()] + ")" : me; }
 function wfIsCoordUser(){ var w = wfData(), me = wfMe(); return !!me && (w.as.coord === me || (typeof libIsAdmin==="function" && libIsAdmin())); }
+/* quản trị làm được việc của mọi vai ở mọi bài (vẫn giữ luật không tự duyệt bài mình soạn) */
+function wfAdmin(){ return !wfDevOn() && typeof libIsAdmin === "function" && libIsAdmin(); }
 function wfHas(role){
   if(wfDevOn()) return wfDevRole() === role;
+  if(wfAdmin() && wfMe()) return true;
   var w = wfData(), me = wfMe(); if(!me) return false;
   if(role === "coord") return wfIsCoordUser();
   return w.as[role] === me;
@@ -160,12 +163,13 @@ function wfDo(t, note, isReq){
   if(t.note && !String(note||"").trim()){ toast("Cần ghi nhận xét hoặc lý do."); return; }
   var A = wfAvail(t); if(!A.ok){ toast("Chưa đủ điều kiện."); return; }
   if(t.role !== "coord" && !w.as[t.role] && wfMe() && !wfDevOn()){ w.as[t.role] = wfMe(); w.log.push({at:Date.now(), by:wfWho(), from:from, to:from, act:"Nhận vai " + WF_ROLES[t.role], note:""}); }
+  var forWho = wfAdmin() && t.role !== "coord" && w.as[t.role] && w.as[t.role] !== wfMe() ? " (quản trị làm thay " + (typeof peopleName === "function" ? peopleName(w.as[t.role]) : w.as[t.role]) + ", " + WF_ROLES[t.role] + ")" : "";
   if(t.act) t.act(w, note);
   // cổng 1: Điều phối kiêm soạn ngữ liệu được tự duyệt; cổng 2 xét lại chủ đề, nguồn, giấy phép
   var g1self = t.id === "g1ok" && !wfDevOn() && !!wfMe() && w.as.nl === wfMe();
   if(t.id === "g1ok") w.g1self = g1self;
   if(!isReq){ w.st = t.toFn ? t.toFn(w) : t.to; }
-  w.log.push({at:Date.now(), by:wfWho(), dev:wfDevOn(), from:from, to:w.st, act:t.label + (g1self ? " (Điều phối kiêm soạn ngữ liệu, tự duyệt)" : ""), note:note||""});
+  w.log.push({at:Date.now(), by:wfWho(), dev:wfDevOn(), from:from, to:w.st, act:t.label + (g1self ? " (Điều phối kiêm soạn ngữ liệu, tự duyệt)" : "") + forWho, note:note||""});
   save(); wfRender(); try{ clRender(); renderQ(); }catch(e){} updateStepper();
   if(typeof LIB !== "undefined" && LIB.user && LIB.role && LIB.role !== "none"){ var pr = libSave(false); if(pr && pr.then && typeof ntfWorkflow === "function") pr.then(function(){ if(!LIB.err && S.lib && S.lib.id) ntfWorkflow(t, note); }); }
   else toast(t.label + ": đã ghi trên máy này" + (wfDevOn() ? " (chế độ nhà phát triển)." : ". Lưu lên Thư viện để người khác thấy."));
@@ -679,7 +683,7 @@ var WF_STAGE_OF = {"bat-dau":"A","chu-de":"A","nguon":"A","viet-bai":"B","viet-k
 var WF_C_OPEN = {"Ngữ liệu đã duyệt (khoá)":1,"Đang soạn câu hỏi":1,"Chờ thẩm định câu hỏi":1,"Câu hỏi cần sửa":1,"Câu hỏi đã duyệt":1,"Đã hoàn thiện":1};
 var WF_MODE_KEEP = ".clbox, #wf-review, #wf-g1, #wfbar, [data-cmpmount], .clsearch, .modebar, [data-cmpsearch], .navrow";
 function wfModeActive(){ return !window.__noGate && !!(S.wf && S.lib && S.lib.id && (S.prj || S.wf.st)) || (!!window.__noGate && !!(S.wf && S.lib && S.lib.id && S.prj)); }
-function wfCan(r){ var w = wfData(), me = wfMe(); if(wfDevOn()) return wfDevRole() === r; if(r === "coord") return wfIsCoordUser(); return !!me && (w.as[r] === me || !w.as[r]); }
+function wfCan(r){ var w = wfData(), me = wfMe(); if(wfDevOn()) return wfDevRole() === r; if(r === "coord") return wfIsCoordUser(); if(wfAdmin() && me) return true; return !!me && (w.as[r] === me || !w.as[r]); }
 function wfWhoName(r){ var w = wfData(), e = w.as[r]; return e ? (typeof peopleName === "function" ? peopleName(e) : e) : (r === "coord" ? "Điều phối" : "chưa giao"); }
 // hạn của phần đang làm; bị trả sửa thì hạn là hạn của người thẩm định (cả phần phải xong trước đó)
 function wfPhaseDue(role){
@@ -709,7 +713,8 @@ function wfModeFor(sid){
   if(lockedNl && !rq && wfCan("ch") && (X === "A" || X === "B")) extra.push("Bài đã khoá. Cần đổi bài thì gửi Yêu cầu sửa ngữ liệu ở thanh Quy trình.");
   if(!open) return {mode:"pending", head:"🔒 Chưa tới bước này", sub:"Bước này " + pend + ". Bạn xem được, chưa ai sửa được.", extra:extra};
   if(mine){ var pd = wfPhaseDue(role), n = pd.d && typeof prjDaysLeft === "function" ? prjDaysLeft(pd.d) : null;
-    return {mode:"edit", head:"✏️ Bạn đang soạn · vai " + WF_ROLES[role], sub:(st === "Ngữ liệu cần sửa" || st === "Câu hỏi cần sửa") ? "Bài được trả sửa: xem ghi chú, sửa xong thì đo lại và gửi thẩm định lại." : "", due:pd.d ? {d:pd.d, label:pd.label, n:n} : null, extra:extra}; }
+    var subA = wfAdmin() && w.as[role] && w.as[role] !== wfMe() ? "Bạn là quản trị, đang sửa thay " + wfWhoName(role) + ". " : "";
+    return {mode:"edit", head:"✏️ Bạn đang soạn · vai " + WF_ROLES[role], sub:subA + ((st === "Ngữ liệu cần sửa" || st === "Câu hỏi cần sửa") ? "Bài được trả sửa: xem ghi chú, sửa xong thì đo lại và gửi thẩm định lại." : ""), due:pd.d ? {d:pd.d, label:pd.label, n:n} : null, extra:extra}; }
   var why = edit ? "Người sửa bước này: " + wfWhoName(role) + " (" + WF_ROLES[role] + ")." : (X === "C" && st === "Ngữ liệu đã duyệt (khoá)") ? "Chờ người soạn câu hỏi (" + wfWhoName("ch") + ") nhận bài." : (lockedNl && X !== "C") ? "Bài đã khoá sau cổng 2" + (w.lock ? " (bản " + w.lock.ver + ")" : "") + "." : st ? "Bài đang ở trạng thái: " + st + "." : "";
   return {mode:"view", head:"👁 Chế độ xem", sub:why, extra:extra};
 }
