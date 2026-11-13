@@ -10,7 +10,7 @@ def rd(name):
         return f.read()
 
 core = rd('core.js')
-ui = rd('vocab.js').replace('/*LEXDATA*/', rd('lexdata.json')) + "\n" + rd('ui.js') + rd('qstep.js') + rd('lib.js') + rd('checklist.js') + rd('cefr.js') + rd('compare.js') + rd('workflow.js') + rd('project.js') + rd('forum.js') + rd('notify.js') + '\nspecsFromSession();\ninit();\nbindLib();\nbindCl();\nbindWf();\nbindPrj();\nbindForum();\nbindNtf();\nbindLv();\nbindSb();\nclRender();\n'
+ui = rd('vocab.js').replace('/*LEXDATA*/', rd('lexdata.json')) + "\n" + rd('ui.js') + rd('qstep.js') + rd('lib.js') + rd('checklist.js') + rd('cefr.js') + rd('export.js') + rd('compare.js') + rd('workflow.js') + rd('project.js') + rd('forum.js') + rd('notify.js') + '\nspecsFromSession();\ninit();\nbindLib();\nbindCl();\nbindWf();\nbindPrj();\nbindForum();\nbindNtf();\nbindLv();\nbindSb();\nbindXp();\nclRender();\n'
 page = rd('page.html')
 for ph in ('/*CORE*/', '/*UI*/', '/*BUILD*/'):
     assert page.count(ph) == 1, 'page.html phải có đúng một ' + ph
@@ -28,4 +28,5 @@ with open(os.path.join(ROOT, 'dist', 'index.html'), 'w', encoding='utf-8') as f:
     f.write(html)
 import shutil
 shutil.copyfile(os.path.join(ROOT, 'src', 'vendor', 'firebase.mjs'), os.path.join(ROOT, 'dist', 'firebase.mjs'))
+shutil.copyfile(os.path.join(ROOT, 'src', 'vendor', 'docx.mjs'), os.path.join(ROOT, 'dist', 'docx.mjs'))
 print('Đã tạo dist/index.html (' + tag + ')')
