@@ -85,11 +85,12 @@ function libLoad(){
     LIB.db = fb.getFirestore(LIB.app);
     fb.getRedirectResult(LIB.auth).catch(function(e){ LIB.err = libErrText(e); libRender(); });
     fb.onAuthStateChanged(LIB.auth, function(u){
-      LIB.authReady = true;
+      // vẫn là người đã dùng thẻ này trước khi tải lại: giữ dự án, chủ đề đang mở để về đúng chỗ cũ
+      var pos = typeof hubPosGet === "function" ? hubPosGet() : null, keep = !!(u && pos && pos.uid && pos.uid === hubUid(u)); LIB.authReady = true;
       LIB.user = u; LIB.role = null; LIB.me = null; LIB.items = []; LIB.err = ""; LIB.view = "list";
-      if(typeof FORUM !== "undefined"){ FORUM.list = null; FORUM.cur = null; FORUM.comments = null; }
+      if(typeof FORUM !== "undefined"){ FORUM.list = null; FORUM.cur = keep ? pos.th || null : null; FORUM.comments = null; }
       if(typeof NTF !== "undefined"){ NTF.list = null; NTF.open = false; }
-      if(typeof PRJ !== "undefined"){ PRJ.list = null; PRJ.edit = {}; PRJ.sel = {}; PRJ.cur = null; PRJ.msg = ""; }
+      if(typeof PRJ !== "undefined"){ PRJ.list = null; PRJ.edit = {}; PRJ.sel = {}; PRJ.cur = keep ? pos.cur || null : null; if(keep && pos.tab) PRJ.tab = pos.tab; if(keep && pos.open && pos.page && typeof HUB !== "undefined") HUB.page = pos.page; PRJ.msg = ""; }
       if(!u && SPECS.loaded) specsForget();
       if(u) libCheckRole(); else { libRender(); try{ wfRender(); if(typeof hubOpen === "function" && !window.__noGate){ if(!HUB.open) hubOpen("viec"); else hubRender(); } else if(typeof hubRender === "function") hubRender(); }catch(x){} }
       libChip();

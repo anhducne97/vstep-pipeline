@@ -708,7 +708,7 @@ function bindWf(){
 /* ---- chế độ soạn / chế độ xem theo vai và theo tiến trình ----
    Ai cũng xem được mọi bước; chỉ người đang đến lượt (đúng vai, đúng giai đoạn) mới sửa nội dung.
    Người thẩm định xem bài và dùng checklist, ghi chú; không sửa bài. */
-var WF_STAGE_OF = {"ws-nguon":"A","ws-soan":"A","ws-kiem":"A","bat-dau":"A","chu-de":"A","nguon":"A","viet-bai":"B","viet-kich-ban":"B","do-dai":"B","tu-vung":"B","noi-dung":"B","chat-lieu":"B","cau-hoi":"C","nop":"D"};
+var WF_STAGE_OF = {"ws-chude":"A","ws-nguon":"A","ws-soan":"A","ws-kiem":"A","bat-dau":"A","chu-de":"A","nguon":"A","viet-bai":"B","viet-kich-ban":"B","do-dai":"B","tu-vung":"B","noi-dung":"B","chat-lieu":"B","cau-hoi":"C","nop":"D"};
 var WF_C_OPEN = {"Ngữ liệu đã duyệt (khoá)":1,"Đang soạn câu hỏi":1,"Chờ thẩm định câu hỏi":1,"Câu hỏi cần sửa":1,"Câu hỏi đã duyệt":1,"Đã hoàn thiện":1};
 var WF_MODE_KEEP = ".clbox, #wf-review, #wf-g1, #wfbar, [data-cmpmount], .clsearch, .modebar, [data-cmpsearch], .navrow";
 function wfModeActive(){ return !window.__noGate && !!(S.wf && S.lib && S.lib.id && (S.prj || S.wf.st)) || (!!window.__noGate && !!(S.wf && S.lib && S.lib.id && S.prj)); }

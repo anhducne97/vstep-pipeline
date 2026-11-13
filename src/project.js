@@ -409,14 +409,25 @@ function hubOpen(page){
   libLoad().then(function(){ hubRender(); if(hubSigned()){ prjReload(); if(typeof frLoad === "function") frLoad(); } }).catch(function(e){ HUB.err = "Không tải được phần đăng nhập. Trang chỉ chạy khi mở qua đường dẫn web. " + (e && e.message ? "(" + e.message + ")" : ""); hubRender(); });
 }
 function hubSigned(){ return !!(LIB.user && LIB.role && LIB.role !== "none" && LIB.role !== "blocked"); }
+// nhớ đang ở đâu (trang Nhóm nào, dự án nào, thẻ nào; hay đang soạn bài) để tải lại trang thì về đúng chỗ đó.
+// Lưu theo từng thẻ trình duyệt: mở thẻ mới thì vẫn vào "Việc của tôi".
+function hubUid(u){ return u ? (u.uid || u.email || "") : ""; }
+function hubPosSave(){ if(!hubSigned()) return; try{ var uid = hubUid(LIB.user); sessionStorage.setItem("vstep-hubpos", JSON.stringify({uid:uid || "", open:HUB.open, page:HUB.page, cur:PRJ.cur, tab:PRJ.tab, th:typeof FORUM !== "undefined" ? FORUM.cur : null})); }catch(e){} }
+function hubPosGet(){ try{ return JSON.parse(sessionStorage.getItem("vstep-hubpos") || "null"); }catch(e){ return null; } }
 function hubGateStart(){
   if(window.__noGate) return;
   var wasEditing = !!(S.lib && S.lib.id) && /^#[a-z-]+$/.test(location.hash) && document.getElementById(location.hash.slice(1));
+  var pos = hubPosGet();
+  if(pos && pos.open){
+    if(pos.cur) PRJ.cur = pos.cur; if(pos.tab) PRJ.tab = pos.tab;
+    if(pos.th && typeof FORUM !== "undefined"){ FORUM.cur = pos.th; if(pos.page === "dd-ct") HUB.restoreTh = pos.th; }
+    hubOpen(pos.page || "viec"); return;
+  }
   hubOpen("viec");
   // đang soạn dở một bài rồi tải lại trang: đăng nhập xong thì về thẳng bài đó
-  if(wasEditing){ var iv = setInterval(function(){ if(!LIB.authReady || (LIB.user && !LIB.role)) return; clearInterval(iv); if(hubSigned()) hubClose(); }, 200); setTimeout(function(){ clearInterval(iv); }, 15000); }
+  if(wasEditing) HUB.resume = pos && pos.uid ? pos.uid : true;
 }
-function hubClose(){ if(!window.__noGate && (!hubSigned() || !(S.lib && S.lib.id))) return; var el = hubEl(); HUB.open = false; HUB.ask = null; if(el) el.classList.add("hidden"); document.body.classList.remove("hubon"); }
+function hubClose(){ if(!window.__noGate && (!hubSigned() || !(S.lib && S.lib.id))) return; var el = hubEl(); HUB.open = false; HUB.ask = null; if(el) el.classList.add("hidden"); document.body.classList.remove("hubon"); hubPosSave(); }
 function hubAsk(text, yes, action, danger, extra){ HUB.ask = {text:text, btns:(extra || []).concat([{label:yes, cls:danger ? "danger" : "primary", fn:action}])}; hubRender(); }
 // thanh đầu trang soạn bài khi đang làm một bài của thư viện (theo dự án): cùng kiểu trang Nhóm
 function edRender(){
@@ -456,6 +467,9 @@ function hubDateBusy(el){
 function hubRender(){
   hubBadge();
   var el = hubEl(); if(!el || !HUB.open) return;
+  // tải lại khi đang soạn bài: đăng nhập xong (đúng người đó) thì về thẳng bài và bước đang làm
+  if(HUB.resume && hubSigned()){ var rs = HUB.resume; HUB.resume = null; if(rs === true || rs === hubUid(LIB.user)){ hubClose(); if(!HUB.open) return; } }
+  hubPosSave();
   if(hubDateBusy(el)) return;
   dateFlush(); // áp dụng ngày vừa chọn trước khi vẽ lại, kẻo mất
   HUB.pendRender = false;

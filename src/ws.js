@@ -312,7 +312,7 @@ function wsUsedTopics(){
   return out.slice(0, 40);
 }
 function wsTopicPrompt(){
-  var s = S.spec, sp = SPEC[s], used = wsUsedTopics(), L = [];
+  var s = S.spec, sp = SPEC[s], man = String((S.slots || {}).usedTopics || "").split(/[;\n]+/).map(function(x){ return x.trim(); }).filter(Boolean), used = man.concat(wsUsedTopics().filter(function(t){ return man.indexOf(t) < 0; })), L = [];
   L.push("Bạn là chuyên gia ra đề thi VSTEP. Hãy đề xuất 10 chủ đề cho " + sp.label + " (QĐ 730/QĐ-BGDĐT: " + sp.genre + ").", "", "Yêu cầu chung:",
     "- Mới, đa dạng, cập nhật, phù hợp với người Việt Nam (yêu cầu sản phẩm của VNCETA).",
     "- Không nhạy cảm về chính trị, tôn giáo, sắc tộc, chiến tranh, bệnh tật, tai nạn; không vi phạm pháp luật, văn hoá; không thiên về một nhóm thí sinh (giới, vùng miền, sở thích, trải nghiệm riêng).",
@@ -332,7 +332,13 @@ function wsTopicPrompt(){
   L.push("", "Trình bày bảng: chủ đề" + (s === "S2" ? " (tình huống và 3 giải pháp)" : s === "S1" ? " (cặp hai chủ đề)" : "") + " | lĩnh vực | vì sao phù hợp | rủi ro cần tránh.");
   return L.join("\n");
 }
-function wsTopicBtn(){ return '<button class="btn" type="button" id="ws-copytopic">Sao chép câu lệnh gợi ý chủ đề</button> <span class="small muted">Theo mẫu B1 của Phụ lục tập huấn; chọn một dòng rồi ghi vào ô trên.</span>'; }
+function wsRenderTopic(){
+  var a = document.getElementById("ws-topicai"), b = document.getElementById("ws-topicbox"); if(!a || !b || !wsOn()) return;
+  a.innerHTML = '<p class="small muted">Câu lệnh theo mẫu B1 (lập danh sách chủ đề) của Phụ lục tập huấn, thêm tiêu chí riêng của ' + esc(SPEC[S.spec].label) + ' theo QĐ 730 và ghi chép tập huấn. AI trả về bảng: chủ đề | lĩnh vực | vì sao phù hợp | rủi ro cần tránh. Mở cuộc trò chuyện mới cho mỗi câu lệnh.</p><button class="btn primary" type="button" id="ws-copytopic">Sao chép câu lệnh gợi ý chủ đề</button>';
+  if(b.contains(document.activeElement)) return;
+  b.innerHTML = wsFieldHTML({k:"theme", label:"Chủ đề bạn chọn", hint:"Chép một chủ đề trong bảng AI đưa ra. Có thể viết cụ thể hơn." + (S.spec === "W2" ? " Câu lệnh tìm nguồn ở bước sau dùng chủ đề này." : " Câu lệnh soạn nháp ở bước Soạn đề dùng chủ đề này.") + " Thư viện báo khi trùng chủ đề với bài đã có.", ph:S.spec === "S1" ? "ví dụ: your free time; your neighbourhood" : "ví dụ: học kỹ năng mới qua mạng"});
+}
+function wsThemeLine(){ return '<p class="small">Chủ đề: <b>' + esc(wsV("theme") || "chưa chọn") + '</b> <button class="btn sm quiet" type="button" data-wsgo="ws-chude">' + (wsV("theme") ? "Đổi ở bước Chủ đề" : "Chọn ở bước Chủ đề") + '</button></p>'; }
 function wsSrcPrompt(){
   var th = wsV("theme") || "[chủ đề]";
   return ["(Bật chế độ tìm kiếm web hoặc deep research.)",
@@ -440,21 +446,20 @@ function wsRenderSrc(){
   if(S.spec !== "W2"){ box.innerHTML = ""; return; }
   var au = wsV("adapted");
   box.innerHTML = '<div class="info small"><b>QĐ 730, ngữ liệu nguồn Bài viết 2:</b> một đoạn văn cho sẵn, đoạn trích trong báo hoặc đoạn bài giảng, đề cập đến và thảo luận về một chủ đề liên quan đến Việt Nam hoặc khu vực (50–60 từ). <b>Phụ lục tập huấn:</b> nguồn chính thống, có link hoặc ảnh bài gốc, ảnh chụp màn hình, ghi giấy phép; chỉ tham khảo ý tưởng (dưới 20% bài gốc).</div>'
-    + '<div class="card act"><div class="n">1</div><div class="actbody"><h3 class="acttitle">Chọn chủ đề</h3>' + wsFieldHTML(wsF("theme")) + wsTopicBtn() + '<p class="small muted">Chủ đề liên quan đến Việt Nam hoặc khu vực, có vấn đề nhiều phía để bàn, không đòi kiến thức chuyên môn sâu, không nhạy cảm.</p></div></div>'
-    + '<div class="card act"><div class="n">2</div><div class="actbody"><h3 class="acttitle">Tìm nguồn</h3><p class="small muted">Câu lệnh theo mẫu tìm nguồn của Phụ lục tập huấn (B2), thêm tiêu chí riêng của Task 2. Bật tìm kiếm web hoặc deep research; mở cuộc trò chuyện mới. Mở từng link để kiểm, không dùng nguồn \"chưa xác minh\".</p><button class="btn primary" type="button" id="ws-copysrc">Sao chép câu lệnh tìm nguồn</button></div></div>'
-    + '<div class="card act"><div class="n">3</div><div class="actbody"><h3 class="acttitle">Ghi nguồn đã chọn</h3><div class="grid2">' + ["srcTitle","srcPub","srcYear","url"].map(function(k){ return wsFieldHTML(wsF(k)); }).join("") + '</div>' + wsFieldHTML(wsF("srcLic")) + wsFieldHTML(wsF("srcShot"))
+    + '<div class="card act"><div class="n">1</div><div class="actbody"><h3 class="acttitle">Tìm nguồn</h3>' + wsThemeLine() + '<p class="small muted">Câu lệnh theo mẫu tìm nguồn của Phụ lục tập huấn (B2), thêm tiêu chí riêng của Task 2. Bật tìm kiếm web hoặc deep research; mở cuộc trò chuyện mới. Mở từng link để kiểm, không dùng nguồn \"chưa xác minh\".</p><button class="btn primary" type="button" id="ws-copysrc">Sao chép câu lệnh tìm nguồn</button></div></div>'
+    + '<div class="card act"><div class="n">2</div><div class="actbody"><h3 class="acttitle">Ghi nguồn đã chọn</h3><div class="grid2">' + ["srcTitle","srcPub","srcYear","url"].map(function(k){ return wsFieldHTML(wsF(k)); }).join("") + '</div>' + wsFieldHTML(wsF("srcLic")) + wsFieldHTML(wsF("srcShot"))
     + '<p class="small">Dòng trong đề: <b>Adapted from</b> <span id="ws-adpv">' + esc(au || "…") + '</span></p></div></div>'
-    + '<div class="card act"><div class="n">4</div><div class="actbody"><h3 class="acttitle">Dán văn bản gốc</h3>' + wsFieldHTML(wsF("srcText")) + '<div id="ws-srcstat">' + wsSrcStatHTML() + '</div><p class="small muted">Sang bước Soạn đề: câu lệnh soạn nháp dùng văn bản gốc này để rút đoạn trích 50–60 từ.</p></div></div>'
-    + '<div class="card act"><div class="n">5</div><div class="actbody"><h3 class="acttitle">Kiểm khớp nguồn (sau khi có đoạn trích)</h3><p class="small muted">So đoạn trích với bài gốc: sai sự kiện, con số, người nói; quan điểm đổi chiều; thêm ý ngoài nguồn; chép nguyên văn. AI báo \"Không phát hiện\" thì người soạn bấm Đạt ở dòng WS-B16 khi tự đối chiếu xong.</p><button class="btn" type="button" id="ws-copyfit">Sao chép câu lệnh kiểm khớp nguồn</button></div></div>';
+    + '<div class="card act"><div class="n">3</div><div class="actbody"><h3 class="acttitle">Dán văn bản gốc</h3>' + wsFieldHTML(wsF("srcText")) + '<div id="ws-srcstat">' + wsSrcStatHTML() + '</div><p class="small muted">Sang bước Soạn đề: câu lệnh soạn nháp dùng văn bản gốc này để rút đoạn trích 50–60 từ.</p></div></div>'
+    + '<div class="card act"><div class="n">4</div><div class="actbody"><h3 class="acttitle">Kiểm khớp nguồn (sau khi có đoạn trích)</h3><p class="small muted">So đoạn trích với bài gốc: sai sự kiện, con số, người nói; quan điểm đổi chiều; thêm ý ngoài nguồn; chép nguyên văn. AI báo \"Không phát hiện\" thì người soạn bấm Đạt ở dòng WS-B16 khi tự đối chiếu xong.</p><button class="btn" type="button" id="ws-copyfit">Sao chép câu lệnh kiểm khớp nguồn</button></div></div>';
 }
 function wsRenderForm(){
-  wsRenderSrc();
+  wsRenderTopic(); wsRenderSrc();
   var box = document.getElementById("ws-form"); if(!box) return;
   if(!wsOn()){ box.innerHTML = ""; return; }
   var sp = SPEC[S.spec], F = WS_F[S.spec];
   box.innerHTML = '<div class="info small"><b>' + esc(sp.label) + ':</b> ' + esc(sp.genre) + '. ' + esc(sp.qd) + '.</div>'
     + '<div class="card act"><div class="n">1</div><div class="actbody"><h3 class="acttitle">Soạn nháp bằng AI (không bắt buộc)</h3>'
-    + (S.spec === "W2" ? '<p class="small">Chủ đề: <b>' + esc(wsV("theme") || "chưa ghi (bước Nguồn)") + '</b> · ' + (wsV("srcText") ? 'câu lệnh dùng văn bản gốc ở bước Nguồn (' + wc(wsV("srcText")) + ' từ).' : '<span class="no">chưa dán văn bản gốc ở bước Nguồn.</span>') + '</p>' : wsFieldHTML(F[0]) + '<div style="margin:-4px 0 10px">' + wsTopicBtn() + '</div>')
+    + (S.spec === "W2" ? '<p class="small">Chủ đề: <b>' + esc(wsV("theme") || "chưa ghi (bước Nguồn)") + '</b> · ' + (wsV("srcText") ? 'câu lệnh dùng văn bản gốc ở bước Nguồn (' + wc(wsV("srcText")) + ' từ).' : '<span class="no">chưa dán văn bản gốc ở bước Nguồn.</span>') + '</p>' : wsThemeLine())
     + '<p class="small muted">Câu lệnh nhờ AI viết một đề mới theo đặc tả. Mỗi lần dán câu lệnh, mở một cuộc trò chuyện mới. Nhóm không đưa đề chưa công bố lên AI thì bỏ qua bước này và soạn thẳng ở mục 2.</p>'
     + '<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn primary" type="button" id="ws-copy">Sao chép câu lệnh</button></div>'
     + '<label class="field"><span class="lab">Dán câu trả lời của AI</span><span class="hint">Bấm nút Copy ở góc khối code của AI rồi dán vào đây; trang tự điền các ô ở mục 2.</span><textarea id="ws-paste" rows="4" placeholder="THEME: …"></textarea></label>'
@@ -481,6 +486,7 @@ function bindWs(){
   document.addEventListener("change", function(e){
     var k = e.target.getAttribute && e.target.getAttribute("data-ws"); if(!k || !wsOn()) return;
     wsData()[k] = e.target.type === "checkbox" ? e.target.checked : e.target.value;
+    if(k === "theme"){ wsSync(); wsRenderSrc(); var fm = document.getElementById("ws-form"); if(fm && document.getElementById("ws-soan").classList.contains("hidden")) wsRenderForm(); }
     if(k === "srcTitle" || k === "srcPub" || k === "srcYear"){ wsSync(); var ad = document.querySelector('[data-ws="adapted"]'); if(ad) ad.value = wsV("adapted"); }
     wsAfterEdit(true);
   });
@@ -494,6 +500,7 @@ function bindWs(){
       var iss = fm.querySelector('[data-ff="issue"]'); if(iss && !iss.value) iss.focus();
       return;
     }
+    var go = e.target.closest && e.target.closest("[data-wsgo]"); if(go){ show(go.getAttribute("data-wsgo")); return; }
     var t = e.target.closest && e.target.closest("#ws-copy, #ws-fill, [data-wsdocx], #ws-copysrc, #ws-copyfit, #ws-copytopic"); if(!t) return;
     if(t.id === "ws-copytopic"){ copyText(wsTopicPrompt(), t, "Sao chép câu lệnh gợi ý chủ đề", "Đã sao chép. Giờ dán vào AI"); return; }
     if(t.id === "ws-copysrc"){ copyText(wsSrcPrompt(), t, "Sao chép câu lệnh tìm nguồn", "Đã sao chép. Giờ dán vào AI"); return; }
