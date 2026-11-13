@@ -97,7 +97,7 @@ function renderAnchors(){
 P.frefix = {title:"Câu lệnh tăng độ dễ đọc (Flesch Reading Ease)", inputs:[], outputs:[{slot:"draft",split:"changes"},{slot:"changes"}], t:
 "Bài {readOrListenNoun} dưới đây có Flesch Reading Ease khoảng {freNow} (câu trung bình {aslNow} từ, trung bình {spwNow} âm tiết mỗi từ). Yêu cầu: Flesch Reading Ease từ {freMin} trở lên, ứng với mức {level}. Để đạt, cần khoảng: {freLever}\n\nHãy sửa theo thứ tự ưu tiên:\n1. Tách các câu dài hoặc nhiều mệnh đề thành câu ngắn hơn, nhất là các câu sau: {longestSents}\n2. Thay một số từ nhiều âm tiết bằng từ ngắn hơn cùng nghĩa, ở mức {level} trở xuống (ví dụ approximately → about, purchase → buy, however → but). Không thay tên riêng, thuật ngữ chính của bài và các từ giữ lại: {{keep}}. Các từ nhiều âm tiết dùng nhiều trong bài: {polyWords}\n3. Ưu tiên tách câu trước, vì thay từ dễ làm bài tụt dưới mức từ vựng {level}. Không thay một từ đúng mức {level} bằng từ dễ hơn hẳn nếu không cần.\n4. Không thêm thông tin, không đổi sự kiện, con số, thứ tự ý. Giữ tổng số từ trong {wordsK} và giữ số đoạn.\n\n{slackRules}\n\n{locks}\n\nTrình bày: toàn bài đã sửa trước; sau một dòng \"---\", liệt kê từng thay đổi theo dạng: câu cũ → câu mới.\n\n{refs}\n\nBÀI:\n{{draft}}"};
 P.bothfix = {title:"Câu lệnh sửa cùng lúc: từ vựng dễ quá và độ dễ đọc thấp", inputs:[], outputs:[{slot:"draft",split:"changes"},{slot:"changes"}], t:
-"Bài {readOrListenNoun} dưới đây đang gặp hai vấn đề ngược chiều nhau:\n- Từ vựng dễ hơn mức mục tiêu: không tính từ ngoài danh sách, mức ở ngưỡng 95% là {lvl95Txt}; cần {floorText}, tức độ phủ ở mức {belowLevel} (hiện {covBelowTxt}) phải xuống dưới 95%.\n- Độ dễ đọc thấp hơn yêu cầu: Flesch Reading Ease khoảng {freNow}, cần từ {freMin} (câu trung bình {aslNow} từ, {spwNow} âm tiết mỗi từ).\n\nCách thay từ thông thường sẽ làm vấn đề này tốt lên nhưng vấn đề kia xấu đi. Vì vậy CHỈ sửa theo hai cách sau, vì hai cách này có lợi cho cả hai:\n1. Tách câu: tách câu dài hoặc nhiều mệnh đề thành câu ngắn hơn. Độ dễ đọc tăng, từ vựng không đổi. Nhất là các câu: {longestSents}\n2. Thay từ dài mà dễ bằng từ ngắn mà khó hơn: thay các từ 3 âm tiết trở lên ở mức thấp (danh sách dưới) bằng từ 1–2 âm tiết, cùng nghĩa trong câu, ở mức {upRange} có trong CEFR-J Wordlist 1.5 hoặc Octanove Vocabulary Profile 1.0.{shortExamples} Cần thay {upN}.\nCác từ dài mà dễ trong bài: {longEasyWords}\n\nKhông được làm:\n- Không thay từ ngắn bằng từ dài hơn.\n- Không dùng từ trên mức {level} hoặc từ không có trong hai danh sách trên.\n- Không thay tên riêng, thuật ngữ chính, từ khoá trong tiêu đề, và các từ giữ lại: {{keep}}.\n- Không thêm thông tin, không đổi sự kiện, con số, thứ tự ý. Giữ tổng số từ trong {wordsK} và giữ số đoạn.\n\n{slackRules}\n\n{locks}\n\nTrình bày TOÀN BỘ câu trả lời trong MỘT khối code (```text ... ```), không viết gì bên ngoài khối code, để người dùng bấm nút Copy của khối code. Trong khối code: toàn bài đã sửa trước; sau đó một dòng riêng \"=== THAY ĐỔI ===\", rồi liệt kê từng thay đổi theo dạng: câu cũ → câu mới, hoặc từ cũ → từ mới (mức CEFR, số âm tiết), mỗi thay đổi một dòng.\n\n{refs}\n\nBÀI:\n{{draft}}"};
+"Bài {readOrListenNoun} dưới đây đang gặp hai vấn đề ngược chiều nhau:\n- Từ vựng dễ hơn mức mục tiêu: không tính từ ngoài danh sách, mức ở ngưỡng 98% là {lvl98Txt}; cần {floorText}, tức độ phủ ở mức {belowLevel} (hiện {covBelowTxt}) phải xuống dưới 98%.\n- Độ dễ đọc thấp hơn yêu cầu: Flesch Reading Ease khoảng {freNow}, cần từ {freMin} (câu trung bình {aslNow} từ, {spwNow} âm tiết mỗi từ).\n\nCách thay từ thông thường sẽ làm vấn đề này tốt lên nhưng vấn đề kia xấu đi. Vì vậy CHỈ sửa theo hai cách sau, vì hai cách này có lợi cho cả hai:\n1. Tách câu: tách câu dài hoặc nhiều mệnh đề thành câu ngắn hơn. Độ dễ đọc tăng, từ vựng không đổi. Nhất là các câu: {longestSents}\n2. Thay từ dài mà dễ bằng từ ngắn mà khó hơn: thay các từ 3 âm tiết trở lên ở mức thấp (danh sách dưới) bằng từ 1–2 âm tiết, cùng nghĩa trong câu, ở mức {upRange} có trong CEFR-J Wordlist 1.5 hoặc Octanove Vocabulary Profile 1.0.{shortExamples} Cần thay {upN}.\nCác từ dài mà dễ trong bài: {longEasyWords}\n\nKhông được làm:\n- Không thay từ ngắn bằng từ dài hơn.\n- Không dùng từ trên mức {level} hoặc từ không có trong hai danh sách trên.\n- Không thay tên riêng, thuật ngữ chính, từ khoá trong tiêu đề, và các từ giữ lại: {{keep}}.\n- Không thêm thông tin, không đổi sự kiện, con số, thứ tự ý. Giữ tổng số từ trong {wordsK} và giữ số đoạn.\n\n{slackRules}\n\n{locks}\n\nTrình bày TOÀN BỘ câu trả lời trong MỘT khối code (```text ... ```), không viết gì bên ngoài khối code, để người dùng bấm nút Copy của khối code. Trong khối code: toàn bài đã sửa trước; sau đó một dòng riêng \"=== THAY ĐỔI ===\", rồi liệt kê từng thay đổi theo dạng: câu cũ → câu mới, hoặc từ cũ → từ mới (mức CEFR, số âm tiết), mỗi thay đổi một dòng.\n\n{refs}\n\nBÀI:\n{{draft}}"};
 var SHORT_POOL = "cope grasp keen boost ease odd dense rural urban ban vital venue route trek lush soar vast scenic vivid hire tend urge eager gain taste ferry humid glimpse stall seek wander fare bold brief crisp fierce harsh steep swift chief prime core trait trend stake scope span shift grant yield cease crash crowd crew dawn dusk fade feast flaw frame gap gaze grief harm haste heap hint host lane leap lure mere mild myth norm path peak pile plea plot pose praise rage rash realm rely remote reveal roam rough rush scarce seize shed shelter shore slight sole stark sum surge tense theme thrill tide toll tough trace treat trim vague vow wage wealth wipe".split(" ");
 function shortExamplesFor(levelIdx){
   var seen = {}, out = [];
@@ -184,8 +184,9 @@ function evalChecks(){
   C.hard = {ok: covNow >= sp.cov && !(usePf && pfL > ti), now:covNow, src: usePf && !isNaN(pfCov) ? "Text Profiler" : "trang ước lượng"};
   C.hard.near = C.hard.ok && covNow < sp.cov + 1.5;
   var belowCov = fl>0 ? vp.cumIn[fl-1] : 0;
-  C.easy = {ok: !C.hard.ok || lvlNow >= fl, now:lvlNow, floor:fl, src: usePf && pfL>=0 ? "Text Profiler" : "trang ước lượng"};
-  C.easy.near = C.easy.ok && fl>0 && belowCov >= 93.5;
+  var lvlEasy = easyLvl(vp), belowCov98 = fl>0 ? vp.cumIn[fl-1] : 0;
+  C.easy = {ok: lvlEasy >= fl, now:lvlEasy, floor:fl, src:"trang tính, ngưỡng " + EASY_TH + "%"};
+  C.easy.near = C.easy.ok && fl>0 && belowCov98 >= EASY_TH - 1.5;
   if(fr && fr.ok){ var fx = FRE_MAX[S.level]; C.fre = {ok: freIn(fr.fre), low: fr.fre < fm, high: fr.fre >= fx, now:fr.fre, min:fm, max:fx}; C.fre.nearLow = C.fre.ok && fr.fre < fm + 3; C.fre.nearHigh = C.fre.ok && fx < 200 && fr.fre > fx - 3; C.fre.near = C.fre.nearLow || C.fre.nearHigh; }
   var wantUK = S.spelling==="Anh–Anh", wrong = (wantUK ? a.us : a.uk).concat(wantUK ? a.usDates : a.ukDates);
   C.spell = {ok: !wrong.length, list:wrong};
@@ -218,13 +219,8 @@ function buildFixPlan(){
     acts.push("Thay các từ trên mức " + L + " và từ ngoài danh sách CEFR-J/Octanove (danh sách bên dưới) bằng từ cùng nghĩa ở mức " + range + (easyTight ? " (không thấp hơn " + floorName + ", vì bài đang sát ngưỡng \"không dễ quá\")" : "") + (freTight ? "; chọn từ 1–2 âm tiết" : (freHi ? "; chọn từ có số âm tiết bằng hoặc nhiều hơn từ cũ (Flesch đang ở mép trên)" : "")) + ". Giữ nguyên tên riêng và thuật ngữ chính.");
     data.push("TỪ CẦN HẠ (" + C.hard.src + "):\n{aboveList}");
   }
-  var cth = (typeof cathovenNow === "function") ? cathovenNow() : null, cthLow = !!(cth && !cth.stale && cth.lv !== null && cth.lv < E.ti);
-  if(cthLow && C.easy.ok){
-    goals.push("Không dễ quá: Cathoven CEFR Checker chấm bản đã sửa " + cth.v + ", cần " + L + " (level tổng tính cả từ vựng, thì, mệnh đề và độ khó câu).");
-    acts.push("Nâng độ khó bằng cấu trúc câu đúng mức " + L + ": câu phức có mệnh đề phụ, mệnh đề quan hệ, cụm phân từ, cách nói gián tiếp; dùng cụm động từ, kết hợp từ đúng mức. Không dùng từ trên mức " + L + " hay từ hiếm, giữ độ phủ và Flesch trong khoảng.");
-  }
-  if(!C.easy.ok && cthLow){
-    goals.push("Không dễ quá: Cathoven chấm " + cth.v + ", cần " + L + ". Không tính từ ngoài danh sách, từ vựng đang ở mức " + lvlName(C.easy.now) + " (" + C.easy.src + "), cần " + (E.fl===E.ti ? "đúng " + L : floorName + " hoặc " + L) + "." + easyGapText(E.vp, E.fl, E.ti) + " Từ dùng nhiều có thể nâng: {upCands6}.");
+  if(!C.easy.ok){
+    goals.push("Không dễ quá: không tính từ ngoài danh sách, mức ở ngưỡng " + EASY_TH + "% của bài đang là " + lvlName(C.easy.now) + " (" + C.easy.src + "), cần " + (E.fl===E.ti ? "đúng " + L : floorName + " hoặc " + L) + "." + easyGapText(E.vp, E.fl, E.ti) + " Từ dùng nhiều có thể nâng: {upCands6}.");
     if(freHi){
       acts.push("Thay một số từ ngắn, thông dụng (1 âm tiết) bằng từ cùng nghĩa ở mức " + range + " có 2–3 âm tiết: cách này vừa nâng mức từ vựng vừa kéo Flesch xuống. Cần {upN}.");
       data.push("TỪ THÔNG DỤNG CÓ THỂ NÂNG: {upCands}\nTỪ 1 ÂM TIẾT DÙNG NHIỀU: {monoWords}");
@@ -332,8 +328,8 @@ function lvMeterHTML(ti){
   var Nin = vp.N - vp.off, upto = 0; for(var k = ti; k < 6; k++) upto += vp.counts[k];
   var atN = vp.counts[ti], fl = LVL.indexOf(v.floorLevel), lines = [];
   if(fl === ti && ti > 0){
-    var share = Nin ? 100 * upto / Nin : 0, need = Math.floor(Nin * 0.05) + 1, more = Math.max(0, need - upto);
-    lines.push("<b>Mức từ vựng (cần đúng " + L + "):</b> bài có " + upto + " lượt từ mức " + L + " trở lên (" + share.toFixed(1) + "% của " + Nin + " lượt có trong danh sách). Mức ở ngưỡng 95% lên " + L + " khi phần này trên 5%, tức là ít nhất " + need + " lượt" + (more ? ": <b class=\"no\">cần thêm khoảng " + more + " lượt từ " + L + "</b>." : ": <b class=\"ok\">đã đủ</b>."));
+    var share = Nin ? 100 * upto / Nin : 0, need = Math.floor(Nin * (100 - EASY_TH) / 100) + 1, more = Math.max(0, need - upto);
+    lines.push("<b>Mức từ vựng (cần đúng " + L + "):</b> bài có " + upto + " lượt từ mức " + L + " trở lên (" + share.toFixed(1) + "% của " + Nin + " lượt có trong danh sách). Mức ở ngưỡng " + EASY_TH + "% lên " + L + " khi phần này trên " + (100 - EASY_TH) + "%, tức là ít nhất " + need + " lượt" + (more ? ": <b class=\"no\">cần thêm khoảng " + more + " lượt từ " + L + "</b>." : ": <b class=\"ok\">đã đủ</b>."));
   }
   var cov = vp.cum[ti], K = Math.floor(vp.N * (cov - sp.cov) / 100 + 1e-6);
   lines.push("<b>Độ phủ ở mức " + L + ":</b> " + cov.toFixed(1) + "% (cần từ " + sp.cov + "%): " + (K >= 0 ? "còn chỗ cho khoảng " + K + " lượt từ trên mức hoặc không có trong danh sách" : "<b class=\"no\">đang thừa khoảng " + (-K) + " lượt từ trên mức hoặc không có trong danh sách</b>") + ".");
@@ -468,7 +464,7 @@ function wordCheckRun(a, b){
   [above, off, at, near].forEach(function(arr){ arr.forEach(function(it){ it.old = findOld(it); }); });
   return {above:above, off:off, at:at, near:near, lostAt:lostAt};
 }
-function wcRaising(v){ var vp = currentVocab(); if(!vp || !v) return false; var fl = LVL.indexOf(v.floorLevel); return fl >= 0 && vp.lvl95In < fl; }
+function wcRaising(v){ var vp = currentVocab(); if(!vp || !v) return false; var fl = LVL.indexOf(v.floorLevel); return fl >= 0 && easyLvl(vp) < fl; }
 function wcItemText(it, tag){ return it.w + " (" + tag + (it.n > 1 ? ", " + it.n + " lần" : "") + ", " + it.syl + " âm tiết" + (it.old ? "; bản trước: \"" + it.old + "\"" : "") + ")"; }
 function wordFixExtend(v){
   var W = null; try{ W = wordCheck(); }catch(e){ W = null; }
@@ -549,13 +545,16 @@ function vocabExtend(v){
   var usePf = pfL && pfL!=="chưa đo";
   v.measureSrc = usePf ? "EC Text Profiler" : "trang tự tra theo CEFR-J/Octanove, ước lượng";
   v.lvl95Txt = usePf ? pfL : (vp ? lvlName(vp.lvl95In) : "chưa đo");
-  var bi = LVL.indexOf(v.belowLevel), cb = !isNaN(pfB) ? pfB : (vp && bi>=0 ? vp.cumIn[bi] : NaN);
+  v.lvl98Txt = vp ? lvlName(vp.lvl98In) : "chưa đo";
+  var bi = LVL.indexOf(v.belowLevel), cb = vp && bi>=0 ? vp.cumIn[bi] : NaN;
   v.covBelowTxt = isNaN(cb) ? "chưa đo" : cb.toFixed(1) + "%";
-  if(!isNaN(cb) && cb >= 95 && vp){ var tok = vp.N - vp.off; v.upN = "khoảng " + (Math.ceil((cb - 94.9) / 100 * tok) + 2) + " lượt từ (ước lượng để độ phủ ở mức " + v.belowLevel + " xuống dưới 95%, đã cộng 2 từ dự phòng)"; }
+  if(!isNaN(cb) && cb >= EASY_TH && vp){ var tok = vp.N - vp.off; v.upN = "khoảng " + (Math.ceil((cb - (EASY_TH - 0.1)) / 100 * tok) + 1) + " lượt từ (ước lượng để độ phủ ở mức " + v.belowLevel + " xuống dưới " + EASY_TH + "%, đã cộng 1 từ dự phòng)"; }
   if(vp){
     var lowMax = bi >= 0 ? bi : 0, topic = {};
     var an = lastAnalysis || analyze(S.slots.draft||"");
-    an.titles.forEach(function(t){ (t.text.toLowerCase().match(/[a-z]+/g)||[]).forEach(function(w){ var l = lexLemma(w); topic[l||w] = 1; }); });
+    an.titles.map(function(t){ return t.text; }).concat([S.slots.topic || ""]).forEach(function(tx){ (tx.toLowerCase().match(/[a-z]+/g)||[]).forEach(function(w){ var l = lexLemma(w); topic[l||w] = 1; }); });
+    /* từ nội dung lặp nhiều nhất của bài thường là từ chủ đề: không gợi ý nâng */
+    vp.lemmas.filter(function(l){ return !STOPW[l.w] && l.w.length > 3; }).sort(function(x,y){ return y.n - x.n; }).slice(0,3).forEach(function(l){ if(l.n >= 4) topic[l.w] = 1; });
     var c = vp.lemmas.filter(function(l){ return l.lv <= lowMax && !STOPW[l.w] && !keep[l.w] && !topic[l.w] && l.w.length > 3; }).sort(function(x,y){ return y.n - x.n; }).slice(0,15).map(function(l){ return l.w + " (" + LVL[l.lv] + ") ×" + l.n; });
     v.upCands = c.length ? c.join(", ") : "không có gợi ý";
     v.upCands6 = c.length ? c.slice(0, 6).join(", ") : "không có gợi ý";
@@ -654,9 +653,9 @@ function metricsOf(text){
   var a = analyze(text), vp = vocabProfile(text), sp = SPEC[S.spec], ti = LVL.indexOf(S.level), v = V();
   var hard = {}; vp.lemmas.forEach(function(l){ if(l.lv > ti) hard[l.w] = 1; }); vp.offList.forEach(function(o){ hard[o.w] = 1; });
   var fr = fleschOf(text);
-  return {fre: fr.ok ? fr.fre : null, freOK: !fr.ok || freIn(fr.fre), words:a.total, longN:a.long.length, paras:a.body.length, cov:vp.cum[ti], lvlIn:vp.lvl95In, hard:hard,
+  return {fre: fr.ok ? fr.fre : null, freOK: !fr.ok || freIn(fr.fre), words:a.total, longN:a.long.length, paras:a.body.length, cov:vp.cum[ti], lvlIn:easyLvl(vp), hard:hard,
     inRange: sp.min ? (a.total>=sp.min && a.total<=sp.max) : Math.abs(a.total-sp.approx)<=15,
-    covOK: vp.cum[ti] >= sp.cov, floorOK: vp.lvl95In >= LVL.indexOf(v.floorLevel), parasOK: sp.skill!=="R" || a.body.length===parseInt(v.paras,10)};
+    covOK: vp.cum[ti] >= sp.cov, floorOK: easyLvl(vp) >= LVL.indexOf(v.floorLevel), parasOK: sp.skill!=="R" || a.body.length===parseInt(v.paras,10)};
 }
 function applyB7(){
   var d = S.slots.draft || "", before = metricsOf(d), done = 0, miss = 0;
@@ -682,7 +681,7 @@ function renderRecheck(){
   if(sp.skill==="R") rows.push(srow(m.parasOK ? "g" : "b", "<b>Số đoạn:</b> " + m.paras + "."));
   rows.push(srow(m.longN ? "b" : "g", "<b>Câu trên 25 từ:</b> " + o.longN + " → " + m.longN + "."));
   rows.push(srow(m.covOK ? (m.cov < sp.cov + 1.5 ? "w" : "g") : "b", "<b>Không khó quá (ước lượng):</b> độ phủ ở mức " + S.level + " " + o.cov.toFixed(1) + "% → " + m.cov.toFixed(1) + "% (cần từ " + sp.cov + "%)."));
-  rows.push(srow(m.floorOK ? "g" : "b", "<b>Không dễ quá (ước lượng):</b> " + lvlName(o.lvlIn) + " → " + lvlName(m.lvlIn) + " (cần " + esc(v.floorText) + ")."));
+  rows.push(srow(m.floorOK ? "g" : "b", "<b>Không dễ quá (ước lượng):</b> mức ở ngưỡng " + EASY_TH + "% " + lvlName(o.lvlIn) + " → " + lvlName(m.lvlIn) + " (cần " + esc(v.floorText) + ")."));
   if(m.fre!==null) rows.push(srow(m.freOK ? "g" : "b", "<b>Flesch Reading Ease:</b> " + (o.fre!==null ? o.fre.toFixed(1) : "?") + " → " + m.fre.toFixed(1) + " (cần " + freWin() + ")."));
   document.getElementById("b7-recheck").innerHTML = rows.join("");
   var newHard = Object.keys(m.hard).filter(function(w){ return !o.hard[w]; });
@@ -784,8 +783,8 @@ function covGapText(now, need, L){
 // gợi ý tính sẵn cho "không dễ quá": cần thêm bao nhiêu lượt từ ở mức sàn trở lên
 function easyGapText(vp, flIdx, tiIdx){
   if(!vp || !vp.N) return ""; var Nin = vp.N - vp.off, upto = 0; for(var k = flIdx; k < 6; k++) upto += vp.counts[k] || 0;
-  var need = Math.floor(Nin * 0.05) + 1, more = Math.max(0, need - upto), FL = LVL[flIdx], rng = flIdx === tiIdx ? FL : FL + "–" + LVL[tiIdx];
-  return " Hiện có " + upto + " lượt từ mức " + FL + " trở lên (" + (Nin ? (100 * upto / Nin).toFixed(1) : "0") + "% của " + Nin + " lượt có trong danh sách); cần trên 5%, tức ít nhất " + need + " lượt: đổi thêm khoảng " + more + " lượt từ dưới mức " + FL + " thành từ mức " + rng + " (không dùng từ trên mức " + LVL[tiIdx] + "). Một từ nhắc lại nhiều lần được tính mỗi lần.";
+  var need = Math.floor(Nin * (100 - EASY_TH) / 100) + 1, more = Math.max(0, need - upto), FL = LVL[flIdx], rng = flIdx === tiIdx ? FL : FL + "–" + LVL[tiIdx];
+  return " Hiện có " + upto + " lượt từ mức " + FL + " trở lên (" + (Nin ? (100 * upto / Nin).toFixed(1) : "0") + "% của " + Nin + " lượt có trong danh sách); cần trên " + (100 - EASY_TH) + "%, tức ít nhất " + need + " lượt: đổi thêm khoảng " + more + " lượt từ dưới mức " + FL + " thành từ mức " + rng + " (không dùng từ trên mức " + LVL[tiIdx] + "). Một từ nhắc lại nhiều lần được tính mỗi lần.";
 }
 // các từ trên mức dùng nhiều nhất (để sửa tay "không khó quá")
 function aboveTopText(vp, tiIdx, n){
@@ -1006,14 +1005,14 @@ function runLength(){
   var vp = vocabProfile(txt); lastVocab = vp;
   var ti = LVL.indexOf(S.level), fl = LVL.indexOf(v.floorLevel), cT = vp.cum[ti], aboveN = 0;
   vp.lemmas.forEach(function(l){ if(l.lv > ti) aboveN += l.n; });
-  var vHard = cT < sp.cov, vNear = !vHard && cT < sp.cov + 1.5, vEasy = !vHard && vp.lvl95In < fl;
+  var vHard = cT < sp.cov, vNear = !vHard && cT < sp.cov + 1.5, vEasy = easyLvl(vp) < fl;
   var det = aboveN + " lượt từ trên mức " + S.level + ", " + vp.off + " lượt ngoài danh sách (không tính tên riêng).";
   var cgv = covGapText(cT, sp.cov, S.level);
   if(vHard) rows.push(srow("b", "<b>Không khó quá (ước lượng):</b> độ phủ ở mức " + S.level + " là " + cT.toFixed(1) + "%" + cgv.now + ", cần từ " + sp.cov + "%" + cgv.need + ". " + det + esc(aboveTopText(vp, ti, 8))));
   else if(vNear) rows.push(srow("w", "<b>Không khó quá (ước lượng):</b> độ phủ ở mức " + S.level + " là " + cT.toFixed(1) + "%, sát ngưỡng " + sp.cov + "%. " + det + " Ước lượng của trang thường cao hơn Text Profiler khoảng 1 điểm, nên có thể sửa thêm."));
   else rows.push(srow("g", "<b>Không khó quá (ước lượng):</b> độ phủ ở mức " + S.level + " là " + cT.toFixed(1) + "% (cần từ " + sp.cov + "%). " + det));
-  if(vEasy) rows.push(srow("b", "<b>Không dễ quá (ước lượng):</b> không tính từ ngoài danh sách, từ vựng của bài ở mức " + lvlName(vp.lvl95In) + ", cần " + esc(v.floorText) + "." + esc(easyGapText(vp, fl, ti)) + " Từ dùng nhiều có thể nâng: " + esc(v.upCands6 || "") + ". Bật màu " + esc(LVL[fl]) + " trong ô \"Bài đang làm\" để thấy chỗ đã đạt."));
-  else rows.push(srow("g", "<b>Không dễ quá (ước lượng):</b> không tính từ ngoài danh sách, từ vựng của bài ở mức " + lvlName(vp.lvl95In) + " (cần " + esc(v.floorText) + ")."));
+  if(vEasy) rows.push(srow("b", "<b>Không dễ quá (ước lượng):</b> không tính từ ngoài danh sách, mức ở ngưỡng " + EASY_TH + "% của bài là " + lvlName(easyLvl(vp)) + ", cần " + esc(v.floorText) + "." + esc(easyGapText(vp, fl, ti)) + " Từ dùng nhiều có thể nâng: " + esc(v.upCands6 || "") + ". Bật màu " + esc(LVL[fl]) + " trong ô \"Bài đang làm\" để thấy chỗ đã đạt."));
+  else rows.push(srow("g", "<b>Không dễ quá (ước lượng):</b> không tính từ ngoài danh sách, mức ở ngưỡng " + EASY_TH + "% của bài là " + lvlName(easyLvl(vp)) + " (cần " + esc(v.floorText) + ")."));
   var fr = fleschOf(txt); lastFre = fr;
   var fm = FRE_MIN[S.level], freFail = false;
   if(!fr.ok) rows.push(srow("w", "<b>Độ dễ đọc (Flesch Reading Ease):</b> chưa tính được, bài cần ít nhất 60 từ và 3 câu."));
@@ -1051,7 +1050,7 @@ function runLength(){
     + "<div class=\"muted\"><b>Coi là tên riêng, không tính:</b> " + (vp.proper.length ? esc(vp.proper.join(", ")) : "không có") + ". Nếu trang nhận nhầm một từ thường thành tên riêng, kết quả có thể lệch.</div>";
   renderFixAll();
   document.querySelectorAll('[data-slot="pfCov"]').forEach(function(el){ el.placeholder = "trang ước lượng: " + cT.toFixed(1); });
-  var be = document.getElementById("band-est"); if(be) be.textContent = "Trang ước lượng ở bước 5: độ phủ ở mức " + S.level + " khoảng " + cT.toFixed(1) + "%, mức ở ngưỡng 95% (không tính từ ngoài danh sách) khoảng " + lvlName(vp.lvl95In) + ". Số chuẩn là số của Text Profiler.";
+  var be = document.getElementById("band-est"); if(be) be.textContent = "Trang ước lượng ở bước 5: độ phủ ở mức " + S.level + " khoảng " + cT.toFixed(1) + "%, mức ở ngưỡng 95% (không tính từ ngoài danh sách) khoảng " + lvlName(vp.lvl95In) + ", ở ngưỡng " + EASY_TH + "% là " + lvlName(easyLvl(vp)) + ". Độ phủ lấy số Text Profiler làm chuẩn; ngưỡng " + EASY_TH + "% do trang tính (Text Profiler không báo).";
 }
 
 /* ---------- Bước 6: dải từ vựng ---------- */
@@ -1062,16 +1061,18 @@ function runBand(){
   var cov = parseFloat(String(S.slots.pfCov||"").replace(",", ".")), l95 = LV.indexOf(S.slots.pfLvl95||"");
   var hard = false, easy = false, upOK = null, lowOK = null;
   if(!isNaN(cov)) upOK = cov >= sp.cov;
-  if(l95>=0){ if(l95>ti) upOK = false; lowOK = l95 >= fl; }
-  hard = upOK===false; easy = !hard && lowOK===false;
+  if(l95>=0 && l95>ti) upOK = false;
+  var vpE = currentVocab(), lE = vpE && vpE.N ? easyLvl(vpE) : -1;
+  if(lE>=0) lowOK = lE >= fl;
+  hard = upOK===false; easy = lowOK===false;
   S.fixOpen = S.fixOpen || {};
-  var cth = (typeof cathovenNow === "function") ? cathovenNow() : null, cthLow = !!(cth && !cth.stale && cth.lv !== null && cth.lv < ti);
-  if(hard) S.fixOpen.hard = true; if(easy && cthLow) S.fixOpen.easy = true;
-  if(isNaN(cov) && l95<0){ vd.className = "verdict w"; vd.textContent = "Nhập số liệu để xem kết quả."; det.textContent = ""; }
+  if(hard) S.fixOpen.hard = true; if(easy) S.fixOpen.easy = true;
+  var easyTxt = lE>=0 ? "mức ở ngưỡng " + EASY_TH + "% (trang tính) là " + LV[lE] + ", cần " + v.floorText : "";
+  if(isNaN(cov) && l95<0 && !easy){ vd.className = "verdict w"; vd.textContent = "Nhập số liệu để xem kết quả."; det.textContent = easyTxt ? "Không dễ quá: " + easyTxt + "." : ""; }
   else if(hard){ vd.className = "verdict b"; vd.textContent = "Khó quá: còn nhiều từ trên mức " + S.level + "."; det.textContent = "Độ phủ ở mức " + S.level + " cần từ " + sp.cov + "% trở lên. Làm theo khung màu đỏ bên dưới."; }
-  else if(easy){ vd.className = cthLow ? "verdict b" : "verdict w"; vd.textContent = (cthLow ? "Dễ quá: Cathoven báo " + cth.v + ", từ vựng mới ở mức " : "Gợi ý: từ vựng của bài mới ở mức ") + LV[l95] + " (sàn " + v.floorText + ")."; det.textContent = cthLow ? "Làm theo khung màu đỏ bên dưới: nâng độ khó bằng từ đúng mức, cụm động từ, kết hợp từ, câu phức hợp lý; không dùng từ hiếm." : "Level tổng của bài theo Cathoven (bảng level bên dưới, dòng NL-B12). Chỉ cần nâng độ khó khi Cathoven báo thấp hơn mức " + S.level + "."; }
-  else if(upOK && lowOK){ vd.className = "verdict g"; vd.textContent = "Đạt: không khó quá, không dễ quá."; det.textContent = "Ghi các số này vào phiếu ở bước cuối."; }
-  else { vd.className = "verdict w"; vd.textContent = upOK ? "Không khó quá. Nhập thêm \"Mức ở ngưỡng 95%\" để kiểm có dễ quá không." : "Nhập thêm \"Độ phủ ở mức mục tiêu\" để kiểm có khó quá không."; det.textContent = ""; }
+  else if(easy){ vd.className = "verdict b"; vd.textContent = "Dễ quá: " + easyTxt + "."; det.textContent = "Làm theo khung màu đỏ bên dưới: nâng bằng từ đúng mức, cụm động từ, kết hợp từ; không dùng từ hiếm, không đổi từ chủ đề. Có thể sửa tay trong ô \"Bài đang làm\" (bật màu " + LV[fl] + " để thấy chỗ đã đạt)."; }
+  else if(upOK && lowOK){ vd.className = "verdict g"; vd.textContent = "Đạt: không khó quá, không dễ quá."; det.textContent = "Không dễ quá: " + easyTxt + ". Ghi các số này vào phiếu ở bước cuối."; }
+  else { vd.className = "verdict w"; vd.textContent = "Nhập \"Độ phủ ở mức mục tiêu\" từ Text Profiler để kiểm có khó quá không."; det.textContent = easyTxt ? "Không dễ quá: " + easyTxt + "." : ""; }
   var changed = (S.slots.approved||"").trim() && (S.slots.approved||"").trim() !== (S.slots.draft||"").trim();
   renderFixAll();
   try{ sbRender(); }catch(e){}
@@ -1180,7 +1181,8 @@ var METRICS = [
   ["m-words","Số từ",function(sp){return sp.words;},function(){ return lastAnalysis ? String(lastAnalysis.total) : ""; }],
   ["m-paras","Số đoạn",function(sp){return sp.skill==="R" ? V().paras : "–";},function(){ return lastAnalysis && SPEC[S.spec].skill==="R" ? String(lastAnalysis.body.length) : ""; }],
   ["m-cov","Độ phủ ở mức mục tiêu (%)",function(sp){return "≥ "+sp.cov+"%";},function(){ return S.slots.pfCov||""; }],
-  ["m-lvl","Mức ở ngưỡng 95% (bỏ qua off-list)",function(){return V().floorText;},function(){ var x=S.slots.pfLvl95; return x && x!=="chưa đo" ? x : ""; }],
+  ["m-lvl98","Mức ở ngưỡng 98% (trang tính, bỏ qua off-list)",function(){return V().floorText;},function(){ var vp = currentVocab(); return vp && vp.N ? lvlName(easyLvl(vp)) : ""; }],
+  ["m-lvl","Mức ở ngưỡng 95% (Text Profiler, bỏ qua off-list)",function(){return "ghi lại";},function(){ var x=S.slots.pfLvl95; return x && x!=="chưa đo" ? x : ""; }],
   ["m-fre","Flesch Reading Ease",function(){ return freWinShort() + " (mức " + S.level + ")"; },function(){ var f = currentFre(); return f && f.ok ? f.fre.toFixed(1) : ""; }],
   ["m-gloss","Số từ vượt mục tiêu / số từ cần chú giải để đạt độ phủ",function(sp){return "– / 0 (để đạt " + sp.cov + "%)";},function(){ var st = phieuStats(); return st ? st.over + " / " + st.gloss + " (ước lượng của trang)" : ""; }],
   ["m-long","Số câu trên 25 từ; câu dài nhất (từ)",function(){return "0; ≤ 25";},function(){ var st = phieuStats(); return lastAnalysis && st ? lastAnalysis.long.length + "; " + st.longest : ""; }],

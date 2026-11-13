@@ -55,10 +55,10 @@ var CL_ROWS = {NL:[
     var E = clE(); if(!E) return clNoDraft(); var H = E.C.hard, cv = E.sp.cov;
     return {s:H.ok ? "ok" : "fail", d:"Độ phủ ở " + S.level + ": " + clNum(H.now,1) + "% (cần ≥ " + cv + "%, " + H.src + ")." + (H.ok ? "" : covGapText(H.now, cv, S.level).need.replace(/^ \(tức là /, " Tức là ").replace(/\)$/, ".") + aboveTopText(E.vp, E.ti, 6)), keep:"Độ phủ ở mức " + S.level + " đang " + clNum(H.now,1) + "%, phải giữ từ " + cv + "% trở lên: không thêm từ trên mức " + S.level + "."};
   }},
-  {c:"NL-B4", g:"B", t:"Gợi ý: mức từ vựng ở ngưỡng 95% không thấp hơn sàn đã đặt (level tổng xét ở NL-B12)", src:"Gợi ý của trang; level tổng theo Cathoven (Nick chốt 13/11/2026)", tier:"dx", who:"M", ev:function(){
+  {c:"NL-B4", g:"B", t:"Mức từ vựng ở ngưỡng 98% không thấp hơn sàn đã đặt (mặc định đúng mức mục tiêu)", src:"Quy ước nhóm: thử nghiệm 22 bài đối chiếu Cathoven (Nick chốt 13/11/2026)", tier:"dx", who:"M", ev:function(){
     var E = clE(); if(!E) return clNoDraft(); var Y = E.C.easy;
     if(!Y.floor) return {s:"ok", d:"Không đặt sàn (mức tối thiểu)."};
-    return {s:Y.ok ? "ok" : "warn", d:"Mức ở ngưỡng 95%: " + (LVL[Y.now]||"?") + " (sàn " + LVL[Y.floor] + ", " + Y.src + ")." + (Y.ok ? "" : easyGapText(E.vp, Y.floor, E.ti)), keep:"Mức ở ngưỡng 95% đang " + (LVL[Y.now]||"?") + ", không để thấp hơn " + LVL[Y.floor] + ": không thay từ đúng mức bằng từ dễ hẳn."};
+    return {s:Y.ok ? "ok" : "fail", d:"Mức ở ngưỡng " + EASY_TH + "%: " + (LVL[Y.now]||"?") + " (sàn " + LVL[Y.floor] + ", " + Y.src + ")." + (Y.ok ? "" : easyGapText(E.vp, Y.floor, E.ti)), keep:"Mức ở ngưỡng " + EASY_TH + "% đang " + (LVL[Y.now]||"?") + ", không để thấp hơn " + LVL[Y.floor] + ": không thay từ đúng mức bằng từ dễ hẳn."};
   }},
   {c:"NL-B5", g:"B", t:"Flesch Reading Ease trong khoảng của bậc", src:"Khoảng của bậc theo bảng quy đổi Flesch–CEFR của Linguapress", tier:"spec", who:"M", ev:function(){
     var E = clE(); if(!E) return clNoDraft(); var F = E.C.fre; if(!F) return {s:"na", d:"Chưa tính được Flesch."};
@@ -95,14 +95,11 @@ var CL_ROWS = {NL:[
     if(!K.posOk) out.push("dưới 80% chỗ ngập ngừng đúng ranh giới");
     return {s:out.length ? "warn" : "ok", d:out.length ? out.join("; ") + "." : "Đủ 9 chỉ số, không vượt trần.", keep:K.fails.length ? "" : "Các chỉ số khẩu ngữ hoá đang đạt: không bỏ câu hỏi, lượt đáp ngắn, từ đệm, ngập ngừng đã có; không thêm quá mức trần."};
   }},
-  {c:"NL-B12", g:"B", t:"Level tổng của bản đã sửa trên Cathoven CEFR Checker đúng bậc của Part (có ảnh minh chứng)", src:"Mẫu nộp của VNCETA: ô Level có ảnh minh chứng; công cụ Cathoven do nhóm chọn (Nick chốt 13/11/2026)", tier:"spec", who:"M", ev:function(){
+  {c:"NL-B12", g:"B", t:"Đã ghi level bài gốc và bài đã chỉnh cho file nộp, có ảnh minh chứng", src:"Mẫu nộp của VNCETA: ô Level (Nghe) hoặc Readability (Đọc) có minh chứng", tier:"spec", who:"M", ev:function(){
     if(!(S.slots.draft||"").trim()) return clNoDraft();
-    var x = (typeof cathovenNow === "function") ? cathovenNow() : null, ti = LVL.indexOf(S.level);
-    if(!x) return {s:"warn", d:"Chưa nhập. Dán bản đã sửa lên Cathoven CEFR Checker, ghi General Level vào Bảng level CEFR (bước 6) và lưu ảnh chụp màn hình."};
-    if(x.lv === null) return {s:"warn", d:"Không đọc được level \"" + x.v + "\": ghi theo dạng B2 hoặc B2.6."};
-    if(x.stale) return {s:"warn", d:"Bài đã sửa sau lần nhập level Cathoven (" + x.v + "): dán lại bản mới lên Cathoven, ghi lại level và chụp lại màn hình."};
-    if(x.lv === ti) return {s:"ok", d:"Cathoven: " + x.v + " (cần " + S.level + ").", keep:"Level tổng trên Cathoven đang " + x.v + ": không nâng hay hạ độ khó cả bài."};
-    return {s:"fail", d:"Cathoven: " + x.v + ", cần " + S.level + (x.lv < ti ? ": bài dễ hơn mức. Nâng bằng từ đúng mức, cụm động từ, kết hợp từ, câu phức hợp lý; không dùng từ hiếm." : ": bài khó hơn mức. Xem các dòng từ vựng, Flesch, câu dài để biết chỗ cần hạ.")};
+    var a = (typeof sbSummary === "function") ? sbSummary("a") : "", o = (typeof sbSummary === "function") ? sbSummary("o") : "", pf = S.slots.pfLvl95 && S.slots.pfLvl95 !== "chưa đo";
+    if(!a && !pf) return {s:"warn", d:"Chưa ghi level bài đã chỉnh. Ghi mức của EC Text Profiler (bước 6, mục 2) hoặc level Cathoven (bảng level, nếu bài dưới 500 từ), và lưu ảnh chụp màn hình."};
+    return {s:"ok", d:"Bài đã chỉnh: " + [a, pf ? "Text Profiler " + S.slots.pfLvl95 : ""].filter(Boolean).join("; ") + (o ? ". Bài gốc: " + o : ". Bài gốc: nhớ ghi level và chụp ảnh") + "."};
   }},
   {c:"NL-C1", full:true, g:"C", t:"Dữ kiện, con số, tên riêng đúng với nguồn", src:"Tập huấn · Ứng dụng AI (Phụ lục D, đối chiếu dữ kiện); Tổng quan thẩm định", tier:"dx", who:"H", dep:"text"},
   {c:"NL-C2", full:true, g:"C", t:"Quan điểm, nhận định trong bài có trong nguồn, không ngược nguồn; người soạn không thêm nhận định của mình", src:"Tập huấn · Ứng dụng AI (lời người biên tập); áp cho bài Nghe: Nick chốt 12/11/2026", tier:"dx", who:"H", dep:"text"},
