@@ -83,7 +83,7 @@ function vocabProfile(text){
   Object.keys(offW).forEach(function(k){ offList.push({w:k, n:offW[k]}); });
   above.sort(function(x,y){ return y.lv-x.lv || y.n-x.n; });
   offList.sort(function(x,y){ return y.n-x.n; });
-  return {N:N, off:off, counts:counts, cum:cum, cumIn:cumIn, lvl95:lvlAt(cum,95), lvl95In:lvlAt(cumIn,95), lemmas:above, offList:offList, proper:Object.keys(proper)};
+  return {N:N, off:off, counts:counts, cum:cum, cumIn:cumIn, lvl95:lvlAt(cum,95), lvl95In:lvlAt(cumIn,95), lvl98:lvlAt(cum,98), lvl98In:lvlAt(cumIn,98), lemmas:above, offList:offList, proper:Object.keys(proper)};
 }
 function covAt(vp, levelName, ignoreOff){ var i = LVL.indexOf(levelName); if(i<0) return null; return (ignoreOff ? vp.cumIn : vp.cum)[i]; }
 function lvlName(i){ return i>=6 ? "trên C2" : LVL[i]; }

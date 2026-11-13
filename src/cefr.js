@@ -18,7 +18,7 @@ function sbData(which){
   var t = sbText(which), k = which + "|" + sbSig(which);
   if(sbCache[which] && sbCache[which].k === k) return sbCache[which].d;
   var d = null;
-  if(t.trim()){ try{ var vp = vocabProfile(t), f = fleschOf(t); d = {voc:vp.N ? vp.lvl95In : null, asl:f.ok ? f.asl : null, fre:f.ok ? f.fre : null}; }catch(e){ d = null; } }
+  if(t.trim()){ try{ var vp = vocabProfile(t), f = fleschOf(t); d = {voc:vp.N ? vp.lvl95In : null, voc98:vp.N ? vp.lvl98In : null, asl:f.ok ? f.asl : null, fre:f.ok ? f.fre : null}; }catch(e){ d = null; } }
   sbCache[which] = {k:k, d:d}; return d;
 }
 var SB_EXT = [["ca","Cathoven General Level","Dùng cho ô Level của file nộp. Miễn phí; bài trên 250 từ cần tài khoản Cathoven Hub (miễn phí)"],["rg","roadtogrammar","Tham khảo. Miễn phí; chỉ dựa vào từ vựng"],["ti","Text Inspector Scorecard","Tham khảo. Gói trả phí (Standard)"]];
@@ -33,6 +33,7 @@ function sbHTML(){
   var ti = LVL.indexOf(S.level), O = sbData("o"), A = sbData("a"), isL = SPEC[S.spec] && SPEC[S.spec].skill === "L";
   function cell(D, fn){ return '<td>' + (D ? fn(D) : sbChip("—", "na", "Chưa có bài")) + '</td>'; }
   function vocC(D){ return sbChip(sbLvName(D.voc), sbCls(D.voc, D.voc, ti)); }
+  function voc98C(D){ return sbChip(sbLvName(D.voc98), sbCls(D.voc98, D.voc98, ti)); }
   function aslC(D){ if(D.asl === null) return sbChip("—", "na", "Bài quá ngắn để tính"); var b = aslBracket(D.asl); return sbChip(b.txt, sbCls(b.lo, b.hi, ti)) + '<div class="sbsub">' + D.asl.toFixed(1).replace(".", ",") + ' từ</div>'; }
   function freC(D){ if(D.fre === null) return sbChip("—", "na", "Bài quá ngắn để tính"); var lv = LVL.indexOf(freBand(D.fre)[2]); return sbChip(LVL[lv], sbCls(lv, lv, ti)) + '<div class="sbsub">' + D.fre.toFixed(1).replace(".", ",") + '</div>'; }
   var rows = [];
@@ -45,7 +46,8 @@ function sbHTML(){
     rows.push('<tr' + (i === 0 ? ' class="sbtot"' : '') + '><td>' + esc(e[1]) + (i === 0 ? '<div class="sbsub">bắt buộc (NL-B12)</div>' : '') + '</td>' + cellIn("o") + cellIn("a") + '<td class="sbsrc">' + esc(e[2]) + '</td></tr>');
   });
   rows.push('<tr class="sbgrp"><td colspan="4">Trang tự đo · gợi ý, giúp biết bài lệch ở đâu</td></tr>');
-  rows.push('<tr><td>Từ vựng<div class="sbsub">mức ở ngưỡng phủ 95%, bỏ qua từ ngoài danh sách</div></td>' + cell(O, vocC) + cell(A, vocC) + '<td class="sbsrc">CEFR-J Wordlist 1.5 + Octanove C1/C2</td></tr>');
+  rows.push('<tr><td>Từ vựng ở ngưỡng 95%<div class="sbsub">mức thấp nhất phủ được 95% bài; ngưỡng của bài Đọc</div></td>' + cell(O, vocC) + cell(A, vocC) + '<td class="sbsrc">CEFR-J Wordlist 1.5 + Octanove C1/C2, bỏ qua từ ngoài danh sách (như ô "Mức ở ngưỡng 95%" của EC Text Profiler)</td></tr>');
+  rows.push('<tr><td>Từ vựng ở ngưỡng 98%<div class="sbsub">mức thấp nhất phủ được 98% bài; ngưỡng của bài Nghe</div></td>' + cell(O, voc98C) + cell(A, voc98C) + '<td class="sbsrc">Cùng danh sách. 95% và 98% là hai mức độ phủ thường dùng làm chỉ dấu của việc hiểu đủ (Laufer và Ravenhorst-Kalovski, 2010); trang tự tính vì EC Text Profiler chỉ báo mức 95%</td></tr>');
   rows.push('<tr><td>Flesch Reading Ease</td>' + cell(O, freC) + cell(A, freC) + '<td class="sbsrc">Bảng quy đổi Flesch–CEFR của Linguapress: 90–100 A1 · 80–90 A2 · 70–80 B1 · 60–70 B2 · 50–60 C1 · dưới 50 C2' + (isL ? '. Linguapress lưu ý Flesch chấm hội thoại dễ hơn thực tế' : '') + '</td></tr>');
   rows.push('<tr><td>Độ dài câu trung bình<div class="sbsub">tham khảo: không tách được B2 với C1</div></td>' + cell(O, aslC) + cell(A, aslC) + '<td class="sbsrc">Khalifa và Weir (2009), bài đọc Cambridge: KET 13,2 · PET 14,9 · FCE 18,4 · CAE 18,6 · CPE 19,6' + (isL ? '. Mốc của bài Đọc' : '') + '</td></tr>');
   return '<div class="sbhead"><span class="small">Mục tiêu <b>' + esc(S.level) + '</b> · Bản gốc là văn bản nguồn ở bước Nguồn</span><span class="small sblegend">' + sbChip(S.level, "ok") + ' đúng mức' + (ti > 0 ? ' ' + sbChip(LVL[ti-1], "lo") + ' thấp hơn' : '') + (ti < 5 ? ' ' + sbChip(LVL[ti+1], "hi") + ' cao hơn' : '') + '</span></div>'
