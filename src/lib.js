@@ -563,6 +563,7 @@ function bindLib(){
 }
 function libMyTask(x){
   var w = x.wf, me = libEmail(), need = libNeed(x); if(!w || !me || !need) return false;
+  if(typeof PRJ !== "undefined" && PRJ.list && !(x.prj && prjById(x.prj))) return false;
   var as = w.as || {};
   if(need === "coord") return as.coord ? as.coord === me : libIsAdmin();
   return as[need] === me;

@@ -238,9 +238,9 @@ function prjUninvite(p, em){
 }
 function prjDelete(p){
   var xs = prjItems(p.id);
-  hubAsk("<b>Xoá dự án \"" + esc(p.name) + "\"?</b> " + xs.length + " bài của dự án vẫn ở lại Thư viện của người tạo bài và quản trị (bỏ gắn với dự án, giữ nguyên nội dung và phân công).", "Xoá dự án", function(){
-    var fb = LIB.fb; PRJ.busy = true; HUB.page = "duan"; hubRender();
-    Promise.all(xs.map(function(x){ return fb.updateDoc(fb.doc(LIB.db, "materials", x.id), {prj:null, team:[]}); })).then(function(){ return fb.deleteDoc(fb.doc(LIB.db, "projects", p.id)); }).then(function(){ PRJ.cur = null; toast("Đã xoá dự án."); return prjReload(); }).catch(prjErr);
+  hubAsk("<b>Xoá dự án \"" + esc(p.name) + "\"?</b> " + xs.length + " bài của dự án vẫn ở lại Thư viện của người tạo bài và quản trị, giữ nguyên nội dung; trang bỏ gắn bài với dự án và xoá phân công, hạn của các bài để không còn hiện trong Việc của tôi.", "Xoá dự án", function(){
+    var fb = LIB.fb, now = Date.now(), me = prjMe(); PRJ.busy = true; HUB.page = "duan"; hubRender();
+    Promise.all(xs.map(function(x){ return fb.updateDoc(fb.doc(LIB.db, "materials", x.id), {prj:null, team:[], due:"", asg:{as:{}, at:now, by:me, due:"", dues:{}, note:"Xoá dự án: " + p.name}, "wf.as":{}, "wf.due":"", "wf.dues":{}}); })).then(function(){ return fb.deleteDoc(fb.doc(LIB.db, "projects", p.id)); }).then(function(){ PRJ.cur = null; toast("Đã xoá dự án."); return prjReload(); }).catch(prjErr);
   }, true);
 }
 // tạo khung bài trống cho các nhánh đã đánh dấu trong cây (bỏ qua bài đã có)
@@ -362,8 +362,10 @@ function prjAuto(p){
 
 /* ---- giao diện ---- */
 function prjMineAll(){
-  var me = prjMe(), out = [];
+  var me = prjMe(), out = [], ready = !!PRJ.list;
   LIB.items.forEach(function(x){
+    // chỉ việc của dự án còn tồn tại; bài đã tách khỏi dự án (dự án bị xoá) không còn là việc
+    if(ready && !(x.prj && prjById(x.prj))) return;
     var as = (x.wf && x.wf.as) || {};
     WF_ROLE_ORDER.forEach(function(r){
       var mine = r === "coord" ? (as.coord ? as.coord === me : (x.wf && x.wf.st && libIsAdmin() && libNeed(x) === "coord")) : as[r] === me;
