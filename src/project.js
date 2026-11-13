@@ -90,8 +90,10 @@ function prjPhaseDueOf(x, r, p){
 // thứ tự hạn: Soạn NL ≤ TĐ NL ≤ Soạn CH ≤ TĐ CH ≤ hoàn thiện (phần sau chỉ bắt đầu khi phần trước xong)
 function prjDueOrderOf(d, fin){
   var seq = PRJ_DUE_ROLES.map(function(r){ return [r, d[r]]; }).filter(function(v){ return v[1]; });
-  for(var i = 1; i < seq.length; i++) if(seq[i][1] < seq.at(i - 1)[1]) return "hạn " + PRJ_SHORT[seq[i][0]] + " (" + prjFmt(seq[i][1]) + ") sớm hơn hạn " + PRJ_SHORT[seq.at(i - 1)[0]] + " (" + prjFmt(seq.at(i - 1)[1]) + ")";
-  if(fin && seq.length && seq.at(-1)[1] > fin) return "hạn " + PRJ_SHORT[seq.at(-1)[0]] + " (" + prjFmt(seq.at(-1)[1]) + ") muộn hơn hạn hoàn thiện (" + prjFmt(fin) + ")";
+  // không dùng Array.at(): Safari trên iPhone đời iOS dưới 15.4 không có, ô hạn sẽ không đổi được
+  for(var i = 1; i < seq.length; i++) if(seq[i][1] < seq[i - 1][1]) return "hạn " + PRJ_SHORT[seq[i][0]] + " (" + prjFmt(seq[i][1]) + ") sớm hơn hạn " + PRJ_SHORT[seq[i - 1][0]] + " (" + prjFmt(seq[i - 1][1]) + ")";
+  var last = seq[seq.length - 1];
+  if(fin && last && last[1] > fin) return "hạn " + PRJ_SHORT[last[0]] + " (" + prjFmt(last[1]) + ") muộn hơn hạn hoàn thiện (" + prjFmt(fin) + ")";
   return "";
 }
 function prjDueOrder(x, p){ return prjDueOrderOf(prjDues(x), prjEffDue(x, p)); }
@@ -291,17 +293,21 @@ function prjSaveEdits(p){
   var fb = LIB.fb, me = prjMe(), now = Date.now(), ids = Object.keys(PRJ.edit);
   if(!ids.length) return;
   var bad = ids.filter(function(id){ var x = LIB.items.filter(function(y){ return y.id === id; })[0]; return x && prjConflicts(prjAs(x)).hard.length; });
-  if(bad.length){ PRJ.msg = bad.length + " bài có người tự duyệt bài của mình (ô đỏ). Sửa trước khi lưu."; hubRender(); return; }
+  if(bad.length){ PRJ.msg = bad.length + " bài có người tự duyệt bài của mình (ô đỏ). Sửa trước khi lưu."; toast(PRJ.msg); hubRender(); return; }
   var badD = ids.map(function(id){ var x = LIB.items.filter(function(y){ return y.id === id; })[0]; return x && prjDueOrder(x, p) ? prjShortLabel(x) + ": " + prjDueOrder(x, p) : ""; }).filter(Boolean);
-  if(badD.length){ PRJ.msg = "Chưa lưu được: " + badD.length + " bài sai thứ tự hạn (" + badD[0] + (badD.length > 1 ? "…" : "") + "). Sửa các ô có dòng đỏ rồi lưu lại."; hubRender(); return; }
+  if(badD.length){ PRJ.msg = "Chưa lưu được: " + badD.length + " bài sai thứ tự hạn (" + badD[0] + (badD.length > 1 ? "…" : "") + "). Sửa các ô có dòng đỏ rồi lưu lại."; toast(PRJ.msg); hubRender(); return; }
   var changes = [];
   ids.forEach(function(id){ var x = LIB.items.filter(function(y){ return y.id === id; })[0]; if(!x) return; var old = (x.wf && x.wf.as) || {}, nw = prjAs(x), od = (x.wf && x.wf.dues) || {}, nd = prjDues(x); PRJ_ROLES.forEach(function(r){ if(nw[r] && (nw[r] !== old[r] || (nd[r] || "") !== (od[r] || ""))) changes.push({to:nw[r], role:r, x:x, due:prjRoleDue(x, r, p), redue:nw[r] === old[r]}); }); });
+  // người được giao nhưng chưa ở trong dự án: mời vào dự án trước, để họ đọc được bài (luật dựa vào trường team)
+  var inP = prjPeople(p.id), add = [];
+  ids.forEach(function(id){ var x = LIB.items.filter(function(y){ return y.id === id; })[0]; if(!x) return; var as = prjAs(x); Object.keys(as).forEach(function(r){ var e = as[r]; if(e && inP.indexOf(e) < 0 && add.indexOf(e) < 0) add.push(e); }); });
   PRJ.busy = true; hubRender();
-  Promise.all(ids.map(function(id){
+  var pre = add.length ? fb.updateDoc(fb.doc(LIB.db, "projects", p.id), {members:(p.members || []).concat(add), updatedAt:fb.serverTimestamp()}).then(function(){ p.members = (p.members || []).concat(add); if(typeof ntfInvite === "function") ntfInvite(p, add); }) : Promise.resolve();
+  pre.then(function(){ return Promise.all(ids.map(function(id){
     var x = LIB.items.filter(function(y){ return y.id === id; })[0]; if(!x) return null;
     var as = prjAs(x), due = prjDue(x), dues = prjDues(x); Object.keys(as).forEach(function(r){ if(!as[r]) delete as[r]; }); Object.keys(dues).forEach(function(r){ if(!dues[r]) delete dues[r]; }); if(!as.coord) as.coord = p.owner;
     return fb.updateDoc(fb.doc(LIB.db, "materials", id), {asg:{as:as, at:now, by:me, due:due, dues:dues}, due:due, wf:Object.assign({st:"", req:"", lockVer:0, rounds:{nl:0, ch:0}, stAt:0}, x.wf || {}, {as:as, due:due, dues:dues})});
-  })).then(function(){ if(typeof ntfAssignBatch === "function") ntfAssignBatch(p, changes); toast("Đã lưu phân công " + ids.length + " bài. Ai đang mở bài sẽ nhận phân công mới khi mở lại hoặc khi lưu."); PRJ.edit = {}; PRJ.msg = ""; return prjReload(); }).catch(prjErr);
+  })); }).then(function(){ return add.length ? prjSyncTeam(p.id) : null; }).then(function(){ if(typeof ntfAssignBatch === "function") ntfAssignBatch(p, changes); toast("Đã lưu phân công " + ids.length + " bài." + (add.length ? " Đã mời " + add.map(prjShort).join(", ") + " vào dự án." : "") + " Ai đang mở bài sẽ nhận phân công mới khi mở lại hoặc khi lưu."); PRJ.edit = {}; PRJ.msg = ""; return prjReload(); }).catch(prjErr);
 }
 function prjConflicts(as){
   var hard = [], soft = [];
@@ -729,7 +735,9 @@ function prjDueSweep(){
 function prjBoardHTML(p, coord){
   var xs = prjItems(p.id), ppl = prjPeople(p.id), nEd = Object.keys(PRJ.edit).length;
   if(!xs.length) return '<div class="hubempty">Dự án chưa có bài. ' + (coord ? '<button class="btn sm" type="button" data-prjtab="thiet-lap">Tạo khung bài</button>' : '') + '</div>';
-  var opt = function(v, empty){ return '<option value="">' + (empty || "— chưa giao —") + '</option>' + ppl.concat(v && ppl.indexOf(v) < 0 ? [v] : []).map(function(e){ return '<option value="' + esc(e) + '"' + (e === v ? " selected" : "") + '>' + esc(prjShort(e)) + '</option>'; }).join(""); };
+  var others = (LIB.staff || []).map(function(x){ return x.role === "blocked" ? "" : x.email; }).filter(function(e){ return e && ppl.indexOf(e) < 0; }).sort(function(a, b){ return prjShort(a).localeCompare(prjShort(b), "vi"); });
+  var o1 = function(e, v){ return '<option value="' + esc(e) + '"' + (e === v ? " selected" : "") + '>' + esc(prjShort(e)) + '</option>'; };
+  var opt = function(v, empty){ var inP = ppl.concat(v && ppl.indexOf(v) < 0 && others.indexOf(v) < 0 ? [v] : []); return '<option value="">' + (empty || "— chưa giao —") + '</option>' + (others.length ? '<optgroup label="Trong dự án">' : '') + inP.map(function(e){ return o1(e, v); }).join("") + (others.length ? '</optgroup><optgroup label="Ngoài dự án (lưu sẽ mời vào dự án)">' + others.map(function(e){ return o1(e, v); }).join("") + '</optgroup>' : ''); };
   var dis = coord ? "" : " disabled";
   var h = coord ? '<div class="hubcard hubtip small prjhow"><b>Cách dùng:</b> chọn người và hạn ngay trong từng ô của bảng, như bảng tính. Muốn giao cả cột cho một người thì dùng ô <b>Điền cả cột</b> ở dòng đầu bảng. Ô vừa đổi có nền vàng; xong thì bấm <b>Lưu phân công</b> ở đáy màn hình.</div>'
     : '<div class="hubcard hubtip">Chỉ Điều phối của dự án (' + esc(peopleName(p.owner)) + ') đổi phân công. Bạn xem được ai làm gì, hạn khi nào.</div>';
@@ -953,14 +961,14 @@ function bindPrj(){
     if(hr){ hubSetRole(hr, t.value); return; }
     var hsp = t.getAttribute("data-hubspecs"); if(hsp){ hubSetSpecs(hsp, t.checked); return; }
     if(a){ var parts = a.split("|"), x = find(parts[0]); if(x){ prjSetEdit(x, parts[1], t.value); hubRender(); } return; }
-    if(dd){ var x2 = find(dd); if(x2){ var b2 = prjTryEdit(x2, "due", t.value, p); PRJ.msg = b2 ? "Không đổi được hạn hoàn thiện " + prjShortLabel(x2) + ": " + b2 + "." : ""; hubRender(); } return; }
-    var rdd = t.getAttribute("data-prjrdue"); if(rdd){ var pp = rdd.split("|"), x3 = find(pp[0]); if(x3){ var b3 = prjTryEdit(x3, "due:" + pp[1], t.value, p); PRJ.msg = b3 ? "Không đổi được hạn " + WF_ROLES[pp[1]] + " của " + prjShortLabel(x3) + ": " + b3 + ". Phần sau chỉ bắt đầu khi phần trước xong." : ""; hubRender(); } return; }
+    if(dd){ var x2 = find(dd); if(x2){ var b2 = prjTryEdit(x2, "due", t.value, p); PRJ.msg = b2 ? "Không đổi được hạn hoàn thiện " + prjShortLabel(x2) + ": " + b2 + "." : ""; if(b2) toast(PRJ.msg); hubRender(); } return; }
+    var rdd = t.getAttribute("data-prjrdue"); if(rdd){ var pp = rdd.split("|"), x3 = find(pp[0]); if(x3){ var b3 = prjTryEdit(x3, "due:" + pp[1], t.value, p); PRJ.msg = b3 ? "Không đổi được hạn " + WF_ROLES[pp[1]] + " của " + prjShortLabel(x3) + ": " + b3 + ". Phần sau chỉ bắt đầu khi phần trước xong." : ""; if(b3) toast(PRJ.msg); hubRender(); } return; }
     if(sl){ PRJ.sel[sl] = t.checked; hubRender(); return; }
     var col = t.getAttribute("data-prjcol"), cold = t.getAttribute("data-prjcoldue");
     if((col || cold) && p){
       var n = 0, skipC = []; prjItems(p.id).forEach(function(x){ if(prjDone(x) || prjStop(x)) return; if(col){ if(t.value && !prjNoRole(x, col)){ prjSetEdit(x, col, t.value); n++; } } else { if(prjNoRole(x, cold)) return; if(prjTryEdit(x, cold === "due" ? "due" : "due:" + cold, t.value, p)) skipC.push(prjShortLabel(x)); else n++; } });
       PRJ.msg = n ? (col ? "Đã giao cột " + WF_ROLES[col] + " cho " + peopleName(t.value) : "Đã điền hạn cả cột " + (cold === "due" ? "hoàn thiện" : WF_ROLES[cold])) + " ở " + n + " bài (chưa lưu). Kiểm tra ô đỏ nếu có, rồi bấm Lưu phân công." : "";
-      if(skipC.length) PRJ.msg += " Bỏ qua " + skipC.length + " bài vì ngày đó làm sai thứ tự hạn (" + skipC.slice(0, 3).join(", ") + (skipC.length > 3 ? "…" : "") + ").";
+      if(skipC.length){ PRJ.msg += " Bỏ qua " + skipC.length + " bài vì ngày đó làm sai thứ tự hạn (" + skipC.slice(0, 3).join(", ") + (skipC.length > 3 ? "…" : "") + ")."; toast(PRJ.msg); }
       hubRender(); return;
     }
     // đánh dấu cả Part thì đánh dấu mọi bài nhỏ của nó, và ngược lại
