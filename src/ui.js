@@ -912,7 +912,7 @@ function renderSpec(){
 }
 
 /* ---------- Branch + navigation ---------- */
-function screens(){ var sk = SPEC[S.spec].skill; return Array.prototype.filter.call(document.querySelectorAll(".screen"), function(s){ var b = s.getAttribute("data-branch"); return b==="all" || b.split(" ").indexOf(sk) >= 0; }); }
+function screens(){ var sk = SPEC[S.spec].skill; return Array.prototype.filter.call(document.querySelectorAll(".screen"), function(s){ var b = s.getAttribute("data-branch"); var sx = s.getAttribute("data-specs"); return (b==="all" || b.split(" ").indexOf(sk) >= 0) && (!sx || sx.split(" ").indexOf(S.spec) >= 0); }); }
 function applyBranch(){
   var sp = SPEC[S.spec], b = sp.skill;
   document.querySelectorAll("[data-branchtext]").forEach(function(el){ el.classList.toggle("hidden", el.getAttribute("data-branchtext")!==b); });
