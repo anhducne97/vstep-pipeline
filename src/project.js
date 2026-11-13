@@ -851,7 +851,7 @@ function hubMembersHTML(){
   var list = (LIB.staff || []).slice().sort(function(a, b){ return peopleName(a.email) < peopleName(b.email) ? -1 : 1; });
   var roles = [["admin","Quản trị"],["editor","Thành viên nội bộ"],["user","Thành viên"],["blocked","Khoá tài khoản"]];
   return '<h2>Thành viên (' + list.length + ')</h2><div class="hubcard hubtip small">Ai đăng nhập bằng Google cũng tự có tài khoản <b>Thành viên</b>: thấy bài mình tạo và bài của dự án được mời. <b>Thành viên nội bộ</b> thấy cả thư viện. <b>Quản trị</b> thêm quản lý thành viên và xoá mọi bài. <b>Khoá tài khoản</b> chặn người không thuộc nhóm.</div>'
-    + '<div class="hgrid sm">' + list.map(function(x){ var e = x.email, r = x.role === "admin" || x.role === "user" || x.role === "blocked" ? x.role : "editor"; return '<div class="hpcard flat"><div class="hpp">' + avatar(e) + '<div><b>' + esc(peopleName(e)) + '</b><div class="small muted">' + esc(e) + '</div><div class="small muted">' + esc([x.title, x.org].filter(Boolean).join(" · ")) + '</div></div></div>' + (e === prjMe() ? '<div class="small muted">Bạn · Quản trị</div>' : '<label class="small">Quyền<select data-hubrole="' + esc(e) + '">' + roles.map(function(o){ return '<option value="' + o[0] + '"' + (o[0] === r ? " selected" : "") + '>' + o[1] + '</option>'; }).join("") + '</select></label>' + (r === "user" ? '<label class="small"><input type="checkbox" data-hubspecs="' + esc(e) + '"' + (x.specs === true ? " checked" : "") + '> Cho xem đặc tả riêng</label>' : '')) + '</div>'; }).join("") + '</div>' + hubSpecsHTML();
+    + '<div class="hgrid sm">' + list.map(function(x){ var e = x.email, r = x.role === "admin" || x.role === "user" || x.role === "blocked" ? x.role : "editor"; return '<div class="hpcard flat"><div class="hpp">' + avatar(e) + '<div><b>' + esc(peopleName(e)) + '</b><div class="small muted">' + esc(e) + '</div><div class="small muted">' + esc([x.title, x.org].filter(Boolean).join(" · ")) + '</div></div></div>' + (e === prjMe() ? '<div class="small muted">Bạn · Quản trị</div>' : '<label class="small">Quyền<select data-hubrole="' + esc(e) + '">' + roles.map(function(o){ return '<option value="' + o[0] + '"' + (o[0] === r ? " selected" : "") + '>' + o[1] + '</option>'; }).join("") + '</select></label>' + (r === "user" ? '<label class="small"><input type="checkbox" data-hubspecs="' + esc(e) + '"' + (x.specs === true ? " checked" : "") + '> Cho xem đặc tả riêng</label>' : '') + (libIsAdmin() ? '<button class="btn sm quiet danger" type="button" data-hubunstaff="' + esc(e) + '">Xoá khỏi danh sách</button>' : '')) + '</div>'; }).join("") + '</div>' + hubSpecsHTML();
 }
 function hubSpecsHTML(){
   var st = SPECS.loaded ? "Đã tải" + (SPECS.at ? " (cập nhật " + new Date(SPECS.at).toLocaleString("vi-VN") + ")" : "") : ("Chưa tải" + (SPECS.err ? ": " + SPECS.err : ""));
@@ -861,6 +861,23 @@ function hubSpecsHTML(){
 function hubSetSpecs(em, on){
   var fb = LIB.fb; PRJ.busy = true; hubRender();
   fb.updateDoc(fb.doc(LIB.db, "staff", em), {specs:!!on, specsBy:prjMe(), specsAt:fb.serverTimestamp()}).then(function(){ (LIB.staff || []).forEach(function(x){ if(x.email === em) x.specs = !!on; }); PRJ.busy = false; toast((on ? "Đã cho " : "Đã bỏ quyền xem đặc tả của ") + peopleName(em) + (on ? " xem đặc tả riêng." : ".")); hubRender(); }).catch(prjErr);
+}
+/* xoá tài khoản khỏi danh sách thành viên (ví dụ tài khoản thử): bỏ khỏi thành viên các dự án; phân công trong bài giữ nguyên để Điều phối giao lại */
+function hubStaffDelete(em){
+  if(em === prjMe()){ toast("Không tự xoá chính mình."); return; }
+  var asg = LIB.items.filter(function(x){ var as = (x.wf && x.wf.as) || {}; return Object.keys(as).some(function(r){ return as[r] === em; }); });
+  var own = (PRJ.list || []).filter(function(p){ return p.owner === em; }), mem = (PRJ.list || []).filter(function(p){ return p.owner !== em && (p.members || []).indexOf(em) >= 0; });
+  var txt = "<b>Xoá " + esc(peopleName(em)) + " (" + esc(em) + ") khỏi danh sách thành viên?</b> Tài khoản không còn hiện ở ô chọn người khi giao việc" + (mem.length ? " và được bỏ khỏi " + mem.length + " dự án (" + esc(mem.map(function(p){ return p.name; }).join(", ")) + ")" : "") + ".";
+  if(asg.length) txt += " <b>Lưu ý:</b> người này còn được phân công ở " + asg.length + " bài; phân công đó giữ nguyên, Điều phối giao lại ở mục Phân công.";
+  if(own.length) txt += " <b>Lưu ý:</b> người này đang là Điều phối của " + own.length + " dự án (" + esc(own.map(function(p){ return p.name; }).join(", ")) + "); quản trị đổi Điều phối ở tab Thành viên và thiết lập của dự án.";
+  txt += " Nếu tài khoản này đăng nhập lại, trang sẽ tự tạo lại tài khoản Thành viên; muốn chặn hẳn thì chọn Khoá tài khoản.";
+  hubAsk(txt, "Xoá khỏi danh sách", function(){
+    var fb = LIB.fb; PRJ.busy = true; HUB.ask = null; hubRender();
+    Promise.all(mem.map(function(p){ return fb.updateDoc(fb.doc(LIB.db, "projects", p.id), {members:(p.members || []).filter(function(m){ return m !== em; })}); }))
+      .then(function(){ return fb.deleteDoc(fb.doc(LIB.db, "staff", em)); })
+      .then(function(){ LIB.staff = (LIB.staff || []).filter(function(x){ return x.email !== em; }); if(PEOPLE[em]) delete PEOPLE[em]; PRJ.busy = false; toast("Đã xoá " + em + " khỏi danh sách."); return prjReload(); })
+      .catch(prjErr);
+  }, true);
 }
 function hubSetRole(em, role){
   var fb = LIB.fb; PRJ.busy = true; hubRender();
@@ -900,6 +917,7 @@ function bindPrj(){
     if(id === "prj-new"){ var pc = el.querySelector("#prj-c"); HUB.newOpen = false; prjCreate(el.querySelector("#prj-n").value, el.querySelector("#prj-d").value, {R:parseInt(el.querySelector("#prj-nr").value, 10) || 0, L:parseInt(el.querySelector("#prj-nl").value, 10) || 0, W:parseInt((el.querySelector("#prj-nw") || {}).value, 10) || 0, S:parseInt((el.querySelector("#prj-ns") || {}).value, 10) || 0}, pc ? pc.value : ""); return; }
     if(t.hasAttribute("data-prjtab")){ PRJ.tab = t.getAttribute("data-prjtab"); PRJ.msg = ""; hubRender(); return; }
     if(t.hasAttribute("data-prjitem")){ prjOpenItem(t.getAttribute("data-prjitem")); return; }
+    if(t.hasAttribute("data-hubunstaff")){ if(libIsAdmin()) hubStaffDelete(t.getAttribute("data-hubunstaff")); return; }
     if(!p) return;
     if(t.hasAttribute("data-prjext")){ PRJ.act = {id:t.getAttribute("data-prjext"), kind:"ext"}; PRJ.msg = ""; hubRender(); return; }
     if(t.hasAttribute("data-prjre")){ PRJ.act = {id:t.getAttribute("data-prjre"), kind:"re"}; PRJ.msg = ""; hubRender(); return; }
