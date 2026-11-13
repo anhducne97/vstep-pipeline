@@ -21,6 +21,9 @@ var SPEC = {
   S2:{skill:"S",label:"Nói Part 2",preset:"Nói Part 2 · Thảo luận giải pháp",words:"4 phút, 1 phút chuẩn bị (QĐ 730)",min:0,max:0,qd:"4 phút · 1 tình huống, 3 giải pháp",genre:"tình huống có 3 giải pháp; thí sinh chọn giải pháp tối ưu và nói vì sao không chọn hai giải pháp kia",qcount:"1 tình huống",cov:95},
   S3:{skill:"S",label:"Nói Part 3",preset:"Nói Part 3 · Phát triển chủ đề",words:"5 phút, 1 phút chuẩn bị (QĐ 730)",min:0,max:0,qd:"5 phút · chủ đề, sơ đồ tư duy, 1–3 câu hỏi",genre:"trình bày một chủ đề theo sơ đồ tư duy cho sẵn hoặc ý riêng, rồi trả lời câu hỏi mở rộng",qcount:"1 chủ đề, 3 câu hỏi mở rộng",cov:95}
 };
+/* ô ngày đang gõ dở: trình duyệt báo "change" ngay khi năm mới có 1–3 chữ số (0002, 0020, 0202);
+   bỏ qua cho tới khi năm đủ 4 chữ số và từ 1900 trở đi, để trang không vẽ lại bảng giữa chừng */
+function dateTyping(t){ return !!t && t.type === "date" && !!t.value && parseInt(t.value.slice(0, 4), 10) < 1900; }
 var SKILLCODES = "RE quy chiếu · DE chi tiết · DE[P] chi tiết diễn đạt khác · MI ý chính cả bài · MI[P] ý chính một đoạn · IN suy luận · VO đoán nghĩa từ · VO(ID) thành ngữ · OP quan điểm, thái độ · TO giọng điệu · RP mục đích · LO định vị thông tin · IS chèn câu";
 
 /* ---------- Input slots (shared between steps) ---------- */

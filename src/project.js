@@ -893,7 +893,7 @@ function bindPrj(){
     if(id === "prj-del"){ prjDelete(p); return; }
   });
   el.addEventListener("change", function(e){
-    var t = e.target, p = prjById(PRJ.cur); if(!t.getAttribute) return;
+    var t = e.target, p = prjById(PRJ.cur); if(!t.getAttribute || dateTyping(t)) return;
     var a = t.getAttribute("data-prjas"), dd = t.getAttribute("data-prjdue"), sl = t.getAttribute("data-prjsel"), hr = t.getAttribute("data-hubrole");
     var find = function(id){ return LIB.items.filter(function(y){ return y.id === id; })[0]; };
     if(hr){ hubSetRole(hr, t.value); return; }
