@@ -503,6 +503,8 @@ function prjMineTree(list, withPrj, grp, sorter){
   var node = function(key, sum, body, dflt){ var o = PRJ_TREE_OPEN[key]; return '<details class="ptn" data-tree="' + esc(key) + '"' + ((o === undefined ? dflt : o) ? " open" : "") + '><summary>' + sum + '</summary><div class="ptnb">' + body + '</div></details>'; };
   var nSets = order.reduce(function(n, pid){ return n + byP[pid].order.length; }, 0), setOpen = nSets <= 1;
   var setsHTML = function(pid, P){
+    // dự án chỉ có một bộ đề trong nhóm này: hiện thẳng các việc, không thêm tầng bộ đề
+    if(P.order.length === 1) return P.sets[P.order[0]].slice().sort(sorter).map(function(t){ return prjTaskCard(t, false); }).join("");
     return P.order.sort(nat).map(function(set){
       var ts = P.sets[set].slice().sort(sorter), kind = prjKindOf((prjById(pid) || {}), set);
       var lateN = ts.filter(function(t){ var d = t.s === "now" ? prjRoleDue(t.x, t.r) : ""; return d && d < today; }).length;
@@ -520,8 +522,8 @@ function prjKindOf(p, set){ var k = (p.setKinds || {})[set]; if(k) return k; var
 function prjMineHTML(list, withPrj){
   var g = {now:[], later:[], done:[]};
   list.forEach(function(t){ if(g[t.s]) g[t.s].push(t); });
-  var byDue = function(a, b){ var da = prjRoleDue(a.x, a.r) || "9", db = prjRoleDue(b.x, b.r) || "9"; return da < db ? -1 : da > db ? 1 : 0; };
   var byTitle = function(a, b){ return (prjLabel(a.x) || a.x.title || "").localeCompare(prjLabel(b.x) || b.x.title || "", "vi", {numeric:true}); };
+  var byDue = function(a, b){ var da = prjRoleDue(a.x, a.r) || "9", db = prjRoleDue(b.x, b.r) || "9"; return da < db ? -1 : da > db ? 1 : byTitle(a, b); };
   if(!list.length) return '<div class="hubempty">Chưa được giao việc nào. Khi Điều phối giao việc, việc sẽ hiện ở đây.</div>';
   var h = '<h3 class="hubh">Đến lượt bạn <span class="muted">(' + g.now.length + ')</span></h3>' + (g.now.length ? prjMineTree(g.now, withPrj, "now", byDue) : '<div class="hubempty">Không có việc đang chờ bạn. Nghỉ tay chút nhé.</div>');
   var o = function(k){ return PRJ_TREE_OPEN[k] ? " open" : ""; };
