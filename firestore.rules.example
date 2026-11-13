@@ -1,0 +1,90 @@
+rules_version = '2';
+// Luật bảo mật Firestore cho thư viện bài và dự án. Dán vào Firebase Console → Firestore Database → Rules → Publish.
+// Thay EMAIL_CHU_PROJECT bằng email Google của người quản trị đầu tiên (viết thường).
+//
+// Ai đăng nhập bằng Google cũng tự tạo được tài khoản vai "user" (Thành viên):
+//   chỉ đọc, sửa bài mình tạo và bài của dự án mình được mời (trường team của bài).
+// "editor" (Thành viên nội bộ) và "admin" (Quản trị) đọc, sửa cả thư viện; quản trị đổi quyền, khoá tài khoản.
+// "blocked": tài khoản bị khoá, không làm được gì.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null && request.auth.token.email_verified == true; }
+    function me() { return request.auth.token.email.lower(); }
+    function isOwner() { return signedIn() && me() == "EMAIL_CHU_PROJECT"; }
+    function hasProfile() { return signedIn() && exists(/databases/$(database)/documents/staff/$(me())); }
+    function role() { return get(/databases/$(database)/documents/staff/$(me())).data.get("role", "editor"); }
+    function active() { return isOwner() || (hasProfile() && role() != "blocked"); }
+    function isAdmin() { return isOwner() || (hasProfile() && role() == "admin"); }
+    function isStaff() { return isOwner() || (hasProfile() && role() in ["admin", "editor"]); }
+    function prjOwner(pid) { return pid != null && get(/databases/$(database)/documents/projects/$(pid)).data.owner == me(); }
+    function canSee(d) { return isStaff() || d.owner == me() || me() in d.get("team", []); }
+
+    // tài khoản và hồ sơ: ai cũng xem được hồ sơ một người khi biết email (để mời vào dự án);
+    // chỉ quản trị và thành viên nội bộ xem cả danh sách
+    match /staff/{email} {
+      allow get: if signedIn();
+      allow list: if isStaff();
+      allow create: if isAdmin() || (signedIn() && email == me() && request.resource.data.role == "user" && request.resource.data.get("specs", false) == false);
+      allow update: if isAdmin() || (active() && email == me() && request.resource.data.get("role", "editor") == resource.data.get("role", "editor")
+        && request.resource.data.get("specs", false) == resource.data.get("specs", false));
+      allow delete: if isAdmin();
+    }
+
+    // đặc tả riêng (tài liệu tập huấn, cam kết bảo mật): Quản trị, Thành viên nội bộ, và Thành viên được quản trị đánh dấu specs = true mới đọc được
+    function specsReader() { return isStaff() || (hasProfile() && role() == "user" && get(/databases/$(database)/documents/staff/$(me())).data.get("specs", false) == true); }
+    match /config/{id} {
+      allow read: if specsReader();
+      allow write: if isAdmin();
+    }
+
+    // dự án: người tạo là Điều phối; chỉ Điều phối hoặc quản trị sửa, xoá dự án
+    match /projects/{id} {
+      allow read: if isStaff() || (active() && (resource.data.owner == me() || me() in resource.data.members));
+      allow create: if active() && request.resource.data.owner == me();
+      allow update: if active() && (resource.data.owner == me() || isAdmin()) && request.resource.data.owner == resource.data.owner;
+      allow delete: if active() && (resource.data.owner == me() || isAdmin());
+    }
+
+    // diễn đàn: chủ đề cả nhóm (prj = null) mọi thành viên đọc; chủ đề dự án chỉ người trong dự án đọc.
+    // người khác chỉ được đổi cảm xúc, số bình luận, lần hoạt động cuối; người đăng sửa, xoá bài của mình
+    function canSeeT(d) { return isStaff() || d.get("prj", null) == null || me() in d.get("team", []); }
+    function onlyKeys(ks) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(ks); }
+    match /threads/{id} {
+      allow read: if active() && canSeeT(resource.data);
+      allow create: if active() && request.resource.data.author == me();
+      allow update: if active() && canSeeT(resource.data) && request.resource.data.author == resource.data.author
+        && (resource.data.author == me() || isAdmin() || prjOwner(resource.data.get("prj", null)) || onlyKeys(["reactions", "replyCount", "lastAt", "lastBy", "lastByName"]));
+      allow delete: if active() && (resource.data.author == me() || isAdmin());
+      match /comments/{c} {
+        allow read: if active() && canSeeT(get(/databases/$(database)/documents/threads/$(id)).data);
+        allow create: if active() && request.resource.data.author == me() && canSeeT(get(/databases/$(database)/documents/threads/$(id)).data);
+        allow update: if active() && canSeeT(get(/databases/$(database)/documents/threads/$(id)).data) && request.resource.data.author == resource.data.author
+          && (resource.data.author == me() || isAdmin() || onlyKeys(["reactions"]));
+        allow delete: if active() && (resource.data.author == me() || isAdmin() || get(/databases/$(database)/documents/threads/$(id)).data.author == me());
+      }
+    }
+
+    // thông báo: người làm việc gửi cho người liên quan; chỉ người nhận đọc, đánh dấu đã đọc, xoá
+    match /notifs/{id} {
+      allow read: if signedIn() && resource.data.to == me();
+      allow create: if active() && request.resource.data.by == me() && request.resource.data.to is string && request.resource.data.to != me() && request.resource.data.text.size() <= 300;
+      allow update: if (signedIn() && resource.data.to == me() && onlyKeys(["read"]))
+        || (active() && request.resource.data.by == me() && request.resource.data.to == resource.data.to && request.resource.data.to != me() && request.resource.data.text.size() <= 300);
+      allow delete: if signedIn() && resource.data.to == me();
+    }
+
+    match /materials/{id} {
+      allow read: if active() && canSee(resource.data);
+      allow create: if active() && request.resource.data.owner == me();
+      // người trong dự án sửa được bài; chỉ Điều phối của dự án (hoặc nội bộ) đổi danh sách người và dự án của bài
+      allow update: if active() && canSee(resource.data) && request.resource.data.owner == resource.data.owner
+        && (isStaff() || prjOwner(resource.data.get("prj", null)) || prjOwner(request.resource.data.get("prj", null))
+            || (request.resource.data.get("team", []) == resource.data.get("team", []) && request.resource.data.get("prj", null) == resource.data.get("prj", null)));
+      allow delete: if isAdmin() || (active() && resource.data.owner == me());
+      match /versions/{v} {
+        allow read: if active() && canSee(get(/databases/$(database)/documents/materials/$(id)).data);
+        allow write: if active() && canSee(getAfter(/databases/$(database)/documents/materials/$(id)).data);
+      }
+    }
+  }
+}

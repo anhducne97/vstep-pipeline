@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quy trình ngữ liệu VSTEP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Layout: một cột giữa trang; thanh bước dính phía trên; mỗi bước là một màn hình với các việc đánh số */
+  --bg:#f4f6f9;
+  --card:#ffffff;
+  --ink:#1a2333;
+  --muted:#5e6a7d;
+  --line:#dde2ea;
+  --accent:#0d6870;
+  --accent-ink:#ffffff;
+  --accent-soft:#e2f1f2;
+  --good:#277346;
+  --good-soft:#e5f3ea;
+  --bad:#b03f28;
+  --bad-soft:#fbe9e4;
+  --warn:#7a5600;
+  --warn-soft:#fff4d4;
+  --font:"Be Vietnam Pro","Segoe UI",system-ui,sans-serif;
+  --hl-b:#fde68a; --hl-a:#bbf7d0; --hl-x:#fecaca; --hl-t:#bfdbfe; --hl-u:#f59e0b;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#10161f; --card:#18212e; --ink:#e7ecf3; --muted:#9ba7b9; --line:#2b3647;
+    --accent:#5cc3cb; --accent-ink:#0b1a1c; --accent-soft:#163338;
+    --good:#6fcf95; --good-soft:#173324; --bad:#f2907a; --bad-soft:#3a221c; --warn:#f1d27c; --warn-soft:#352c12;
+    --hl-b:#5c4b0e; --hl-a:#1d5236; --hl-x:#5e2620; --hl-t:#1d3a63; --hl-u:#f1d27c;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10161f; --card:#18212e; --ink:#e7ecf3; --muted:#9ba7b9; --line:#2b3647;
+  --accent:#5cc3cb; --accent-ink:#0b1a1c; --accent-soft:#163338;
+  --good:#6fcf95; --good-soft:#173324; --bad:#f2907a; --bad-soft:#3a221c; --warn:#f1d27c; --warn-soft:#352c12;
+  --hl-b:#5c4b0e; --hl-a:#1d5236; --hl-x:#5e2620; --hl-t:#1d3a63; --hl-u:#f1d27c;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.6}
+a{color:var(--accent)}
+h1,h2,h3{margin:0;line-height:1.3;text-wrap:balance}
+h1{font-size:1.35rem;font-weight:700}
+h2{font-size:1.6rem;font-weight:700}
+h3{font-size:1.05rem;font-weight:600}
+p{margin:0}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.hidden{display:none!important}
+
+/* Header + stepper */
+.top{background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+.topin{max-width:900px;margin:0 auto;padding:12px 20px 0;display:grid;gap:10px}
+.toprow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.toprow h1{flex:1 1 auto}
+.chip{display:inline-flex;gap:6px;align-items:center;font-size:.85rem;font-weight:600;background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:3px 12px}
+.stepper{display:flex;gap:4px;overflow-x:auto;padding-bottom:10px;scrollbar-width:thin}
+.stepper button{flex:0 0 auto;display:flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--card);color:var(--muted);border-radius:999px;padding:5px 12px 5px 6px;font:inherit;font-size:.86rem;cursor:pointer}
+.stepper .sn{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--bg);font-size:.78rem;font-weight:700;font-variant-numeric:tabular-nums}
+.stepper button.done .sn{background:var(--good);color:var(--card)}
+.stepper button.cur{border-color:var(--accent);color:var(--ink);font-weight:600}
+.stepper button.cur .sn{background:var(--accent);color:var(--accent-ink)}
+
+/* Screen */
+main{max-width:900px;margin:0 auto;padding:28px 20px 80px}
+.screen{display:grid;gap:18px}
+.kicker{font-size:.85rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.lead{color:var(--muted);max-width:68ch;font-size:1.02rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+.act{display:grid;grid-template-columns:40px 1fr;gap:14px;align-items:start}
+.n{width:34px;height:34px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-weight:700;font-variant-numeric:tabular-nums}
+.actbody{display:grid;gap:12px;min-width:0}
+.acttitle{margin:0;font-size:1.12rem;line-height:1.35} .who+.acttitle{margin-top:-6px}
+.who{font-size:.78rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.actbody ul,.actbody ol{margin:0;padding-left:1.2em;display:grid;gap:4px}
+.muted{color:var(--muted)}
+.small{font-size:.9rem}
+
+/* Fields */
+.field{display:grid;gap:5px}
+.field .lab{font-weight:600}
+.field .hint{font-size:.88rem;color:var(--muted)}
+.field .meta{font-size:.8rem;color:var(--muted);font-weight:400;margin-left:6px}
+textarea,input[type=text],input[type=number],select{font:inherit;font-size:.95rem;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 12px;width:100%}
+textarea{min-height:170px;resize:vertical;line-height:1.55}
+textarea.sm{min-height:90px}
+.splitmsg{font-size:.86rem;color:var(--good);font-weight:600}
+.splitmsg:empty{display:none}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+
+/* Buttons */
+button{font:inherit;cursor:pointer}
+.btn{border:1px solid var(--accent);background:var(--card);color:var(--accent);border-radius:10px;padding:8px 16px;font-weight:600;font-size:.95rem}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+a.btn{text-decoration:none;display:inline-block}
+.btn.big{padding:12px 22px;font-size:1.02rem}
+.btn.quiet{border-color:var(--line);color:var(--muted)}
+.btn.danger{border-color:var(--bad);color:var(--bad)}
+.btn .sub{display:block;font-size:.78rem;font-weight:400;opacity:.85}
+.clearpanel{border:1px solid var(--bad);background:var(--bad-soft);border-radius:12px;padding:12px 16px;display:grid;gap:10px;margin-bottom:10px;font-size:.92rem}
+.clearbtns{display:flex;flex-wrap:wrap;gap:10px;align-items:stretch}
+.clearbtns .btn{text-align:left;background:var(--card)}
+.libpanel{max-height:70vh;overflow:auto;grid-auto-rows:max-content}
+.libhead{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}
+.libhead b{font-size:1.05rem;margin-right:auto}
+.librow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+.librow input[type=text],.librow input[type=search]{flex:1 1 260px;min-width:0}
+.librow textarea{flex:1 1 300px}
+.libwrap{overflow-x:auto}
+.prjentry{border:1px solid var(--line);border-radius:10px;padding:8px 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.prjbar{height:8px;border-radius:6px;background:var(--line);overflow:hidden;min-width:120px}
+.prjbar span{display:block;height:100%;background:var(--good)}
+.prjtabs{display:flex;gap:6px;flex-wrap:wrap}
+.prjbulk{border:1px solid var(--line);border-radius:10px;padding:8px 12px;display:grid;gap:8px}
+.prjrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.prjrow input[type=text]{flex:1 1 260px}
+.prjform{display:grid;gap:8px;max-width:640px}
+.prjform label{display:grid;gap:3px}
+.prjgrp{margin:4px 0}
+.prjgrp>summary{cursor:pointer}
+.prjlbl{display:none}
+.prjboard select{min-width:132px;max-width:190px}
+.prjrdue{display:grid;gap:2px;margin-top:6px}
+.prjrdue input{font:inherit;font-size:.85rem;border:1px solid var(--line);border-radius:8px;padding:3px 6px;background:var(--card);color:var(--ink);max-width:150px}
+.prjsavebar{position:sticky;bottom:12px;z-index:4;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;background:var(--ink);color:var(--card);border-radius:14px;padding:10px 14px;box-shadow:0 10px 30px rgba(20,30,50,.25)}
+.prjsavebar .btn.quiet{background:transparent;color:var(--card);border-color:rgba(255,255,255,.4)}
+.prjsavebar .hubbtns{margin:0}
+tr.prjfill td{background:var(--bg)}
+tr.prjfill select{border-style:dashed}
+tr.prjsetrow td{background:var(--accent-soft);color:var(--accent);padding:8px 10px;font-size:1rem}
+tr.prjpartrow td{background:var(--bg);padding:5px 10px 5px 22px}
+.ptree{display:grid;gap:12px}
+.ptbox{border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:grid;gap:8px}
+.ptset{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.ptset b{font-size:1.02rem}
+.ptkind{border-radius:999px;padding:3px 10px;font-size:.8rem;font-weight:700;background:var(--line)}
+.ptkind.kR{background:#e3ecfd;color:#1d4fae} .ptkind.kL{background:#fbe4f0;color:#8f1c55}
+.ptrow{display:grid;gap:6px;margin-left:14px;padding-left:12px;border-left:2px solid var(--line)}
+.ptpart{display:flex;gap:8px;align-items:center;flex-wrap:wrap;cursor:pointer}
+.ptpart.done{opacity:.8}
+.ptsubs{display:flex;gap:6px;flex-wrap:wrap;margin-left:24px}
+.ptsub.done{opacity:.65}
+.ptadd{border-top:1px dashed var(--line);padding-top:10px;margin-top:6px}
+.ptadd input[type=text]{flex:0 1 220px}
+td.prjnow{box-shadow:inset 3px 0 0 var(--good)}
+.prjact{border-top:1px dashed var(--line);margin-top:8px;padding-top:8px;display:grid;gap:6px}
+.prjact label{display:inline-flex;gap:6px;align-items:center}
+.prjact .prjrow label{display:grid;gap:3px}
+.prjact input[type=text],.prjact input[type=date],.prjact select{border:1px solid var(--line);border-radius:8px;padding:6px 8px;font:inherit;background:var(--card);color:var(--ink)}
+.prjattbtns{display:flex;flex-direction:column;gap:6px;align-items:stretch;flex:none}
+.htask.rc0.lateRow{border-left-color:var(--bad)}
+.hwhy.bad{background:var(--bad-soft);color:var(--bad);font-weight:600}
+@media (max-width:700px){ .prjattbtns{flex-direction:row;flex-wrap:wrap} }
+.prjquick .prjqk{border-top:1px solid var(--line);padding:10px 0;display:grid;gap:6px}
+.prjquick .prjqk p{margin:0}
+.prjhow{margin-bottom:-4px}
+.prjsched{border-top:1px dashed var(--line);padding-top:8px}
+.prjsched>summary{cursor:pointer}
+.prjsched label{display:grid;gap:3px}
+.prjdays{width:92px;border:1px solid var(--line);border-radius:8px;padding:6px 8px;font:inherit;background:var(--card);color:var(--ink)}
+.wfrdue{display:flex;gap:6px;align-items:center;margin-top:4px}
+td.prjch{background:var(--warn-soft, #fff4d6)}
+tr.prjbad td{background:var(--bad-soft)}
+.wfst.late{background:var(--bad-soft);color:var(--bad)}
+.libpanel h4{margin:6px 0 2px}
+
+
+
+
+/* ===== chế độ soạn / xem ===== */
+[data-step].stlock{opacity:.55}
+[data-step].stlock::after{content:"🔒";font-size:.75rem;margin-left:4px}
+[data-step].stmine::after{content:"";width:7px;height:7px;border-radius:50%;background:var(--good);display:inline-block;margin-left:6px;vertical-align:middle}
+.screen.mode-edit,.screen.mode-view{border-left:4px solid var(--good);padding-left:14px;border-radius:4px}
+.screen.mode-view{border-left-color:var(--muted)}
+.screen.mode-pending{border-left-color:var(--line)}
+.modestep{font-size:.8rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.modebar{border-radius:12px;padding:10px 14px;margin:6px 0 14px;display:grid;gap:4px;position:sticky;top:calc(var(--toph, 132px) + 8px);z-index:3;box-shadow:0 2px 10px rgba(20,30,50,.06)}
+.modebar.edit{background:var(--good-soft);border:1.5px solid var(--good);color:var(--ink)}
+.modebar.view{background:var(--bg);border:1.5px solid var(--muted)}
+.modebar.pending{background:var(--bg);border:1.5px dashed var(--muted)}
+.modehead{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.modeextra{color:var(--accent);font-weight:600}
+.screen.mode-view textarea[readonly],.screen.mode-view input[readonly],.screen.mode-view select:disabled{background:var(--bg);color:var(--muted);cursor:not-allowed}
+.screen.mode-view .clbox textarea,.screen.mode-view .clbox input{cursor:auto}
+@media (max-width:700px){ .modebar{position:static} .screen.mode-edit,.screen.mode-view{padding-left:8px} }
+/* ===== Thông báo ===== */
+.ntfwrap{position:relative}
+.hubbell{position:relative;border:1px solid var(--line);background:var(--card);border-radius:999px;width:40px;height:40px;font-size:1.1rem;cursor:pointer;display:grid;place-items:center}
+.hubbell:hover,.hubbell.on{border-color:var(--accent);background:var(--accent-soft)}
+.hubbell .hubbadge{position:absolute;top:-4px;right:-6px;margin:0}
+.ntfpanel{position:absolute;right:0;top:calc(100% + 8px);width:380px;max-width:calc(100vw - 24px);max-height:70vh;overflow:auto;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 16px 40px rgba(20,30,50,.18);z-index:10}
+.ntfhead{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--card)}
+.ntfempty{padding:22px 16px;color:var(--muted);text-align:center;font-size:.92rem}
+.ntflist{display:grid}
+.ntfitem{display:flex;gap:10px;align-items:flex-start;text-align:left;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;padding:12px 14px;cursor:pointer}
+.ntfitem:hover{background:var(--bg)}
+.ntfitem.unread{background:var(--accent-soft)}
+.ntfitem.unread .ntftext{font-weight:700}
+.ntfic{font-size:1.2rem;line-height:1.3;flex:none}
+.ntfbody{display:grid;gap:3px;flex:1;min-width:0;overflow-wrap:anywhere}
+.ntftext{font-size:.92rem}
+.ntfnote{font-size:.85rem;color:var(--muted);font-style:italic}
+.ntftime{font-size:.78rem;color:var(--muted)}
+.ntfdot{width:9px;height:9px;border-radius:50%;background:var(--accent);flex:none;margin-top:6px}
+.frcmt.focus .frbubble{box-shadow:0 0 0 3px var(--accent);animation:ntfflash 2.4s ease-out}
+@keyframes ntfflash{0%{box-shadow:0 0 0 6px var(--accent)}100%{box-shadow:0 0 0 3px var(--accent)}}
+@media (max-width:700px){ .ntfpanel{position:fixed;left:12px;right:12px;top:64px;width:auto} }
+/* ===== Diễn đàn ===== */
+.prjform.wide{max-width:none}
+.frfilters{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.frfilters input[type=search]{flex:1 1 220px;border:1px solid var(--line);border-radius:999px;padding:8px 14px;font:inherit;background:var(--card);color:var(--ink)}
+.frfilters select{border:1px solid var(--line);border-radius:999px;padding:7px 12px;font:inherit;background:var(--card);color:var(--ink)}
+.frfilters .hchips{margin:0}
+.frchip{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:6px 12px;font:inherit;font-size:.88rem;cursor:pointer}
+.frchip:hover{border-color:var(--accent)}
+.frchip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.frlist{display:grid;gap:10px}
+.frcard{display:flex;gap:12px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-left:5px solid var(--frc,var(--accent));border-radius:14px;padding:14px 16px;cursor:pointer;transition:box-shadow .15s,transform .15s}
+.frcard:hover{box-shadow:0 6px 18px rgba(20,30,50,.09);transform:translateY(-1px)}
+.frcard.new{background:linear-gradient(90deg,var(--frbg,var(--accent-soft)) 0,var(--card) 40%)}
+.frcardm{flex:1;min-width:0}
+.frcardt{font-weight:800;font-size:1.02rem}
+.frex{color:var(--muted);font-size:.9rem;margin:3px 0 6px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.frmeta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:.82rem}
+.frstats{display:grid;gap:4px;justify-items:end;text-align:right;flex:none}
+.frcount{background:var(--bg);border-radius:999px;padding:3px 10px;font-weight:700;font-size:.85rem;white-space:nowrap}
+.frcount.zero{color:var(--muted);font-weight:500}
+.frnew{background:var(--bad);color:#fff;border-radius:999px;padding:1px 8px;font-size:.72rem;vertical-align:middle}
+.frtag{display:inline-block;border-radius:999px;padding:2px 10px;font-size:.78rem;font-weight:700;background:var(--frbg,var(--line));color:var(--frc,var(--ink))}
+.frscope{display:inline-block;border-radius:999px;padding:2px 10px;font-size:.78rem;background:var(--warn-soft);color:var(--warn)}
+.frscope.all{background:var(--bg);color:var(--muted)}
+.frsolved{display:inline-block;border-radius:999px;padding:2px 10px;font-size:.78rem;font-weight:700;background:var(--good-soft);color:var(--good)}
+.frcat-hoi{--frc:#1d4fae;--frbg:#e3ecfd} .frcat-kn{--frc:#a16207;--frbg:#fdf0d5} .frcat-tb{--frc:#b4236b;--frbg:#fbe4f0} .frcat-tl{--frc:#0d6870;--frbg:#e2f1f2} .frcat-gy{--frc:#5b34a8;--frbg:#eee6fb}
+.hcheck.frcat-hoi:has(input:checked),.hcheck.frcat-kn:has(input:checked),.hcheck.frcat-tb:has(input:checked),.hcheck.frcat-tl:has(input:checked),.hcheck.frcat-gy:has(input:checked){background:var(--frbg);border-color:var(--frc);color:var(--frc)}
+.frchip.frcat-hoi.on,.frchip.frcat-kn.on,.frchip.frcat-tb.on,.frchip.frcat-tl.on,.frchip.frcat-gy.on{background:var(--frbg);border-color:var(--frc);color:var(--frc)}
+.frcompose{border-top:4px solid var(--accent)}
+.frwarn{background:var(--warn-soft);color:var(--warn);border-radius:10px;padding:8px 12px;margin:0}
+.frpost{border-top:5px solid var(--frc,var(--accent))}
+.frtitle{margin:8px 0 10px;font-size:1.35rem}
+.frauthor{display:flex;gap:10px;align-items:center;margin-bottom:10px}
+.frbody{line-height:1.6;overflow-wrap:anywhere}
+.frbody a{color:var(--accent)}
+.frfoot{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}
+.frtools{display:flex;gap:4px;flex-wrap:wrap}
+.frreacts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.frr{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:4px 10px;font:inherit;font-size:.95rem;cursor:pointer;transition:transform .1s}
+.frr:hover{transform:scale(1.08)}
+.frr b{font-size:.82rem}
+.frr.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.frreacts.sm .frr{padding:2px 8px;font-size:.85rem}
+.frpick{position:relative}
+.frpick>summary{list-style:none;cursor:pointer;border:1px dashed var(--line);border-radius:999px;padding:4px 10px;font-size:.88rem;color:var(--muted)}
+.frpick>summary::-webkit-details-marker{display:none}
+.frpick>summary:hover{border-color:var(--accent);color:var(--accent)}
+.frpickbox{position:absolute;bottom:calc(100% + 6px);left:0;z-index:4;display:flex;gap:4px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 8px;box-shadow:0 8px 24px rgba(20,30,50,.16)}
+.frpickbox .frr{border:0;font-size:1.25rem;padding:2px 6px;background:transparent}
+.frpickbox .frr b{display:none}
+.frnav{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:stretch}
+.frnav.top{margin-top:-2px}
+.frnavc{display:grid;gap:4px;text-align:left;border:2px solid var(--frc,var(--accent));background:var(--frbg,var(--accent-soft));color:var(--ink);border-radius:14px;padding:12px 16px;font:inherit;cursor:pointer;min-width:0;transition:transform .12s,box-shadow .12s}
+.frnavc:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(20,30,50,.12)}
+.frnavc.next{text-align:right}
+.frnavc.off{border:0;background:transparent;cursor:default;box-shadow:none;transform:none}
+.frnavl{font-weight:800;color:var(--frc,var(--accent));font-size:.9rem}
+.frnavt{font-weight:600;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+.frnavpos{align-self:center;color:var(--muted);font-size:.85rem;font-weight:600;white-space:nowrap}
+.frcmts{display:grid;gap:10px}
+.frcmt{display:flex;gap:10px;align-items:flex-start}
+.frbubble{flex:1;min-width:0;background:var(--card);border:1px solid var(--line);border-radius:4px 16px 16px 16px;padding:10px 14px}
+.frcmt.mine .frbubble{background:var(--accent-soft);border-color:transparent}
+.frcmt.best .frbubble{border:2px solid var(--good);background:var(--good-soft)}
+.frbest{color:var(--good);font-weight:800;font-size:.85rem;margin-bottom:4px}
+.frcmth{margin-bottom:4px}
+.frop{background:#e3ecfd;color:#1d4fae;border-radius:999px;padding:1px 8px;font-size:.72rem;font-weight:700}
+.frcmt.compose .frbubble{border-style:dashed}
+.frcmt textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font:inherit;background:var(--card);color:var(--ink);box-sizing:border-box}
+@media (max-width:700px){
+  .frcard{flex-wrap:wrap}
+  .frnav{grid-template-columns:1fr 1fr}
+  .frnavpos{grid-column:1 / -1;grid-row:1;justify-self:center}
+  .frstats{flex-basis:100%;display:flex;justify-content:flex-start;gap:8px;flex-wrap:wrap}
+  .frcard>.hav{display:none}
+}
+/* ===== Thanh đầu trang soạn bài khi làm theo dự án (cùng kiểu trang Nhóm) ===== */
+body.prjmode .toprow,body.prjmode #clearpanel,body.prjmode:not(.libopen) #libpanel{display:none !important}
+body.prjmode .topin{padding-top:0}
+.edbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 24px;border-bottom:1px solid var(--line);background:var(--card)}
+.edbar .hublogo{flex:none}
+.edcrumb{flex:1;min-width:0;display:grid;gap:2px}
+.edcrumb .edpath{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:.88rem;color:var(--muted)}
+.edcrumb .edpath button{border:0;background:none;padding:0;font:inherit;color:var(--accent);cursor:pointer;font-weight:600}
+.edcrumb .edtitle{font-weight:800;font-size:1.05rem;overflow-wrap:anywhere}
+.edright{display:flex;gap:8px;align-items:center;margin-left:auto}
+.edsave.saved{border-color:var(--line);color:var(--good)}
+@media (max-width:700px){ .edbar{padding:8px 12px;gap:8px} .edbar .hubme span{display:none} .edcrumb{order:3;flex-basis:100%} }
+/* ===== Nhóm: trang riêng toàn màn hình ===== */
+body.hubon{overflow:hidden}
+body.hubon .toast{bottom:96px}
+.hub{position:fixed;inset:0;z-index:30;background:var(--bg);overflow:auto;-webkit-overflow-scrolling:touch}
+.hubtop{position:sticky;top:0;z-index:3;background:var(--card);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:16px;padding:10px 24px;flex-wrap:wrap;box-shadow:0 1px 8px rgba(20,30,50,.05)}
+.hubbrand{display:flex;gap:10px;align-items:center}
+.hublogo{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#2d6cdf);color:#fff;display:grid;place-items:center;font-weight:800;font-size:1.1rem}
+.hubnav{display:flex;gap:4px;flex-wrap:wrap;flex:1}
+.hubnav button,.hubtabs button{border:0;background:transparent;padding:8px 14px;border-radius:999px;font:inherit;font-weight:600;cursor:pointer;color:var(--muted)}
+.hubnav button:hover,.hubtabs button:hover{background:var(--accent-soft);color:var(--ink)}
+.hubnav button.on,.hubtabs button.on{background:var(--accent);color:var(--accent-ink)}
+.hubright{display:flex;gap:10px;align-items:center;margin-left:auto}
+.hubme{display:flex;gap:8px;align-items:center;border:0;background:transparent;font:inherit;cursor:pointer;color:var(--ink);padding:4px 8px;border-radius:999px}
+.hubme:hover{background:var(--accent-soft)}
+.hubmain{max-width:1080px;margin:0 auto;padding:22px 20px 80px;display:grid;gap:14px}
+.hubmain h2{margin:4px 0}
+.hubh{margin:12px 0 2px;font-size:1.05rem}
+.hubcard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px;box-shadow:0 1px 3px rgba(20,30,50,.04)}
+.hubcard h3{margin:0 0 8px;font-size:1.02rem}
+.hubcard.flushx{padding:6px 10px;overflow-x:auto}
+.hubtip{background:var(--accent-soft);border-color:transparent}
+.hubwarn{background:var(--warn-soft);border-color:transparent;color:var(--warn)}
+.hubbad{background:var(--bad-soft);border-color:transparent;color:var(--bad)}
+.hubbusy{position:fixed;top:70px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--card);padding:6px 14px;border-radius:999px;font-size:.85rem;z-index:5}
+.hubempty{border:1.5px dashed var(--line);border-radius:14px;padding:18px;color:var(--muted);text-align:center}
+.hubrow{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.hubbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.hubhero{background:var(--card);border-radius:20px;padding:34px 30px;border:1px solid var(--line);max-width:640px;margin:30px auto;display:grid;gap:12px}
+.hubhero h1{margin:0;font-size:1.6rem}
+.hubpoints{margin:0;padding-left:18px;display:grid;gap:6px}
+.hubhello{display:flex;gap:14px;align-items:center}
+.hubhello p{margin:2px 0 0}
+.hubstats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.hubstat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:grid}
+.hubstat b{font-size:1.6rem;line-height:1.1}
+.hubstat span{color:var(--muted);font-size:.85rem}
+.hubstat.a b{color:var(--accent)} .hubstat.g b{color:var(--good)} .hubstat.b b{color:var(--bad)}
+.hubdet{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 14px}
+.hubdet>summary{cursor:pointer;font-weight:600}
+.hubdet[open]>summary{margin-bottom:8px}
+.htask{display:flex;gap:12px;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--line);border-left:5px solid var(--accent);border-radius:12px;padding:12px 14px;margin:6px 0}
+.htask.rc0{border-left-color:#a16207} .htask.rc1{border-left-color:#2d6cdf} .htask.rc2{border-left-color:#7a4fd6} .htask.rc3{border-left-color:#0d6870} .htask.rc4{border-left-color:#b4236b}
+.htaskm{min-width:0}
+.htaskt{font-weight:700}
+.htaskmeta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px}
+.hprogrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px}.hprog{display:inline-flex;gap:2px;cursor:help}.hprog i{display:block;width:14px;height:8px;border-radius:2px;background:var(--line)}.hprog i.on{background:var(--good)}.hprog i.nx{background:#fff;box-shadow:inset 0 0 0 1.5px var(--good)}
+.hrole,.hst,.hdue,.hwhy{display:inline-block;border-radius:999px;padding:2px 10px;font-size:.78rem;font-weight:600;background:var(--line);color:var(--ink)}
+.hrole.rc0{background:#fdf0d5;color:#7a4b00} .hrole.rc1{background:#e3ecfd;color:#1d4fae} .hrole.rc2{background:#eee6fb;color:#5b34a8} .hrole.rc3{background:var(--accent-soft);color:var(--accent)} .hrole.rc4{background:#fbe4f0;color:#8f1c55}
+.hst.s0{background:var(--line);color:var(--muted)} .hst.s1{background:#e3ecfd;color:#1d4fae} .hst.s2{background:#eee6fb;color:#5b34a8} .hst.s3{background:var(--warn-soft);color:var(--warn)} .hst.s5{background:var(--good-soft);color:var(--good)} .hst.s6{background:var(--bad-soft);color:var(--bad)}
+.hdue{background:var(--accent-soft);color:var(--accent)} .hdue b{font-weight:800}
+.hdue.soon,.wfst.soon{background:var(--warn-soft);color:var(--warn)}
+.hdue.urgent,.wfst.urgent{background:#ffe3cc;color:#9a3d00}
+.hdue.late{background:var(--bad-soft);color:var(--bad)}
+@media (prefers-color-scheme: dark){ .hdue.urgent,.wfst.urgent{background:#4a2a12;color:#ffb37a} }
+.hwhy{background:var(--warn-soft);color:var(--warn);font-weight:500}
+.hchips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.hgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px}
+.hgrid.sm{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+.hpcard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;display:grid;gap:8px;cursor:pointer;transition:box-shadow .15s,transform .15s}
+.hpcard:hover{box-shadow:0 6px 20px rgba(20,30,50,.10);transform:translateY(-1px)}
+.hpcard.flat{cursor:default}
+.hpcard.flat:hover{box-shadow:none;transform:none}
+.hpname{font-weight:800;font-size:1.08rem}
+.hpmeta{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.hpfoot{display:flex;justify-content:space-between;align-items:center}
+.hplink{color:var(--accent);font-weight:700}
+.hpp{display:flex;gap:10px;align-items:center}
+.hpcount{display:flex;gap:12px;flex-wrap:wrap;font-size:.88rem}
+.hpdhead{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.hpdtitle{flex:1;min-width:200px}
+.hubtabs{display:flex;gap:4px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px;width:fit-content;max-width:100%}
+.hav{width:28px;height:28px;border-radius:50%;display:inline-grid;place-items:center;color:#fff;font-weight:700;font-size:.8rem;flex:none;vertical-align:middle;border:2px solid var(--card)}
+.hav.big{width:52px;height:52px;font-size:1.3rem}
+.hav.more{background:var(--muted)}
+.havs{display:inline-flex}
+.havs .hav{margin-left:-8px} .havs .hav:first-child{margin-left:0}
+.hmembers{display:grid;gap:8px;margin-bottom:10px}
+.hmem{display:flex;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.hmemt{flex:1;min-width:0}
+.hchecks{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.prjform label.hcheck,.hcheck{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:999px;padding:4px 12px;cursor:pointer;font-size:.9rem}
+.hcheck:has(input:checked){background:var(--accent-soft);border-color:var(--accent)}
+.prjform label.hswatch,.hswatch{position:relative;width:28px;height:28px;border-radius:50%;display:inline-grid;place-items:center;cursor:pointer;border:3px solid transparent}
+.hswatch input{opacity:0;position:absolute}
+.hswatch:has(input:checked){border-color:var(--ink)}
+.hprof{display:grid;grid-template-columns:minmax(0,210px) minmax(0,1fr);gap:24px}
+.hpp>div,.hmemt,.hprofav,.htaskm,.hpdtitle{min-width:0;overflow-wrap:anywhere}
+.hpcard{min-width:0}
+.hprofav{display:grid;gap:6px;justify-items:center;text-align:center;align-content:start}
+.hubmodal{position:fixed;inset:0;background:rgba(10,15,25,.45);display:grid;place-items:center;z-index:50;padding:16px}
+.hubmodal .hubcard{max-width:480px;width:100%}
+.hubbtn{position:relative}
+.hubbadge{display:inline-grid;place-items:center;min-width:20px;height:20px;border-radius:999px;background:var(--bad);color:#fff;font-size:.75rem;padding:0 5px;margin-left:4px}
+.htab td,.htab th{vertical-align:middle}
+.prjform input[type=text],.prjform input[type=date],.prjform textarea,.prjrow input[type=text]{border:1px solid var(--line);border-radius:10px;padding:8px 10px;font:inherit;background:var(--card);color:var(--ink)}
+@media (max-width:700px){
+  .hubtop{padding:8px 12px;gap:8px}
+  .hubbrand div{display:none}
+  .hubnav{order:3;flex-basis:100%;overflow-x:auto;flex-wrap:nowrap}
+  .hubnav button{white-space:nowrap}
+  .hubme span{display:none}
+  .hubmain{padding:14px 12px 80px}
+  .hubstats{grid-template-columns:repeat(2,1fr)}
+  .htask{flex-direction:column;align-items:stretch}
+  .hprof{grid-template-columns:1fr}
+  .hubtabs{border-radius:14px}
+  .hubhero{padding:22px 18px;margin:10px auto}
+  .hgrid,.hgrid.sm{grid-template-columns:1fr}
+}
+table.libtab{width:100%;border-collapse:collapse;font-size:.92rem}
+table.libtab th,table.libtab td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+table.libtab tr.libcur td{background:var(--good-soft)}
+.libacts{white-space:nowrap}
+.libacts .btn{padding:4px 10px}
+.libok{color:var(--good)}
+.libdirty{color:var(--warn, #b26a00)}
+.libmsg.bad{color:var(--bad, #c62828)}
+.filepanel{border-color:var(--line);background:var(--card)}
+.fpconfirm{border-top:1px solid var(--line);padding-top:10px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--card);padding:10px 18px;border-radius:999px;font-size:.92rem;z-index:60}
+
+/* AI box */
+.ai{display:grid;gap:8px;justify-items:start}
+.ai .warn{color:var(--bad);font-size:.9rem;font-weight:600}
+.ai .warn:empty{display:none}
+details{border-radius:10px}
+details > summary{cursor:pointer;color:var(--accent);font-weight:600;font-size:.92rem}
+details.peek{width:100%}
+details.peek pre{margin:8px 0 0;white-space:pre-wrap;word-break:break-word;font-family:var(--font);font-size:.86rem;line-height:1.6;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;max-height:360px;overflow:auto}
+mark.auto,mark.v{background:var(--good-soft);color:var(--good);border-radius:3px;padding:0 2px}
+mark.slot,mark.s{background:var(--accent-soft);color:var(--accent);border-radius:3px;padding:0 2px}
+mark.miss,mark.m{background:var(--warn-soft);color:var(--warn);border-radius:3px;padding:0 2px}
+details.box{background:var(--card);border:1px solid var(--line);padding:14px 18px}
+
+/* Notices, status */
+.note{background:var(--warn-soft);color:var(--warn);border-radius:12px;padding:12px 16px;font-size:.95rem}
+.info{background:var(--accent-soft);color:var(--ink);border-radius:12px;padding:12px 16px;font-size:.95rem}
+.have{font-size:.92rem;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ok{color:var(--good);font-weight:600}
+.no{color:var(--bad);font-weight:600}
+.status{display:grid;gap:8px}
+.srow{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:10px 12px;border-radius:10px;background:var(--bg)}
+.srow .ic{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:.85rem}
+.srow.g .ic{background:var(--good);color:var(--card)}
+.srow.b .ic{background:var(--bad);color:var(--card)}
+.srow.w .ic{background:var(--line);color:var(--muted)}
+.srow b{font-weight:600}
+.verdict{font-size:1.25rem;font-weight:700;padding:14px 18px;border-radius:12px}
+.verdict.g{background:var(--good-soft);color:var(--good)}
+.verdict.b{background:var(--bad-soft);color:var(--bad)}
+.verdict.w{background:var(--bg);color:var(--muted)}
+.fix{border:2px solid var(--bad);border-radius:14px;padding:18px 20px;display:grid;gap:14px;background:var(--card)}
+.fix h3{color:var(--bad)}
+.big-num{font-size:2rem;font-weight:700;font-variant-numeric:tabular-nums}
+.hl{white-space:pre-wrap;font-size:.92rem;line-height:1.7;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;max-height:320px;overflow:auto}
+.hl .ov{background:var(--bad-soft);color:var(--bad)}
+del.dd{background:var(--bad-soft);color:var(--bad)}
+ins.di{background:var(--good-soft);color:var(--good);text-decoration:none}
+.keepcheck{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px;font-size:.9rem}
+.keepcheck li{border-radius:999px;padding:2px 10px;background:var(--bg)}
+.keepcheck li.g{background:var(--good-soft);color:var(--good)}
+.keepcheck li.b{background:var(--bad-soft);color:var(--bad)}
+.fx{border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;gap:6px;background:var(--bg)}
+.fx.must{border-left:4px solid var(--bad)}
+.fx.see{border-left:4px solid var(--warn)}
+.fx .fxh{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-weight:600}
+.fx .tag{font-size:.75rem;font-weight:700;border-radius:999px;padding:1px 9px}
+.fx.must .tag{background:var(--bad-soft);color:var(--bad)}
+.fx.see .tag{background:var(--warn-soft);color:var(--warn)}
+.fx .row{font-size:.92rem}
+.fx .row b{display:inline-block;min-width:44px;color:var(--muted)}
+.fx .flag{font-size:.86rem;color:var(--bad)}
+.fx .okf{font-size:.86rem;color:var(--good)}
+.fx.done{opacity:.6}
+.fx.nat{border-left-color:var(--line)}
+.fx.nat .tag{background:var(--accent-soft);color:var(--accent)}
+ul.anc{list-style:none;margin:6px 0;padding:0;display:grid;gap:4px;font-size:.9rem}
+ul.anc li{padding:4px 10px;border-radius:8px;background:var(--bg)}
+ul.anc li b{display:inline-block;min-width:58px}
+ul.anc li.g b{color:var(--good)}
+ul.anc li.w{background:var(--warn-soft);color:var(--warn)}
+table.qbp{border-collapse:collapse;width:100%;font-size:.9rem;margin-top:8px}
+table.qbp th,table.qbp td{border:1px solid var(--line);padding:6px 8px;vertical-align:top;text-align:left}
+table.qbp td:first-child,table.qbp td:nth-child(2){white-space:nowrap}
+#q-items{display:grid;gap:8px;align-content:start}
+.qwide{width:min(1320px,calc(100vw - 32px));margin-left:calc(50% - min(660px,calc(50vw - 16px)));margin-top:14px}
+.qreview{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:16px;align-items:start}
+.qpass{position:sticky;top:calc(var(--toph,110px) + 10px);max-height:calc(100vh - var(--toph,110px) - 24px);overflow:auto;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:.95rem;line-height:1.65}
+.qpass .qph{display:flex;justify-content:space-between;gap:8px;font-size:.8rem;color:var(--muted);margin-bottom:8px;position:sticky;top:-14px;background:var(--card);padding:6px 0;z-index:1}
+.qpass .qtitle{font-weight:700;margin:0 0 8px}
+.qpass .qpara{margin:0 0 10px;padding:4px 8px;border-left:3px solid transparent;border-radius:4px}
+.qpass .qpara.on{border-left-color:var(--accent,#0f766e);background:var(--bg)}
+.qpass .qpn{display:inline-block;min-width:1.6em;font-size:.75rem;font-weight:700;color:var(--muted)}
+.qpass .qline{margin:0 0 4px}
+.qpass mark{padding:0 1px;border-radius:3px}
+.qpass mark{background:transparent;color:inherit}
+.qpass mark.qb{background:var(--hl-b)}
+.qpass mark.qa{background:var(--hl-a)}
+.qpass mark.qx{background:var(--hl-x)}
+.qpass mark.qax{background:linear-gradient(var(--hl-a) 50%,var(--hl-x) 50%)}
+.qpass mark.qt{background:var(--hl-t);font-weight:600}
+.qpass mark.qb.qa,.qpass mark.qb.qx,.qpass mark.qb.qt,.qpass mark.qb.qax{box-shadow:inset 0 -4px 0 var(--hl-u)}
+.qpass mark.qi{background:var(--hl-x);text-decoration:line-through}
+.qpass .qleg{display:flex;flex-wrap:wrap;gap:6px;font-size:.75rem;margin:0 0 10px}
+.qpass .qleg mark{padding:1px 6px}
+.qwrong{color:var(--ink)}
+.qpass .qpos{display:inline-block;font-weight:700;font-size:.8rem;padding:0 4px;margin:0 2px;border-radius:4px;background:var(--line)}
+.qpass .qpos.ans{background:var(--hl-a)}
+details.qitem.qon{box-shadow:0 0 0 2px var(--accent,#0f766e)}
+@media (max-width:900px){ .qreview{grid-template-columns:1fr} .qpass{max-height:42vh} }
+details.qitem{border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:var(--card)}
+details.qitem.b{border-color:var(--bad)}
+details.qitem.w{border-color:var(--warn)}
+details.qitem summary{cursor:pointer}
+.qtag{font-weight:700}
+.qbody{display:grid;gap:4px;margin-top:8px}
+.qans{font-weight:600;color:var(--good)}
+.warnc{color:var(--warn)}
+.qpreview{margin-top:10px;background:#fff;color:#000;border-radius:8px;padding:16px;overflow:auto;max-height:70vh}
+.qmanbox{margin-top:8px;padding:8px 10px;border-radius:8px;background:var(--bg);display:grid;gap:6px}
+.qman{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;font-size:.9rem}
+.qmbtn{display:flex;gap:6px}
+.qmbtn label{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border:1px solid var(--line);border-radius:999px;cursor:pointer;font-size:.85rem;white-space:nowrap;background:var(--card)}
+.qmbtn input{position:absolute;opacity:0;pointer-events:none}
+.qmbtn label.qyes.on{background:var(--good-soft);border-color:var(--good);color:var(--good);font-weight:600}
+.qmbtn label.qno.on{background:var(--bad-soft);border-color:var(--bad);color:var(--bad);font-weight:600}
+.qmnote textarea{min-height:60px}
+@media (max-width:560px){ .qman{grid-template-columns:1fr} }
+#q-format{white-space:pre-wrap}
+table.spk{border-collapse:collapse;margin:8px 0;font-size:.85rem;width:100%}
+table.spk th,table.spk td{border:1px solid var(--line);padding:3px 6px;text-align:left}
+table.spk tr.no td{color:var(--bad)}
+table.spk tr.ok td{color:var(--good)}
+table.spk tr.warn td{color:var(--warn, #b26a00)}
+.fixall-goals,.fixall-keeps{margin:6px 0 0;padding-left:1.1em;display:grid;gap:3px}
+.fixall-goals li{color:var(--bad)}
+.fixall-keeps li{color:var(--good)}
+.fixall-keeps li.nearf{color:var(--warn)}
+
+/* Checks + nav */
+.wfbar{padding:10px 16px;margin-bottom:14px}
+.wfbar>details>summary{cursor:pointer;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.wfbody{display:grid;gap:12px;margin-top:12px}
+.wfst{display:inline-block;font-size:.8rem;font-weight:700;border-radius:999px;padding:1px 10px;background:var(--accent-soft);color:var(--accent)}
+.wfst.lock{background:var(--good-soft);color:var(--good)} .wfst.req{background:var(--warn-soft);color:var(--warn)} .wfst.dev{background:var(--bad-soft);color:var(--bad)}
+.wfacts{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.wfact{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;gap:6px;background:var(--bg);align-content:start}
+.wfact .btn,.wfdev .btn{justify-self:start}
+.wfdev select{width:auto;max-width:100%}
+.wfact textarea{width:100%;resize:vertical}
+.wfact.ok{border-color:var(--good)}
+.wfact textarea,.wfas input,.wfdec input,.wfdec select,.maptab input,.maptab select{font:inherit;font-size:.9rem;padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+.wfcond{margin:0;padding-left:0;list-style:none;font-size:.86rem}
+.wfcond li.g{color:var(--good)} .wfcond li.b{color:var(--bad)} .wfcond li.i{color:var(--muted)}
+.wfas{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));margin-top:8px} .wfas label{display:grid;gap:3px}
+.wfdev{display:grid;gap:8px;margin-top:8px;justify-items:start} .wfrole{display:flex;flex-wrap:wrap;gap:6px}
+.wfdec .cla{display:grid;gap:4px;min-width:220px;white-space:normal}
+.wftake{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;gap:4px}
+.wfopt{display:block;cursor:pointer}
+.wfpass{max-height:340px;overflow:auto;font-size:.95rem;line-height:1.6}
+#cau-hoi.wftaking > *:not(.kicker):not(h2):not(.navrow):not(.modebar){display:none !important}
+.rvdrawer.wftaking [data-cl], .rvdrawer.wftaking .rvacts, .rvdrawer.wftaking #wf-g3h{display:none !important}
+textarea.wflocked{background:var(--bg);color:var(--muted)}
+.maptab .mapl{display:grid;grid-template-columns:76px 1fr;gap:8px;align-items:center;margin-top:4px;font-size:.85rem;color:var(--muted)}
+.maptab .mapq{width:100%}
+.maptab .mapf select{width:auto} .maptab .mapf input{width:auto;flex:0 1 200px}
+.maptab .mapf{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.clbox{display:grid;gap:10px}
+.clsum{display:flex;flex-wrap:wrap;gap:8px}
+.wfg1{border:2px solid var(--accent);display:grid;gap:12px;scroll-margin-top:150px}
+.wfg1 h3{margin:2px 0 0}
+.wfg1h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.wfg1t{min-width:0 !important;width:100%;table-layout:fixed} .wfg1t th{width:30%} .wfg1t td{overflow-wrap:anywhere}
+.wfg1rows{display:grid;gap:8px}
+.wfg1r{display:flex;gap:12px;justify-content:space-between;align-items:flex-start;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--card)}
+.wfg1r.ok{border-color:var(--good)} .wfg1r.fail{border-color:var(--bad)}
+.wfg1c{display:grid;gap:4px;min-width:0;flex:1}
+.wfg1s{display:grid;gap:6px;justify-items:end;flex:none}
+.wfg1b{display:flex;gap:6px}
+.wfg1b .btn.on{background:var(--good-soft);border-color:var(--good);color:var(--good)}
+.wfg1b .btn.on.no{background:var(--bad-soft);border-color:var(--bad);color:var(--bad)}
+.wfg1a{display:grid;gap:12px;border-top:1px solid var(--line);padding-top:12px}
+.wfg1go{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.wfg1fix{display:grid;gap:6px}
+.wfg1fix textarea,.wfg1no textarea{width:100%;box-sizing:border-box}
+.wfg1no{display:grid;gap:6px} .wfg1no>summary{cursor:pointer;color:var(--muted)}
+.wfg1no[open]{display:grid;gap:6px}
+@media (max-width:700px){ .wfg1r{flex-direction:column} .wfg1s{justify-items:start} }
+.rvfab{position:fixed;right:20px;bottom:20px;z-index:8;display:flex;align-items:center;gap:8px;padding:12px 18px;border-radius:999px;border:1.5px solid var(--accent);background:var(--card);color:var(--accent);font:inherit;font-weight:700;box-shadow:0 6px 20px rgba(20,30,50,.18);cursor:pointer}
+.rvfab.mine{background:var(--accent);color:var(--accent-ink)}
+.rvfab .rvchip{background:var(--warn-soft);color:var(--warn);border-radius:999px;padding:1px 9px;font-size:.8rem}
+.rvfab .rvsub{font-weight:500;opacity:.85}
+.rvdrawer{position:fixed;right:16px;top:calc(var(--toph, 132px) + 12px);bottom:16px;width:min(560px,44vw);z-index:7;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 12px 40px rgba(20,30,50,.22);display:flex;flex-direction:column;overflow:hidden}
+.rvhead{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--accent-soft)}
+.rvhead b{font-size:1.05rem}
+.rvbody{overflow:auto;padding:14px 16px 24px;display:grid;gap:14px;align-content:start}
+.rvbody .wfg1{border:0;padding:0;background:none;box-shadow:none}
+.rvgate{display:grid;gap:14px}
+.rvbody .clbox{border:1px solid var(--line);border-radius:12px;padding:12px}
+.rvacts{display:grid;gap:10px;grid-template-columns:1fr}
+.rvlead{display:grid;gap:6px}
+.rvbody .cltab,.rvbody .cltab tbody,.rvbody .cltab tr,.rvbody .cltab td,.rvbody .cltab th,.rvbody .maptab,.rvbody .wfdec{display:block;width:auto !important}
+.rvbody .cltab thead{display:none}
+.rvbody .cltab tr{border-top:1px solid var(--line);padding:8px 0}
+.rvbody .cltab td{border-top:0 !important;padding:3px 0}
+.rvbody .cltab .clc,.rvbody .cltab .cla{width:auto;white-space:normal}
+.rvbody .cltab .cla{display:flex !important;flex-wrap:wrap;gap:6px}
+.rvbody .cltab .cla .btn{margin:0}
+.rvbody .grid2{grid-template-columns:1fr}
+@media (min-width:900px){ body.rvopen main{margin-left:auto;margin-right:calc(min(560px,44vw) + 32px)} body.rvopen .rvfab{display:none} }
+@media (max-width:899px){ .rvdrawer{left:0;right:0;bottom:0;top:auto;width:auto;height:86vh;border-radius:16px 16px 0 0} body.rvopen .rvfab{display:none} }
+.lvinner{display:grid;gap:10px;margin-top:10px}
+.lvedit{position:relative;height:540px;border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden}
+.lvback,.lvta{position:absolute;inset:0;margin:0;padding:12px 14px;border:0;box-sizing:border-box;font-family:inherit;font-size:1rem;line-height:1.9;letter-spacing:normal;word-spacing:normal;white-space:pre-wrap;overflow-wrap:break-word;word-break:normal;tab-size:4;overflow-y:scroll;overflow-x:hidden}
+.lvback{color:transparent;pointer-events:none}
+.lvback span{border-radius:3px}
+.lvta{background:transparent;color:var(--ink);resize:none;outline:none;caret-color:var(--ink)}
+.lvedit:focus-within{border-color:var(--accent)}
+.lvc-A1{--lvc:#e6eaf0}.lvc-A2{--lvc:#d7e5fb}.lvc-B1{--lvc:#cfeef2}.lvc-B2{--lvc:#fbedb8}.lvc-C1{--lvc:#cdeed6}.lvc-C2{--lvc:#fbd5bd}.lvc-off{--lvc:#f7cfcf}.lvc-name{--lvc:#e8dcfb}
+.lvback [class^="lvc-"]{background:var(--lvc)}
+.lv-tog{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.lv-tog button{font:inherit;font-size:.85rem;border:1px solid var(--line);border-radius:999px;padding:3px 10px;cursor:pointer;background:var(--card);color:var(--ink)}
+.lv-tog button[class*="lvc-"]::before{content:"";display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px;background:var(--lvc);border:1px solid rgba(0,0,0,.25)}
+.lv-tog button.on{border-color:var(--ink);font-weight:700}
+.lv-tog button.on[class*="lvc-"]{background:var(--lvc)}
+.lv-tog .sep{width:1px;height:20px;background:var(--line);margin:0 4px}
+.lv-chip{display:inline-block;margin:0 8px 6px 0;padding:3px 8px;border-radius:8px;border:1px solid var(--line);background:var(--card)}
+.lv-chip.ok{border-color:#2f7d4a} .lv-chip.bad{border-color:#b42318} .lv-chip.mid{border-color:#6b8fd6}
+.cls{display:inline-block;font-size:.8rem;font-weight:700;border-radius:999px;padding:1px 9px;white-space:nowrap}
+.cls.ok{background:var(--good-soft);color:var(--good)} .cls.fail{background:var(--bad-soft);color:var(--bad)} .cls.warn{background:var(--warn-soft);color:var(--warn)}
+.cls.todo,.cls.recheck{background:var(--accent-soft);color:var(--accent)} .cls.na{background:var(--bg);color:var(--muted)}
+.sbhead{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}.sblegend .sblv{margin:0 2px 0 6px}
+.sbtab{width:100%;border-collapse:collapse;table-layout:fixed;font-size:.88rem}.sbtab th,.sbtab td{padding:7px 6px;border-top:1px solid var(--line);vertical-align:top;text-align:left}.sbtab th{font-size:.8rem;color:var(--muted);border-top:none}
+.sbgrp td{background:var(--bg);font-weight:600;font-size:.8rem;color:var(--muted)}.sbtot td{font-weight:600}.sbtot td.sbsrc{font-weight:400}.sbsub{font-size:.75rem;color:var(--muted);font-weight:400;margin-top:2px}.sbsrc{font-size:.75rem;color:var(--muted)}
+.sblv{display:inline-block;min-width:34px;text-align:center;padding:1px 8px;border-radius:6px;font-weight:700;font-size:.8rem}.sblv.ok,.sbin.ok{background:var(--good-soft);color:var(--good)}.sblv.lo,.sbin.lo{background:var(--warn-soft);color:var(--warn)}.sblv.hi,.sbin.hi{background:var(--bad-soft);color:var(--bad)}.sblv.na,.sbin.na{background:var(--bg);color:var(--muted)}
+.sbin{width:100%;max-width:110px;font-weight:700}
+.cltier{display:inline-block;font-size:.72rem;font-weight:700;border-radius:4px;padding:0 6px;margin-right:2px;cursor:help;white-space:nowrap}.cltier.qd{background:#fde2e1;color:#9b1c1c}.cltier.sp{background:#dbeafe;color:#1e40af}.cltier.dx{background:#eef0f3;color:#4b5563}.cltier.qt{background:transparent;color:var(--muted);box-shadow:inset 0 0 0 1px var(--line)}
+.clgrp{border:1px solid var(--line);border-radius:12px;padding:8px 12px}
+.clgrp>summary{cursor:pointer}
+.cltab{width:100%;border-collapse:collapse;margin-top:8px;font-size:.92rem}
+.cltab td{border-top:1px solid var(--line);padding:8px 6px;vertical-align:top}
+.cltab .clc{white-space:nowrap;width:70px} .cltab .cla{width:1%;white-space:nowrap}
+.cltab .cla .btn{margin:0 0 4px 4px}
+.btn.sm{padding:3px 9px;font-size:.82rem}
+.btn.on{background:var(--good-soft);border-color:var(--good);color:var(--good)} .btn.on.no{background:var(--bad-soft);border-color:var(--bad);color:var(--bad)}
+.clform{display:grid;gap:8px;margin-top:10px} .clform label{display:grid;gap:3px} .clform input,.clform select{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+.clpre{white-space:pre-wrap;max-height:320px;overflow:auto;background:var(--bg);padding:10px;border-radius:8px}
+.cllist ul{margin:4px 0 0 18px}
+.claidrow td{border-top:0 !important;padding-top:0 !important}
+.claid{margin-top:0} .claid>summary{cursor:pointer;color:var(--accent);font-weight:600}
+.claidb{margin-top:8px;max-height:520px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--bg)}
+.claidt{font-size:.85rem} .claidt th{text-align:left;font-size:.8rem;color:var(--muted);padding:4px 6px}
+.claidb mark{background:var(--warn-soft);color:inherit;padding:0 2px;border-radius:3px}
+.claid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.libcmp{border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-top:10px;max-height:480px;overflow:auto}
+.clmodes{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:4px 0 8px}
+.clalign .clsen{cursor:pointer;border-radius:4px;transition:background .15s}
+.clalign .clsen.clfocus{outline:2px solid var(--accent);outline-offset:1px;background:var(--accent-soft)}
+.clmode-kw .clkw{border-radius:3px;padding:0 1px}
+.clmode-kw .clkw.k0{background:rgba(239,68,68,.30)} .clmode-kw .clkw.k1{background:rgba(59,130,246,.32)} .clmode-kw .clkw.k2{background:rgba(234,179,8,.38)} .clmode-kw .clkw.k3{background:rgba(20,184,166,.32)}
+.clmode-kw .clkw.k4{background:rgba(168,85,247,.32)} .clmode-kw .clkw.k5{background:rgba(249,115,22,.34)} .clmode-kw .clkw.k6{background:rgba(34,197,94,.32)} .clmode-kw .clkw.k7{background:rgba(236,72,153,.30)}
+.clalign .clkw.kwon{outline:2px solid currentColor;outline-offset:0}
+.clmode-sen .clsen.s0{background:rgba(239,68,68,.16)} .clmode-sen .clsen.s1{background:rgba(59,130,246,.18)} .clmode-sen .clsen.s2{background:rgba(234,179,8,.20)} .clmode-sen .clsen.s3{background:rgba(20,184,166,.18)}
+.clmode-sen .clsen.s4{background:rgba(168,85,247,.18)} .clmode-sen .clsen.s5{background:rgba(249,115,22,.18)} .clmode-sen .clsen.s6{background:rgba(34,197,94,.18)} .clmode-sen .clsen.s7{background:rgba(236,72,153,.16)}
+.clmode-sen .clsen.clnomatch{text-decoration:underline dotted var(--bad);text-underline-offset:3px}
+.clsearch{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:8px 0}
+.clsearch input{flex:1 1 280px;font:inherit;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+mark.clhit{background:var(--warn-soft);color:inherit;border-radius:3px;padding:0 1px} mark.clhit.cur{background:#f5c542;color:#111;outline:2px solid #f5c542} mark.clhit.pair{outline:2px dashed #f5c542}
+.clreadtxt{position:relative;max-height:560px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:var(--bg);line-height:1.6}
+.clreadtxt p{margin:0 0 10px} .clchg{background:var(--warn-soft);border-radius:6px;padding:4px 6px}
+.clread>summary{cursor:pointer}
+.clunused{color:var(--muted);background:repeating-linear-gradient(135deg,transparent 0 6px,rgba(127,127,127,.12) 6px 12px);border-radius:3px} .cllegend>summary{cursor:pointer;color:var(--accent);font-weight:600} .cllegend ul{margin:4px 0 4px 18px}
+.fx select{font:inherit;font-size:.85rem;padding:1px 4px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)}
+.checks{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:14px;padding:16px 20px;display:grid;gap:8px}
+.checks label{display:grid;grid-template-columns:22px 1fr;gap:10px;align-items:start;cursor:pointer}
+.checks input{width:18px;height:18px;margin-top:3px;accent-color:var(--good)}
+.navrow{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:6px}
+.navmsg{font-size:.9rem;color:var(--warn);flex:1 1 200px;text-align:right}
+.stems{display:grid;gap:6px;font-size:.92rem;margin:8px 0 0;padding-left:1.1em}
+.stems code{font-family:var(--font);background:var(--bg);border-radius:4px;padding:1px 5px}
+table.form{border-collapse:collapse;width:100%;font-size:.92rem}
+.tablewrap{overflow-x:auto}
+table.form th,table.form td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+table.form th{background:var(--bg);font-weight:600}
+table.form input{padding:5px 8px}
+footer{max-width:900px;margin:0 auto;padding:0 20px 40px;color:var(--muted);font-size:.82rem}
+@media (max-width:560px){ h2{font-size:1.35rem} .act{grid-template-columns:1fr} .n{width:30px;height:30px} }
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto!important}}
+
+/* ---- màn hình hẹp (điện thoại) ---- */
+pre{max-width:100%;overflow-x:auto}
+.clbox pre,.wfbar pre,.claidb pre{white-space:pre-wrap;overflow-wrap:anywhere}
+.wfacts{grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr))}
+.screen,.card,.actbody{min-width:0}
+.clreadtxt,.wfact,.fx,.cltab td{overflow-wrap:anywhere}
+@media (max-width:700px){
+  .cltab,.cltab tbody,.cltab tr,.cltab td,.cltab th,.maptab,.wfdec{display:block;width:auto !important}
+  .cltab thead{display:none}
+  .cltab tr{border-top:1px solid var(--line);padding:8px 0}
+  .cltab td{border-top:0 !important;padding:3px 0}
+  .cltab .clc,.cltab .cla{width:auto;white-space:normal}
+  .cltab .cla{display:flex !important;flex-wrap:wrap;gap:6px}
+  .cltab .cla .btn{margin:0}
+  .claidrow td:first-child{display:none}
+  .wfdec .cla{min-width:0}
+  .claid2{grid-template-columns:1fr}
+  .clreadtxt{max-height:55vh}
+  .claidb{max-height:70vh;padding:6px 8px}
+  .maptab .mapl{grid-template-columns:1fr;gap:2px}
+  .maptab .mapf input{flex:1 1 140px}
+  .wfas{grid-template-columns:1fr}
+  .clsearch input{flex-basis:100%}
+  .clmodes{gap:4px}
+  .wfbar{padding:8px 10px}
+  .libtab,.libtab tbody,.libtab tr,.libtab td,.libtab th{display:block;width:auto}
+  .libtab tr:first-child{display:none}
+  .libtab tr{border-top:1px solid var(--line);padding:8px 0}
+  .libtab td{padding:2px 0}
+  .libpanel{max-height:none;overflow:visible}
+  .prjlbl{display:inline;font-size:.8rem;color:var(--muted)}
+  .prjboard td label{display:flex;gap:6px;align-items:center}
+  .prjboard select{max-width:none;flex:1}
+  tr.prjfill{background:var(--bg);border-radius:12px;padding:8px 10px !important;margin-bottom:8px}
+  tr.prjsetrow td{display:block}
+  .prjbar{min-width:0}
+  .toast{left:12px;right:12px;bottom:12px;transform:none;border-radius:12px;text-align:center}
+  .libacts{white-space:normal;display:flex !important;flex-wrap:wrap;gap:6px}
+  .top{position:static}
+  h1{font-size:1.1rem}
+  .toprow{gap:8px}
+}
+</style>
+</head>
+<body>
+<div id="hub" class="hub hidden" role="region" aria-label="Nhóm soạn đề"></div>
+
+<div class="top">
+  <div class="edbar hidden" id="edbar" role="navigation" aria-label="Đang soạn bài"></div>
+  <div class="topin">
+    <div class="toprow">
+      <h1>Soạn ngữ liệu VSTEP với AI</h1><span class="small muted" id="build-tag" title="Phiên bản trang">/*BUILD*/</span>
+      <span class="chip" id="curbai"></span>
+      <span class="chip hidden" id="libchip"></span>
+      <button class="btn quiet hubbtn hidden" type="button" id="ntfbtn" aria-label="Thông báo">🔔</button>
+      <button class="btn quiet hubbtn" type="button" id="hubbtn" title="Việc của tôi, dự án, phân công, hồ sơ">Nhóm</button>
+      <button class="btn quiet" type="button" id="libbtn" aria-expanded="false" aria-controls="libpanel">Thư viện</button>
+      <button class="btn quiet" type="button" id="clearbtn" aria-expanded="false" aria-controls="clearpanel">Lưu · Mở · Bài mới</button>
+    </div>
+    <div class="clearpanel filepanel libpanel hidden" id="libpanel" role="region" aria-label="Thư viện bài"></div>
+    <div class="clearpanel filepanel hidden" id="clearpanel" role="region" aria-label="Lưu, mở, tạo bài mới">
+      <p><b>Bài đang làm:</b> <span id="fp-cur"></span><br><span class="small muted" id="fp-saved">Chưa lưu ra file lần nào.</span></p>
+      <div class="clearbtns" id="fp-main">
+        <button class="btn" type="button" id="fp-save">Lưu bài ra file<span class="sub">toàn bộ: thiết lập, nguồn, bài, ghi chú, câu hỏi, các dấu đã soát</span></button>
+        <button class="btn" type="button" id="fp-open">Mở bài từ file<span class="sub">file .json đã lưu trước đó</span></button>
+        <button class="btn" type="button" id="fp-new">Tạo bài mới<span class="sub">giữ phần thi và mức từ vựng đã chọn</span></button>
+        <button class="btn quiet" type="button" id="clear-cancel">Đóng</button>
+      </div>
+      <div class="fpconfirm hidden" id="fp-confirm">
+        <p id="fp-q"></p>
+        <div class="clearbtns">
+          <button class="btn primary" type="button" id="fp-yes-save">Lưu bài đang làm trước</button>
+          <button class="btn" type="button" id="fp-yes">Tiếp tục, không lưu</button>
+          <button class="btn quiet" type="button" id="fp-no">Huỷ</button>
+        </div>
+      </div>
+      <input type="file" id="fp-file" accept=".json,application/json" class="hidden">
+      <details class="small"><summary>Xoá hết dữ liệu, làm lại từ đầu</summary>
+        <p class="small">Xoá cả bài đang làm lẫn thiết lập ở bước 1. Nên lưu bài ra file trước.</p>
+        <button class="btn danger" type="button" id="clear-all">Xoá hết, làm lại từ đầu</button>
+        <button class="hidden" type="button" id="clear-work"></button>
+      </details>
+    </div>
+    <nav class="stepper" id="stepper" aria-label="Các bước"></nav>
+  </div>
+</div>
+
+<main>
+<div class="card wfbar" id="wfbar"></div>
+
+<!-- 1. BẮT ĐẦU -->
+<section class="screen" id="bat-dau" data-branch="all" data-name="Bắt đầu">
+  <div class="kicker">Bước 1</div>
+  <h2>Chọn bài bạn sẽ soạn</h2>
+  <p class="lead">Trang này dẫn bạn đi từng bước. Ở mỗi bước có AI, bạn làm 3 việc: <b>bấm Sao chép câu lệnh</b> → <b>dán vào AI</b> (ChatGPT, Gemini…) → <b>dán câu trả lời của AI</b> trở lại trang. Mọi thông số đã được điền sẵn trong câu lệnh.</p>
+
+  <div class="card act"><div class="n">1</div><div class="actbody">
+    <h3 class="acttitle">Chọn phần thi</h3>
+    <label class="field" for="set-spec"><span class="lab">Bạn soạn phần nào?</span>
+      <select id="set-spec">
+        <optgroup label="Đọc">
+          <option value="R1">Đọc · Part 1</option><option value="R2" selected>Đọc · Part 2</option>
+          <option value="R3">Đọc · Part 3</option><option value="R4">Đọc · Part 4</option>
+        </optgroup>
+        <optgroup label="Nghe">
+          <option value="L1">Nghe · Part 1 (một bài ngắn)</option>
+          <option value="L2a">Nghe · Part 2 · hội thoại 1</option><option value="L2b">Nghe · Part 2 · hội thoại 2</option><option value="L2c">Nghe · Part 2 · hội thoại 3</option>
+          <option value="L3a">Nghe · Part 3 · bài nói 1</option><option value="L3b">Nghe · Part 3 · bài nói 2</option><option value="L3c">Nghe · Part 3 · bài nói 3</option>
+        </optgroup>
+      </select>
+    </label>
+  </div></div>
+
+  <div class="card act"><div class="n">2</div><div class="actbody">
+    <h3 class="acttitle">Đặt mức từ vựng và tuỳ chọn</h3>
+    <label class="field" for="set-level"><span class="lab">Mức từ vựng mục tiêu</span>
+      <span class="hint" id="level-hint"></span>
+      <select id="set-level"><option>A2</option><option>B1</option><option selected>B2</option><option>C1</option></select>
+    </label>
+  </div></div>
+
+  <div class="info" id="specsum"></div>
+
+  <details class="box">
+    <summary>Tuỳ chọn khác (thường không cần đổi)</summary>
+    <div class="grid2" style="margin-top:12px">
+      <label class="field" for="set-spelling"><span class="lab">Chính tả</span><select id="set-spelling"><option selected>Anh–Anh</option><option>Anh–Mỹ</option></select></label>
+      <label class="field" for="set-paras"><span class="lab">Số đoạn (bài Đọc)</span><input type="number" id="set-paras" min="3" max="9" title="Tối đa 9 đoạn (tập huấn Ứng dụng AI)" value="5"></label>
+      <label class="field" for="set-poly"><span class="lab">Số từ nhiều nghĩa giữ lại</span><input type="text" id="set-poly" value="2–3"></label>
+      <label class="field" for="set-floor"><span class="lab">Từ vựng được phép dễ hơn mục tiêu</span><select id="set-floor"><option value="0" selected>Không</option><option value="1">Được dễ hơn 1 bậc</option></select></label>
+      <label class="field" for="set-code"><span class="lab">Mã bài (để đặt tên file)</span><input type="text" id="set-code" placeholder="ví dụ: R2-03"></label>
+    </div>
+  </details>
+
+  <div class="card">
+    <h3>Cần chuẩn bị</h3>
+    <ul class="small" style="margin:8px 0 0;padding-left:1.2em;display:grid;gap:4px">
+      <li>Một AI chatbot: ChatGPT, Gemini, Copilot… Bước tìm nguồn cần bật chế độ tìm kiếm web.</li>
+      <li><a href="https://textprofiler.edtechcorner.com" target="_blank" rel="noopener">EC Text Profiler</a>, để kiểm từ vựng ở bước 6.</li>
+      <li>Một thư mục để lưu file. Gợi ý tên file: <span id="fnames"></span></li>
+      <li><b>Mỗi lần dán câu lệnh, mở một cuộc trò chuyện mới với AI.</b></li>
+    </ul>
+  </div>
+
+  <div class="checks"><h3>Trước khi sang bước sau</h3>
+    <label><input type="checkbox" data-gate="bd-1"><span>Đã chọn đúng phần và mức từ vựng.</span></label>
+  </div>
+  <div class="navrow"><span></span><span class="navmsg"></span><button class="btn primary big" type="button" data-next>Tiếp tục →</button></div>
+</section>
+
+<!-- 2. CHỦ ĐỀ -->
+<section class="screen hidden" id="chu-de" data-branch="all" data-name="Chủ đề">
+  <div class="kicker">Bước 2</div>
+  <h2>Chọn chủ đề</h2>
+  <p class="lead">AI đề xuất 12 chủ đề phù hợp với phần thi. Bạn chọn một.</p>
+
+  <div class="card act"><div class="n">1</div><div class="actbody">
+    <span class="who">Bạn làm · không bắt buộc</span>
+    <h3 class="acttitle">Ghi các chủ đề đã dùng</h3>
+    <div data-field="usedTopics" data-label="Chủ đề các bài khác trong đề" data-hint="Để AI không đề xuất chủ đề trùng."></div>
+  </div></div>
+  <div class="card act"><div class="n">2</div><div class="actbody">
+    <span class="who">AI làm</span>
+    <h3 class="acttitle">Nhờ AI gợi ý chủ đề</h3>
+    <div data-ai="b1"></div>
+  </div></div>
+  <div class="card act"><div class="n">3</div><div class="actbody">
+    <span class="who">Bạn làm</span>
+    <h3 class="acttitle">Chọn và ghi chủ đề</h3>
+    <div data-field="topic" data-label="Chủ đề bạn chọn" data-hint="Chép một chủ đề trong bảng AI đưa ra. Có thể viết cụ thể hơn."></div>
+  </div></div>
+
+  <div class="checks"><h3>Trước khi sang bước sau</h3>
+    <label><input type="checkbox" data-gate="cd-1"><span>Chủ đề đúng thể loại: <span data-v="genre"></span>.</span></label>
+    <label><input type="checkbox" data-gate="cd-2"><span>Chủ đề không nhạy cảm, và thí sinh không thể đoán đáp án nếu chưa <span data-v="readOrListen"></span> bài.</span></label>
+  </div>
+  <div class="navrow"><button class="btn quiet" type="button" data-prev>← Quay lại</button><span class="navmsg"></span><button class="btn primary big" type="button" data-next>Tiếp tục →</button></div>
+</section>
+
+<!-- 3. NGUỒN -->
+<section class="screen hidden" id="nguon" data-branch="all" data-name="Nguồn">
+  <div class="kicker">Bước 3</div>
+  <h2>Tìm và kiểm tra nguồn</h2>
+  <p class="lead">AI gợi ý nguồn. Bạn tự mở từng nguồn để kiểm tra, rồi lấy văn bản từ trang gốc.</p>
+  <div class="card wfg1 hidden" id="wf-prop"></div>
+
+  <div class="card act"><div class="n">1</div><div class="actbody">
+    <span class="who">AI làm · bật chế độ tìm kiếm web</span>
+    <h3 class="acttitle">Nhờ AI tìm nguồn</h3>
+    <div class="have" data-have="topic"></div>
+    <div data-ai="b2"></div>
+  </div></div>
+  <div class="card act"><div class="n">2</div><div class="actbody">
+    <span class="who">Bạn làm</span>
+    <h3 class="acttitle">Tự mở và kiểm từng nguồn</h3>
+    <div class="note">AI có thể đưa ra đường link không có thật. Bạn phải tự mở từng link.</div>
+    <ol class="small">
+      <li>Mở từng link, xem nội dung có đúng như AI tóm tắt không.</li>
+      <li>Chọn 1 nguồn. Ghi lại tên trang, đường link, ngày đăng, giấy phép sử dụng (để điền phiếu ở bước cuối).</li>
+      <li>Chụp màn hình trang nguồn và lưu vào thư mục.</li>
+    </ol>
+  </div></div>
+  <div class="card act"><div class="n">3</div><div class="actbody">
+    <span class="who">Bạn làm</span>
+    <h3 class="acttitle">Dán văn bản nguồn</h3>
+    <div class="grid2">
+      <div><span class="lab" style="font-weight:600">Nguồn ở dạng nào?</span>
+        <div style="display:grid;gap:4px;margin-top:6px">
+          <label><input type="radio" name="srcmode" value="text" checked> Trang web, văn bản copy được</label>
+          <label><input type="radio" name="srcmode" value="pdf"> File PDF</label>
+        </div></div>
+      <div><span class="lab" style="font-weight:600">Viết bằng tiếng gì?</span>
+        <div style="display:grid;gap:4px;margin-top:6px">
+          <label><input type="radio" name="srclang" value="en" checked> Tiếng Anh</label>
+          <label><input type="radio" name="srclang" value="vi"> Tiếng Việt</label>
+        </div></div>
+    </div>
+    <div data-srcshow="text-en">
+      <div data-field="src" data-label="Dán văn bản nguồn" data-hint="Copy từ trang gốc, không lấy từ câu trả lời của AI."></div>
+    </div>
+    <div data-srcshow="pdf" class="hidden" style="display:grid;gap:12px">
+      <div class="info small">Bạn không cần copy chữ. Ở các bước cần nguồn, trang sẽ nhắc bạn <b>đính kèm file PDF</b> vào cuộc trò chuyện cùng câu lệnh. ChatGPT, Gemini và Claude đều đọc được PDF. Với PDF dạng ảnh scan, AI dễ đọc sai số liệu; nên chọn PDF có chữ bôi đen được.</div>
+      <div class="grid2">
+        <div data-field="pdfName"></div>
+        <div data-field="pdfScope"></div>
+      </div>
+      <p class="small muted">Lưu file PDF vào thư mục hồ sơ, và chụp trang bìa hoặc trang đầu của bài.</p>
+    </div>
+    <div data-srcshow="text-vi" class="hidden">
+      <div data-field="srcVi" data-label="Dán văn bản nguồn tiếng Việt" data-hint="Copy từ trang gốc."></div>
+    </div>
+    <div data-srcshow="vi" class="hidden" style="display:grid;gap:14px">
+      <div class="who">AI dịch sang tiếng Anh</div>
+      <div data-ai="b3"></div>
+      <div data-field="src" data-label="Dán bản dịch AI trả về" data-hint="Bấm nút Copy ở góc khối code."></div>
+      <div class="who">AI kiểm bản dịch · mở cuộc trò chuyện mới</div>
+      <p class="small muted">Nếu AI chỉ ra chỗ dịch sai nghĩa, sửa thẳng trong ô bản dịch ở trên.</p>
+      <div data-ai="b7trans"></div>
+      <details class="box"><summary>Tự đối chiếu bản dịch với nguồn tiếng Việt</summary><div style="margin-top:8px" data-cmpmount="tr"></div></details>
+    </div>
+  </div></div>
+
+  <div class="checks"><h3>Trước khi sang bước sau</h3>
+    <label><input type="checkbox" data-gate="ng-1"><span>Đã tự mở link; nguồn là báo chính thống, cơ quan nhà nước, tổ chức quốc tế, tạp chí khoa học phổ thông hoặc trang có giấy phép mở.</span></label>
+    <label><input type="checkbox" data-gate="ng-2"><span>Đã ghi lại tên trang, link, giấy phép và chụp màn hình.</span></label>
+    <label><input type="checkbox" data-gate="ng-3"><span>Nếu nguồn tiếng Việt: đã kiểm bản dịch, không còn chỗ sai nghĩa.</span></label>
+  </div>
+    <div class="card">
+    <h3>Thông tin nguồn cho phiếu nộp</h3>
+    <p class="small muted">Bắt buộc trước khi đề xuất chủ đề (Điều phối xét ở cổng 1). Phiếu ở bước Nộp lấy lại từ đây.</p>
+    <div class="tablewrap"><table class="form">
+      <tr><th style="width:34%">Tên nguồn, đơn vị xuất bản</th><td colspan="3"><input type="text" id="pc-src" aria-label="Tên nguồn"></td></tr>
+      <tr><th>Đường link, ngày truy cập</th><td colspan="3"><input type="text" id="pc-url" aria-label="Đường link"></td></tr>
+      <tr><th>Giấy phép sử dụng</th><td colspan="3"><input type="text" id="pc-lic" aria-label="Giấy phép"></td></tr>
+    </table></div>
+  </div>
+<div class="navrow"><button class="btn quiet" type="button" data-prev>← Quay lại</button><span class="navmsg"></span><button class="btn primary big" type="button" data-next>Tiếp tục →</button></div>
+</section>
+
+<!-- 4R. VIẾT BÀI -->
+<section class="screen hidden" id="viet-bai" data-branch="R" data-name="Viết bài" data-approve>
+  <div class="kicker">Bước 4</div>
+  <h2>Viết lại thành bài đọc VSTEP</h2>
+  <p class="lead">AI viết lại văn bản nguồn theo đúng thông số của phần thi.</p>
+  <div class="have" data-have="src"></div>
+
+  <div class="card act"><div class="n">1</div><div class="actbody">
+    <span class="who">AI làm</span>
+    <h3 class="acttitle">Nhờ AI viết bài đọc</h3>
+    <div data-ai="b4"></div>
+  </div></div>
+  <div class="card act"><div class="n">2</div><div class="actbody">
+    <span class="who">Bạn làm</span>
+    <h3 class="acttitle">Dán bài AI viết</h3>
+    <div data-field="draft" data-split="notes" data-label="Dán kết quả của AI" data-hint="Bấm nút Copy ở góc khối code trong câu trả lời của AI, rồi dán vào đây. Trang tự tách phần ghi chú sang ô bên dưới."></div>
+    <div data-field="notes" data-small data-label="Ghi chú của AI" data-hint="Từ nhiều nghĩa, đại từ, phần đã lược. Đọc qua và sửa nếu sai. Các bước sửa sau sẽ giữ nguyên những điểm này."></div>
+  </div></div>
+  <div class="card act"><div class="n">3</div><div class="actbody">
+    <span class="who">Trang tự đọc · tham khảo</span>
+    <h3 class="acttitle">Bài có chỗ để hỏi những kỹ năng nào</h3>
+    <div class="anchormap"></div>
+  </div></div>
+  <div class="card act"><div class="n">4</div><div class="actbody">
+    <span class="who">Bạn làm</span>
+    <h3 class="acttitle">Soát lỗi AI, ghi từ cần giữ</h3>
+    <div data-field="keep" data-label="Từ bạn muốn giữ lại để ra câu hỏi" data-hint="Ví dụ các từ nhiều nghĩa trong ghi chú, thuật ngữ chính. Cách nhau bằng dấu phẩy. AI sẽ không thay những từ này ở các bước sau."></div>
+  </div></div>
+  <details class="box">
+    <summary>Lỗi AI hay mắc ở bước này</summary>
+    <ul class="small" style="margin:8px 0 0;padding-left:1.2em">
+      <li>Tự thêm câu bình luận để đủ số từ.</li>
+      <li>Thay từ làm đổi nghĩa, ví dụ <i>upstream</i> thành <i>further inland</i>.</li>
+      <li>Tự ghi số từ sai. Bước 5 sẽ đếm lại.</li>
+    </ul>
+  </details>
+
+  <div class="checks"><h3>Trước khi sang bước sau</h3>
+    <label><input type="checkbox" data-gate="vb-1"><span>Đã đọc bài: không có câu nào lạ so với nguồn.</span></label>
+    <label><input type="checkbox" data-gate="vb-2"><span>Ghi chú của AI đúng (đã sửa nếu cần), và đã chọn từ giữ lại.</span></label>
+  </div>
+  <div class="navrow"><button class="btn quiet" type="button" data-prev>← Quay lại</button><span class="navmsg"></span><button class="btn primary big" type="button" data-next>Tiếp tục →</button></div>
+</section>
+
+<!-- 4L. VIẾT KỊCH BẢN -->
+<section class="screen hidden" id="viet-kich-ban" data-branch="L" data-name="Viết kịch bản" data-approve>
+  <div class="kicker">Bước 4</div>
+  <h2>Viết kịch bản nghe</h2>
+  <p class="lead">AI rút dữ kiện từ nguồn, bạn kiểm lại, rồi AI viết kịch bản từ các dữ kiện đó.</p>
+  <div class="have" data-have="src"></div>
+
+  <div class="card act"><div class="n">1</div><div class="actbody">
+    <span class="who">AI làm</span>
+    <h3 class="acttitle">Rút dữ kiện từ nguồn</h3>
+    <div data-ai="facts"></div>
+    <div data-field="facts" data-label="Dán đoạn dữ kiện AI trả về" data-hint="Bấm nút Copy ở góc khối code."></div>
+  </div></div>
+  <div class="card act"><div class="n">2</div><div class="actbody">
+    <span class="who">AI kiểm · mở cuộc trò chuyện mới</span>
+    <h3 class="acttitle">Kiểm dữ kiện với nguồn</h3>
+    <p class="small muted">Kiểm đoạn dữ kiện có khớp nguồn không. Nếu AI tìm ra lỗi, AI sẽ viết lại cả đoạn dữ kiện đã sửa trong một khối code: bấm nút Copy ở góc khối code rồi dán thay vào ô dữ kiện ở trên. Muốn chắc, gửi lại câu lệnh này với đoạn mới cho đến khi AI báo "Không phát hiện".</p>
+    <div data-ai="b7facts"></div>
+    <details class="box"><summary>Tự đối chiếu đoạn dữ kiện với nguồn</summary><div style="margin-top:8px" data-cmpmount="fa"></div></details>
+  </div></div>
+  <div class="card act"><div class="n">3</div><div class="actbody">
+    <span class="who">AI làm</span>
+    <h3 class="acttitle">Nhờ AI viết kịch bản</h3>
+    <div class="grid2">
+      <div data-field="listenForm" data-grp="1"></div>
+      <div data-field="context" data-grp="2"></div>
+      <div data-field="contextDetail" data-grp="2"></div>
+      <div data-field="roles" data-grp="2"></div>
+      <div data-field="talkKind" data-grp="3"></div>
+      <div data-field="talkCtx" data-grp="3"></div>
+    </div>
+    <div data-ai="b8"></div>
+    <div data-field="draft" data-split="discard" data-label="Dán kết quả của AI" data-hint="Bấm nút Copy ở góc khối code trong câu trả lời của AI, rồi dán vào đây. Dòng ghi số từ cuối bài sẽ tự bị bỏ."></div>
+  </div></div>
+  <div class="card act"><div class="n">4</div><div class="actbody">
+    <span class="who">Bạn làm</span>
+    <h3 class="acttitle">Xem bối cảnh AI đặt</h3>
+    <div data-field="setting"></div>
+    <div data-field="settingNote"></div>
+    <details class="box"><summary>Bối cảnh chưa hợp? Nhờ AI sửa bối cảnh</summary>
+      <p class="small muted">Ghi nhận xét ở ô trên, sao chép câu lệnh, gửi cho AI trong một cuộc trò chuyện mới. Bấm nút Copy ở góc khối code rồi dán kết quả vào ô "Dán kết quả của AI" ở mục 3; bối cảnh mới sẽ tự tách xuống đây để xem lại.</p>
+      <div data-ai="setfix"></div>
+    </details>
+  </div></div>
+  <div class="card act"><div class="n">5</div><div class="actbody">
+    <span class="who">Bạn làm</span>
+    <h3 class="acttitle">Ghi từ cần giữ để ra câu hỏi</h3>
+    <div data-field="keep" data-label="Từ bạn muốn giữ lại để ra câu hỏi" data-hint="Từ khoá, tên riêng, con số bạn định hỏi. Cách nhau bằng dấu phẩy."></div>
+  </div></div>
+
+  <div class="checks"><h3>Trước khi sang bước sau</h3>
+    <label><input type="checkbox" data-gate="kb-1"><span>Đoạn dữ kiện đã kiểm, khớp với nguồn.</span></label>
+    <label><input type="checkbox" data-gate="kb-2"><span>Đọc thử thành tiếng: nghe tự nhiên như văn nói<span data-grp="1">; nếu là hội thoại, mỗi lượt lời một dòng, có tên người nói ở đầu</span><span data-grp="2">; mỗi lượt lời một dòng, có tên người nói ở đầu</span>.</span></label>
+  </div>
+  <div class="navrow"><button class="btn quiet" type="button" data-prev>← Quay lại</button><span class="navmsg"></span><button class="btn primary big" type="button" data-next>Tiếp tục →</button></div>
+</section>
+
+<!-- 5. ĐỘ DÀI -->
+<section class="screen hidden" id="do-dai" data-branch="all" data-name="Kiểm nhanh" data-approve>
+  <div class="kicker">Bước 5</div>
+  <h2>Kiểm độ dài, câu và từ vựng</h2>
+  <p class="lead">Trang tự đếm theo cách của Text Profiler và tự tra từng từ trong danh sách CEFR-J/Octanove (cùng nguồn Text Profiler dùng). Nếu có dòng màu đỏ, phần sửa sẽ hiện ra bên dưới. Số liệu từ vựng ở đây là ước lượng; bước 6 xác nhận trên Text Profiler. Flesch Reading Ease tính như Text Profiler (không tính tiêu đề, âm tiết theo từ điển CMU), có thể lệch vài phần mười điểm.</p>
+
+  <div class="card"><div class="status" id="len-status"></div></div>
+  <details class="box"><summary>Xem các từ trên mức và ngoài danh sách</summary><div id="vocab-detail" class="small" style="margin-top:10px;display:grid;gap:8px"></div></details>
+  <div class="card lvbox" data-lvbox data-split="changes">
+    <h3 class="acttitle">Bài đang làm</h3>
+    <p class="small muted">Một ô duy nhất cho bài: sửa tay trực tiếp ở đây, có tô màu theo mức CEFR. Kết quả AI (từ các câu lệnh sửa bên dưới) cũng dán vào ô này: bấm nút Copy ở góc khối code rồi dán, trang tự thay cả bài và có nút Hoàn tác. Dán một cụm ngắn thì chỉ chèn vào chỗ con trỏ như sửa tay.</p>
+    <div class="lvinner">
+      <div class="small lv-meter"></div>
+      <div class="small lv-tog"></div>
+      <div class="lvedit"><div class="lvback" aria-hidden="true"></div><textarea class="lvta" spellcheck="false" aria-label="Bài đang làm, sửa tay có tô màu theo mức"></textarea></div>
+      <div class="small lv-msg" aria-live="polite"></div>
+      <label class="field"><span class="lab">Tra nhanh từ định thay vào</span><span class="hint">Gõ một hoặc nhiều từ, cách nhau bằng dấu phẩy, hoặc bấm vào một từ trong bài. Trang tra theo đúng danh sách CEFR-J/Octanove và cách tra dùng để chấm.</span><input type="text" class="lv-q" placeholder="ví dụ: thrive, abundant, plentiful"></label>
+      <div class="small lv-res"></div>
+    </div>
+  </div>
+
+  <div class="fix hidden fixall-panel">
+    <h3>Sửa các dòng đỏ: một câu lệnh cho tất cả</h3>
+    <div class="grid2">
+      <div><b class="small">Cần sửa</b><ul class="small fixall-goals"></ul></div>
+      <div><b class="small">Đang đạt, AI phải giữ</b><ul class="small fixall-keeps"></ul></div>
+    </div>
+    <p class="small muted">Câu lệnh tự sinh từ tình trạng hiện tại của bài: chỉ cho AI dùng những cách sửa giúp được các dòng đỏ mà không làm hỏng dòng xanh, nhất là những dòng đang sát ngưỡng. Sửa xong, các dòng kiểm tự cập nhật; nếu còn dòng đỏ, sao chép lại câu lệnh (nó tự cập nhật số liệu) và làm thêm một lượt.</p>
+    <div class="act"><div class="n">1</div><div class="actbody"><span class="who">AI làm</span><div data-ai="fixall"></div></div></div>
+    <div class="act"><div class="n">2</div><div class="actbody"><span class="who">Bạn làm</span>
+      <p class="small"><b>Dán kết quả của AI vào ô "Bài đang làm"</b> (bấm nút Copy ở góc khối code rồi dán; trang tự thay cả bài, có nút Hoàn tác). <button type="button" class="btn quiet sm" data-goto-editor>Đến ô Bài đang làm</button></p>
+      <h3>AI đã đổi những gì</h3><div class="diffbox"></div>
+      <ul class="keepcheck"></ul>
+    </div></div>
+  </div>
+  <div class="fix hidden wordfix-panel">
+    <h3>Sửa các từ AI dùng sai mức</h3>
+    <p class="small muted">AI không tra được danh sách CEFR-J/Octanove, nên hay chọn từ nó tưởng đúng mức mà thật ra trên mức, không có trong danh sách, hoặc chưa đủ mức. Trang đã tra lại từng từ mới (dòng "Tra lại từ mới" ở trên); câu lệnh này chỉ nhờ AI thay đúng những từ đó.</p>
+    <div class="act"><div class="n">1</div><div class="actbody"><span class="who">AI làm</span><div data-ai="wordfix"></div></div></div>
+    <div class="act"><div class="n">2</div><div class="actbody"><span class="who">Bạn làm</span><p class="small"><b>Dán kết quả của AI vào ô "Bài đang làm"</b> (bấm nút Copy ở góc khối code rồi dán; trang tự thay cả bài, có nút Hoàn tác). <button type="button" class="btn quiet sm" data-goto-editor>Đến ô Bài đang làm</button></p></div></div>
+  </div>
+
+  <div class="checks"><h3>Trước khi sang bước sau</h3>
+    <label><input type="checkbox" data-gate="dd-1"><span>Tất cả các dòng ở trên màu xanh (câu dài có thể giữ nếu bạn thấy cần).</span></label>
+    <label><input type="checkbox" data-gate="dd-2"><span>Nếu đã sửa: đã xem phần tô màu, AI chỉ đổi đúng những câu cần sửa.</span></label>
+  </div>
+  <div class="navrow"><button class="btn quiet" type="button" data-prev>← Quay lại</button><span class="navmsg"></span><button class="btn primary big" type="button" data-next>Tiếp tục →</button></div>
+</section>
+
+<!-- 6. TỪ VỰNG -->
+<section class="screen hidden" id="tu-vung" data-branch="all" data-name="Từ vựng" data-approve>
+  <div class="kicker">Bước 6</div>
+  <h2>Kiểm từ vựng trên Text Profiler</h2>
+  <p class="lead">Bài cần nằm trong khoảng: <b>không khó quá</b> và <b>không dễ quá</b> so với mức <b data-v="level"></b>.</p>
+
+  <div class="card act"><div class="n">1</div><div class="actbody">
+    <span class="who">Bạn làm trên Text Profiler</span>
+    <h3 class="acttitle">Đo bài trên Text Profiler</h3>
+    <div><button class="btn" type="button" data-copyslot="draft">Sao chép bài đang làm</button></div>
+    <ol class="small">
+      <li>Mở <a href="https://textprofiler.edtechcorner.com" target="_blank" rel="noopener">textprofiler.edtechcorner.com</a> và dán bài vào.</li>
+      <li>Chọn preset <b data-v="preset"></b>, đặt mức mục tiêu <b data-v="level"></b>.</li>
+      <li>Ghi lại <b>Flesch Reading Ease</b> trên web, so với số trang tính ở bước 5 (cần <b data-v="freWin"></b>).</li>
+      <li>Xuất báo cáo Excel và lưu vào thư mục.</li>
+    </ol>
+  </div></div>
+  <div class="card act"><div class="n">2</div><div class="actbody">
+    <span class="who">Bạn nhập 2–3 con số từ Text Profiler</span>
+    <h3 class="acttitle">Nhập kết quả, sửa dòng đỏ</h3>
+    <div class="grid2">
+      <div data-field="pfCov" data-label="Độ phủ ở mức mục tiêu (%)" data-hint="Đọc với cài đặt bình thường của web."></div>
+      <div data-field="pfLvl95" data-label="Mức ở ngưỡng 95%" data-hint="Bật &quot;bỏ qua off-list&quot; (bỏ qua từ không có trong danh sách) rồi đọc."></div>
+      <div data-field="pfCovBelow" data-label="Độ phủ ở mức {belowLevel} (%)" data-hint="Vẫn bật &quot;bỏ qua off-list&quot;. Không bắt buộc."></div>
+    </div>
+    <p class="small muted" id="band-est"></p>
+    <div class="verdict w" id="band-verdict">Nhập số liệu để xem kết quả.</div>
+    <p class="small muted" id="band-detail"></p>
+  </div></div>
+  <div class="card act"><div class="n">3</div><div class="actbody">
+    <span class="who">Bạn chạy Cathoven, trang so với mức mục tiêu</span>
+    <h3 class="acttitle">Bảng level CEFR</h3>
+    <div class="cefrsb"></div>
+  </div></div>
+
+  <div class="card lvbox" data-lvbox data-split="changes">
+    <h3 class="acttitle">Bài đang làm</h3>
+    <p class="small muted">Một ô duy nhất cho bài: sửa tay trực tiếp ở đây, có tô màu theo mức CEFR. Kết quả AI (từ các câu lệnh sửa bên dưới) cũng dán vào ô này: bấm nút Copy ở góc khối code rồi dán, trang tự thay cả bài và có nút Hoàn tác. Dán một cụm ngắn thì chỉ chèn vào chỗ con trỏ như sửa tay.</p>
+    <div class="lvinner">
+      <div class="small lv-meter"></div>
+      <div class="small lv-tog"></div>
+      <div class="lvedit"><div class="lvback" aria-hidden="true"></div><textarea class="lvta" spellcheck="false" aria-label="Bài đang làm, sửa tay có tô màu theo mức"></textarea></div>
+      <div class="small lv-msg" aria-live="polite"></div>
+      <label class="field"><span class="lab">Tra nhanh từ định thay vào</span><span class="hint">Gõ một hoặc nhiều từ, cách nhau bằng dấu phẩy, hoặc bấm vào một từ trong bài. Trang tra theo đúng danh sách CEFR-J/Octanove và cách tra dùng để chấm.</span><input type="text" class="lv-q" placeholder="ví dụ: thrive, abundant, plentiful"></label>
+      <div class="small lv-res"></div>
+    </div>
+  </div>
+  <div class="fix hidden fixall-panel">
+    <h3>Sửa các dòng đỏ: một câu lệnh cho tất cả</h3>
+    <div class="grid2">
+      <div><b class="small">Cần sửa</b><ul class="small fixall-goals"></ul></div>
+      <div><b class="small">Đang đạt, AI phải giữ</b><ul class="small fixall-keeps"></ul></div>
+    </div>
+    <p class="small muted">Câu lệnh tự sinh từ tình trạng hiện tại của bài: chỉ cho AI dùng những cách sửa giúp được các dòng đỏ mà không làm hỏng dòng xanh, nhất là những dòng đang sát ngưỡng. Sửa xong, các dòng kiểm tự cập nhật; nếu còn dòng đỏ, sao chép lại câu lệnh (nó tự cập nhật số liệu) và làm thêm một lượt.</p>
+    <div class="act"><div class="n">1</div><div class="actbody"><span class="who">AI làm</span><div data-ai="fixall"></div></div></div>
+    <div class="act"><div class="n">2</div><div class="actbody"><span class="who">Bạn làm</span>
+      <p class="small"><b>Dán kết quả của AI vào ô "Bài đang làm"</b> (bấm nút Copy ở góc khối code rồi dán; trang tự thay cả bài, có nút Hoàn tác). <button type="button" class="btn quiet sm" data-goto-editor>Đến ô Bài đang làm</button></p>
+      <h3>AI đã đổi những gì</h3><div class="diffbox"></div>
+      <ul class="keepcheck"></ul>
+    </div></div>
+  </div>
+  <div class="fix hidden wordfix-panel">
+    <h3>Sửa các từ AI dùng sai mức</h3>
+    <p class="small muted">AI không tra được danh sách CEFR-J/Octanove, nên hay chọn từ nó tưởng đúng mức mà thật ra trên mức, không có trong danh sách, hoặc chưa đủ mức. Trang đã tra lại từng từ mới (dòng "Tra lại từ mới" ở trên); câu lệnh này chỉ nhờ AI thay đúng những từ đó.</p>
+    <div class="act"><div class="n">1</div><div class="actbody"><span class="who">AI làm</span><div data-ai="wordfix"></div></div></div>
+    <div class="act"><div class="n">2</div><div class="actbody"><span class="who">Bạn làm</span><p class="small"><b>Dán kết quả của AI vào ô "Bài đang làm"</b> (bấm nút Copy ở góc khối code rồi dán; trang tự thay cả bài, có nút Hoàn tác). <button type="button" class="btn quiet sm" data-goto-editor>Đến ô Bài đang làm</button></p></div></div>
+  </div>
+
+  <div class="checks"><h3>Trước khi sang bước sau</h3>
+    <label><input type="checkbox" data-gate="tv-1"><span>Ô kết quả ở mục 2 báo <b>Đạt</b>.</span></label>
+    <label><input type="checkbox" data-gate="tv-2"><span>Đã lưu file Excel của Text Profiler vào thư mục.</span></label>
+  </div>
+  <div class="navrow"><button class="btn quiet" type="button" data-prev>← Quay lại</button><span class="navmsg"></span><button class="btn primary big" type="button" data-next>Tiếp tục →</button></div>
+</section>
+
+<!-- 7. NỘI DUNG -->
+<section class="screen hidden" id="noi-dung" data-branch="all" data-name="Nội dung" data-approve>
+  <div class="kicker">Bước 7</div>
+  <h2>Kiểm nội dung so với nguồn</h2>
+  <p class="lead">Kiểm hai điều: AI có thêm hoặc đổi thông tin không, và bài có chép nguyên văn nguồn quá nhiều không. Bạn không cần sửa tay: AI đề xuất câu sửa, trang tự thay vào bài rồi kiểm lại độ dài và từ vựng.</p>
+
+  <div class="card act"><div class="n">1</div><div class="actbody">
+    <span class="who">AI kiểm và đề xuất sửa · mở cuộc trò chuyện mới</span>
+    <h3 class="acttitle">Nhờ AI đối chiếu bài với nguồn</h3>
+    <div class="have" data-have="orig"></div>
+    <div data-ai="b7"></div>
+  </div></div>
+  <div class="card act"><div class="n">+</div><div class="actbody">
+    <span class="who">Bạn tự đối chiếu · khi muốn soát tay hoặc thấy AI bỏ sót</span>
+    <h3 class="acttitle">Đặt bài cạnh <span data-branchtext="R">văn bản nguồn</span><span data-branchtext="L">đoạn dữ kiện</span></h3>
+    <p class="small muted">Tìm từ khoá ở cả hai cột; từ khoá chung và câu tương ứng được tô cùng màu; bấm một câu để làm nổi câu tương ứng bên kia. Bảng dữ kiện xếp các con số, tên riêng không thấy bên kia lên đầu.</p>
+    <div data-cmpmount="nd"></div>
+    <details><summary>Sửa tay bài đang làm</summary><div style="margin-top:10px" data-field="draft" data-label="Bài đang làm"></div></details>
+  </div></div>
+  <div class="card act"><div class="n">2</div><div class="actbody">
+    <span class="who">Bạn dán, trang đọc các chỗ sửa</span>
+    <h3 class="acttitle">Dán kết quả, chọn chỗ sửa</h3>
+    <div data-field="b7out" data-label="Dán phần B (khối code) của AI" data-hint="Bấm nút Copy ở góc khối code chứa &quot;=== CÁC CHỖ SỬA ===&quot;, rồi dán vào đây. Phần A (bảng kiểm) để bạn đọc tham khảo."></div>
+    <div id="b7-fixes"></div>
+    <div id="b7-applybar" class="hidden" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <button class="btn primary big" type="button" id="b7-apply">Áp dụng các chỗ đã chọn vào bài</button>
+      <span class="small muted" id="b7-applymsg"></span>
+    </div>
+  </div></div>
+  <div class="card act hidden" id="b7-recheck-card"><div class="n">3</div><div class="actbody">
+    <span class="who">Trang tự kiểm lại sau khi sửa</span>
+    <h3 class="acttitle">Kiểm lại sau khi sửa</h3>
+    <div class="status" id="b7-recheck"></div>
+    <div id="b7-advice"></div>
+    <details><summary>Xem bài đã đổi những gì</summary><div style="margin-top:8px" class="diffbox"></div></details>
+    <details><summary>Sửa tay bài đang làm</summary><div style="margin-top:10px" data-field="draft" data-label="Bài đang làm"></div></details>
+  </div></div>
+  <div class="card act"><div class="n">4</div><div class="actbody">
+    <span class="who">Trang tự đo</span>
+    <h3 class="acttitle">Tỷ lệ chữ chép nguyên văn từ nguồn</h3>
+    <div data-srcshow="pdf-en" class="hidden" style="display:grid;gap:8px">
+      <p class="small muted">Nguồn là PDF nên trang chưa có chữ để so. Câu lệnh ở mục 1 đã nhờ AI liệt kê các câu chép nguyên văn. Muốn trang tự đo chính xác hơn: mở PDF, bôi đen phần đã dùng, copy và dán vào ô dưới (không cần sửa lỗi xuống dòng).</p>
+      <div data-field="srcPdfText"></div>
+    </div>
+    <div id="ov-result"></div>
+    <details><summary>Xem chỗ trùng</summary><div class="hl" id="ov-hl" style="margin-top:8px"></div></details>
+    <div class="fix hidden" id="ov-fix">
+      <h3>Sửa các câu chép nguyên văn</h3>
+      <p class="small muted">Câu lệnh đã liệt kê đúng các câu đang trùng nguồn (kèm chuỗi trùng) và số từ cần bớt. AI chỉ viết lại những câu đó; mọi yêu cầu đang đạt (độ dài, số đoạn, từ vựng, Flesch) và những gì đã duyệt (từ giữ lại, điểm neo, từ nhiều nghĩa, đại từ – tiền ngữ, từ nối, tên người nói) đều được ghi rõ là phải giữ. Sửa xong, trang đo lại ngay; nếu vẫn từ 20% trở lên, sao chép lại câu lệnh (đã tự cập nhật) và làm thêm một lượt.</p>
+      <div class="act"><div class="n">1</div><div class="actbody"><span class="who">AI làm</span><div data-ai="ovfix"></div></div></div>
+      <div class="act"><div class="n">2</div><div class="actbody"><span class="who">Bạn làm</span>
+        <div data-field="draft" data-split="changes" data-label="Dán kết quả của AI vào đây" data-hint="Bấm nút Copy ở góc khối code rồi dán. Dán xong, ô này chính là bài đang làm: sửa tay ngay tại đây cũng được, mọi ô khác tự cập nhật."></div>
+        <h3>AI đã đổi những gì</h3><div class="diffbox"></div>
+        <ul class="keepcheck"></ul>
+      </div></div>
+    </div>
+  </div></div>
+
+  <div class="checks"><h3>Trước khi sang bước sau</h3>
+    <label><input type="checkbox" data-gate="nd-1"><span>Đã áp dụng (hoặc chủ động bỏ qua) mọi chỗ PHẢI SỬA; mục 3 không còn dòng đỏ.</span></label>
+    <label><input type="checkbox" data-gate="nd-2"><span>Tỷ lệ chép nguyên văn dưới 20% (phần trùng chỉ là tên riêng, thuật ngữ, con số thì chấp nhận được).</span></label>
+    <label><input type="checkbox" data-gate="nd-3"><span>Bạn đã tự đọc lại toàn bài.</span></label>
+  </div>
+  <div class="navrow"><button class="btn quiet" type="button" data-prev>← Quay lại</button><span class="navmsg"></span><button class="btn primary big" type="button" data-next>Tiếp tục →</button></div>
+</section>
+
+<!-- 8. CHẤT LIỆU -->
+<section class="screen hidden" id="chat-lieu" data-branch="all" data-name="Chất liệu" data-approve>
+  <div class="kicker">Bước 8</div>
+  <h2>Kiểm bài có đủ chất liệu ra câu hỏi</h2>
+  <p class="lead">AI đề xuất chỗ hỏi cho từng câu của bảng phân bố (không soạn câu hỏi). Dán kết quả vào là trang tự điền bản đồ chất liệu; bạn chỉ kiểm và chỉnh từng dòng.</p>
+
+  <div class="card act"><div class="n">1</div><div class="actbody">
+    <span class="who">AI làm</span>
+    <h3 class="acttitle">Nhờ AI lập bản đồ chất liệu</h3>
+    <div data-ai="mapai"></div>
+    <textarea id="map-paste" rows="5" placeholder="Dán kết quả của AI vào đây (nút Copy của khối code). Trang tự điền bản đồ chất liệu ở bên dưới."></textarea>
+    <p class="small muted" id="map-msg"></p>
+  </div></div>
+  <div class="card act"><div class="n">2</div><div class="actbody">
+    <span class="who">Trang tự kiểm</span>
+    <h3 class="acttitle">Kiểm từ giữ lại và điểm neo</h3>
+    <h3>Từ giữ lại còn trong bài không?</h3>
+    <ul class="keepcheck"></ul>
+    <h3 data-branchtext="R">Điểm neo AI ghi ở bước 4 còn trong bài không? (tham khảo)</h3>
+    <div class="anchormap" data-check data-branchtext="R"></div>
+  </div></div>
+
+  <div class="card" id="mapbox"></div>
+
+  <details class="box" id="fixpara-box">
+    <summary>Có <span data-v="unitName"></span> chưa đủ chất liệu? Sửa riêng phần đó</summary>
+    <div style="display:grid;gap:14px;margin-top:12px">
+      <p class="small muted">Đừng quay lại bước 4, vì AI sẽ viết lại cả bài và làm mất những chỗ đã sửa.</p>
+      <div class="grid2">
+        <div data-field="paraTarget" data-label="Phần cần sửa"></div>
+        <div data-field="fixReason" data-label="Còn thiếu gì"></div>
+      </div>
+      <div data-ai="fixpara"></div>
+      <div data-field="draft" data-split="changes" data-label="Dán kết quả của AI vào đây" data-hint="Bấm nút Copy ở góc khối code rồi dán. Dán xong, ô này chính là bài đang làm: sửa tay ngay tại đây cũng được, mọi ô khác tự cập nhật."></div>
+      <h3>AI đã đổi những gì</h3><div class="diffbox"></div>
+      <p class="small muted">Sửa xong, quay lại bước 5 và 6 để kiểm lại độ dài và từ vựng.</p>
+    </div>
+  </details>
+
+  <div class="card clbox" data-cl="NL"></div>
+
+  <div class="checks"><h3>Trước khi sang bước sau</h3>
+    <label><input type="checkbox" data-gate="cl-ck" disabled><span>Checklist ngữ liệu đạt (tự đánh dấu): không còn dòng "Phải sửa", mọi dòng "Người" đã được bấm Đạt, không còn ghi chú PHẢI SỬA đang mở.</span></label>
+  </div>
+  <div class="navrow"><button class="btn quiet" type="button" data-prev>← Quay lại</button><span class="navmsg"></span><button class="btn primary big" type="button" data-next>Tiếp tục →</button></div>
+</section>
+
+<!-- 9. CÂU HỎI -->
+<section class="screen hidden" id="cau-hoi" data-branch="all" data-name="Câu hỏi">
+  <div class="kicker">Bước 9</div>
+  <h2>Soạn câu hỏi</h2>
+  <p class="lead">AI soạn câu hỏi theo bảng phân bố của QĐ 730; trang kiểm từng câu: đúng khuôn, đúng bậc, căn cứ có trong bài, và các quy tắc riêng của từng dạng câu.</p>
+  <div class="note small">Quy định nộp ngữ liệu có điều <b>không đưa câu hỏi chưa công bố lên AI</b>. Nếu nhóm bạn áp dụng điều này, bỏ qua mục 1: tự soạn theo khuôn ở cuối trang rồi dán vào mục 2 để trang kiểm.</div>
+
+  <div class="card">
+    <h3>Bảng phân bố câu hỏi cho bài này (QĐ 730)</h3>
+    <label class="field" for="q-l1slot" data-grp="1"><span class="lab">Bài này dùng cho câu nào trong 8 câu của Part 1?</span>
+      <select id="q-l1slot">
+        <option value="1">Câu 1 · chi tiết · bậc 3 thấp</option><option value="2">Câu 2 · chi tiết · bậc 3 thấp</option><option value="3">Câu 3 · chi tiết · bậc 3 thấp</option>
+        <option value="4">Câu 4 · ý chính · bậc 3 trung bình</option><option value="5">Câu 5 · ý chính · bậc 3 trung bình</option>
+        <option value="6">Câu 6 · làm theo hướng dẫn · bậc 3 cao</option>
+        <option value="7">Câu 7 · ý chính · bậc 4 thấp</option><option value="8">Câu 8 · suy luận về ngữ cảnh · bậc 4 thấp</option>
+      </select>
+    </label>
+    <div id="q-blueprint"></div>
+  </div>
+
+  <div class="card act"><div class="n">1</div><div class="actbody">
+    <span class="who">AI làm</span>
+    <h3 class="acttitle">Nhờ AI soạn câu hỏi</h3>
+    <div data-ai="q"></div>
+  </div></div>
+
+  <div class="card act"><div class="n">2</div><div class="actbody">
+    <span class="who">Bạn làm</span>
+    <h3 class="acttitle">Dán bộ câu hỏi</h3>
+    <div data-field="questions" data-label="Dán kết quả của AI (nút Copy của khối code)"></div>
+  </div></div>
+
+  <div class="card act"><div class="n">3</div><div class="actbody">
+    <span class="who">Trang tự kiểm, bạn tự soát</span>
+    <h3 class="acttitle">Soát từng câu</h3>
+    <div id="q-status" class="status"></div>
+    <p class="small muted">Bấm vào một câu ở cột phải: bài bên trái tự cuộn tới và tô màu mọi chỗ liên quan: căn cứ (vàng), đáp án (xanh lá), phương án sai (đỏ), từ được hỏi (xanh dương), vị trí chèn câu [A]–[D]. Phương án nào được nhắc ở nhiều chỗ thì tô tất cả các chỗ; chỗ vừa là căn cứ vừa là phương án có gạch chân vàng.</p>
+  </div></div>
+  <div class="qwide">
+    <div class="qreview">
+      <div class="qpass" id="q-pass"></div>
+      <div id="q-items"></div>
+    </div>
+  </div>
+
+  <div class="card" id="q-blind">
+    <h3>Thử mù: trả lời được mà không cần bài không? <span class="muted small">(không bắt buộc)</span></h3>
+    <p class="small muted">Câu hỏi tốt buộc thí sinh phải đọc hoặc nghe bài mới trả lời được. Câu lệnh dưới đây chỉ gửi câu hỏi và bốn phương án, không gửi bài và đáp án, rồi cho AI đoán. Câu nào AI đoán trúng với độ chắc cao hoặc trung bình sẽ hiện cảnh báo ở cột phải; bạn xét lại ở mục "Phụ thuộc bài" khi soát tay. Nếu nhóm bạn không đưa câu hỏi chưa công bố lên AI, bỏ qua mục này và tự che bài để soát.</p>
+    <div class="act"><div class="n">1</div><div class="actbody"><span class="who">AI làm</span><div data-ai="qblind"></div></div></div>
+    <div class="act"><div class="n">2</div><div class="actbody"><span class="who">Bạn làm</span><div data-field="qblind" data-label="Dán kết quả thử mù (nút Copy của khối code)"></div></div></div>
+  </div>
+
+  <div class="fix hidden" id="q-fix">
+    <h3>Sửa các câu có lỗi</h3>
+    <p class="small muted">Câu lệnh đã liệt kê các lỗi trang tìm được và các câu bạn đánh dấu "Chưa đạt" khi soát tay (kèm ghi chú của bạn, nếu có); AI chỉ sửa những câu đó và trả lại cả bộ. Câu nào được sửa sẽ phải soát lại; câu không đổi giữ nguyên kết quả soát. Dán kết quả vào ô dưới, trang kiểm lại ngay.</p>
+    <div class="act"><div class="n">1</div><div class="actbody"><span class="who">AI làm</span><div data-ai="qfix"></div></div></div>
+    <div class="act"><div class="n">2</div><div class="actbody"><span class="who">Bạn làm</span><div data-field="questions" data-label="Dán kết quả của AI (nút Copy của khối code)"></div></div></div>
+  </div>
+
+  <div class="card hidden" id="q-out">
+    <h3>Lấy kết quả</h3>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn primary" type="button" id="q-copy-test" data-branchtext="R">Sao chép bài và câu hỏi</button>
+      <button class="btn" type="button" id="q-copy-test-ann" data-branchtext="R">Sao chép bản có chú thích</button>
+      <button class="btn" type="button" id="q-copy-key" data-branchtext="R">Sao chép đáp án và căn cứ</button>
+      <button class="btn primary" type="button" id="q-copy-tr" data-branchtext="L">Sao chép transcript (không chú thích)</button>
+      <button class="btn" type="button" id="q-copy-tr-ann" data-branchtext="L">Sao chép transcript có chú thích</button>
+      <button class="btn" type="button" id="q-doc">Tải file Word</button>
+    </div>
+    <p class="small muted"><b>Dán vào Word mất màu xám, cỡ chữ?</b> Word mặc định "gộp định dạng" khi dán từ trình duyệt: giữ in đậm, in nghiêng, bảng nhưng bỏ màu và cỡ chữ. Khi dán, bấm biểu tượng tuỳ chọn dán cạnh chỗ vừa dán và chọn "Giữ định dạng nguồn" (Keep Source Formatting); hoặc dùng nút <b>Tải file Word</b> (.docx): file giữ đủ định dạng, mở được bằng Word, Google Docs, Pages, gồm bản không chú thích, bản có chú thích<span data-branchtext="R"> và đáp án</span>, mỗi bản một trang.</p>
+    <p class="small muted" id="q-outnote"></p>
+    <p class="small muted" data-branchtext="L">Transcript 3 cột: lời thoại có ghi (Q1), (Q2)… ngay trước chỗ có đáp án; kỹ năng và bậc; câu hỏi và đáp án. Dán vào Word hoặc Google Docs sẽ ra bảng.</p>
+    <p class="small muted">Bản không chú thích dùng làm đề. Bản có chú thích ghi trong ngoặc, chữ xám, sau mỗi phương án: "đáp án đúng", hoặc phương án sai thuộc loại nào trong khuôn của QĐ 730 (dạng câu không có khuôn thì ghi "phương án sai"); bài Đọc có thêm bậc, mã, căn cứ dưới mỗi câu.</p>
+    <p class="small muted">Nút sao chép giữ định dạng (in đậm, xuống dòng, bảng) khi dán vào Word hoặc Google Docs. Dán vào chỗ chỉ nhận chữ thường (Zalo, Notepad) thì ra bản chữ thường đã xuống dòng gọn.</p>
+    <details class="box"><summary>Xem trước bản có chú thích</summary><div id="q-preview" class="qpreview"></div></details>
+  </div>
+
+  <details class="box">
+    <summary>Khuôn trình bày (khi tự soạn)</summary>
+    <pre class="small" id="q-format"></pre>
+  </details>
+
+
+  <div class="card clbox" data-cl="CH"></div>
+
+  <div class="checks"><h3>Trước khi sang bước sau</h3>
+    <label><input type="checkbox" data-gate="ch-man" disabled><span>Mọi câu đều được bạn chọn "Đạt" ở phần soát tay (tự đánh dấu khi xong): câu bậc 4 cao, bậc 5 có hàm ngôn thật; phương án nhiễu đúng khuôn của QĐ 730 và đều có tác dụng; mỗi câu đúng một đáp án.</span></label>
+    <label><input type="checkbox" data-gate="ch-ck" disabled><span>Checklist câu hỏi đạt (tự đánh dấu): không còn dòng "Phải sửa", mọi dòng "Người" đã được bấm Đạt (gồm: các câu không gợi ý đáp án cho nhau, người thẩm định tự làm đúng hết), không còn ghi chú PHẢI SỬA đang mở.</span></label>
+  </div>
+  <div class="navrow"><button class="btn quiet" type="button" data-prev>← Quay lại</button><span class="navmsg"></span><button class="btn primary big" type="button" data-next>Tiếp tục →</button></div>
+</section>
+
+<!-- 10. NỘP -->
+<section class="screen hidden" id="nop" data-branch="all" data-name="Nộp">
+  <div class="kicker">Bước 10</div>
+  <h2>Điền phiếu và nộp</h2>
+  <div class="card"><h3 class="acttitle">Bảng level CEFR</h3><div class="cefrsb"></div></div>
+  <div class="card">
+    <div class="tablewrap">
+    <table class="form">
+      <tr><th style="width:34%">Tên nguồn, đơn vị xuất bản</th><td colspan="3"><span class="pcmirror" data-of="pc-src"></span> <span class="small muted">· ghi ở bước Nguồn</span></td></tr>
+      <tr><th>Đường link, ngày truy cập</th><td colspan="3"><span class="pcmirror" data-of="pc-url"></span> <span class="small muted">· ghi ở bước Nguồn</span></td></tr>
+      <tr><th>Giấy phép sử dụng</th><td colspan="3"><span class="pcmirror" data-of="pc-lic"></span> <span class="small muted">· ghi ở bước Nguồn</span></td></tr>
+      <tr><th>Level bài gốc / bài đã chỉnh</th><td colspan="3"><input type="text" id="pc-lvl" aria-label="Level"></td></tr>
+      <tr><th>Đã đối chiếu sự kiện (B7)?</th><td colspan="3"><select id="pc-b7" aria-label="Đã đối chiếu sự kiện"><option value="">Theo bước 7</option><option>Có</option><option>Chưa</option></select></td></tr>
+      <tr><th>Chỉ số</th><th>Yêu cầu</th><th>Lần đo 1</th><th>Lần đo 2</th></tr>
+      <tbody id="pc-metrics"></tbody>
+      <tr><th>Từ giữ lại để hỏi đoán nghĩa</th><td colspan="3"><input type="text" id="pc-vo" aria-label="Từ giữ lại"><div class="small muted" id="pc-vohint"></div></td></tr>
+      <tr><th>Quyết định</th><td colspan="3"><select id="pc-dec" aria-label="Quyết định"><option value="">Chọn…</option><option>Dùng được</option><option>Sửa tiếp</option><option>Thay bài</option></select></td></tr>
+    </table>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+      <button class="btn primary" type="button" id="pc-copy">Sao chép phiếu</button>
+      <button class="btn" type="button" data-copyslot="draft">Sao chép bài cuối</button>
+    </div>
+  </div>
+  <div class="checks"><h3>Kiểm tra lần cuối</h3>
+    <label><input type="checkbox" data-gate="np-1"><span>Có link hoặc ảnh bài gốc, ảnh chụp màn hình, ghi giấy phép.</span></label>
+    <label><input type="checkbox" data-gate="np-2"><span>Bài chỉ giữ ý của nguồn, không chép nguyên đoạn (dưới 20%).</span></label>
+    <label><input type="checkbox" data-gate="np-3"><span>Đã kiểm thông tin, con số so với nguồn (bước 7) và tự đọc lại toàn bài.</span></label>
+    <label><input type="checkbox" data-gate="np-4"><span>Số từ, số đoạn, mức từ vựng đúng yêu cầu; chính tả một kiểu.</span></label>
+    <label data-branchtext="L"><input type="checkbox" data-gate="np-5"><span>Bài Nghe: tự nhiên như văn nói, thời lượng đúng phần thi.</span></label>
+    <label><input type="checkbox" data-gate="np-6"><span>Đã lưu file Excel của Text Profiler vào hồ sơ.</span></label>
+    <label><input type="checkbox" data-gate="np-7"><span>Không đưa câu hỏi hay đề chưa công bố lên AI.</span></label>
+  </div>
+  <div class="navrow"><button class="btn quiet" type="button" data-prev>← Quay lại</button><span class="navmsg"></span><span></span></div>
+</section>
+
+</main>
+<button type="button" class="rvfab hidden" id="rvfab" aria-controls="rvdrawer" aria-expanded="false"></button>
+<aside class="rvdrawer hidden" id="rvdrawer" aria-label="Phiếu duyệt">
+  <div class="rvhead"><div><div class="kicker" id="rv-kick">Phiếu duyệt</div><b id="rv-title"></b></div><button type="button" class="btn quiet sm" id="rv-close" aria-label="Thu gọn phiếu duyệt">Thu gọn ✕</button></div>
+  <div class="rvbody">
+    <div class="wfg1 hidden" id="wf-g1"></div>
+    <div class="rvgate hidden" id="wf-g2"><div id="wf-g2h"></div><div class="clbox" data-cl="NL" data-rv="1"></div><div class="wfacts rvacts" id="wf-g2a"></div></div>
+    <div class="rvgate hidden" id="wf-g3"><div id="wf-g3h"></div><div class="hidden" id="wf-review"></div><div class="clbox" data-cl="CH" data-rv="1"></div><div class="wfacts rvacts" id="wf-g3a"></div></div>
+  </div>
+</aside>
+<footer>Thông số theo Hướng dẫn định dạng đề thi bậc 3–5 (QĐ 730/QĐ-BGDĐT, cập nhật 13/5/2016) và yêu cầu của nhóm soạn đề (tập huấn 9/11/2026). Danh sách từ nhúng trong trang: Tono, Y. (comp.) CEFR-J Wordlist 1.5, Tokyo University of Foreign Studies; Octanove Labs, Octanove Vocabulary Profile C1/C2 1.0 (CC BY-SA 4.0), qua <a href="https://github.com/openlanguageprofiles/olp-en-cefrj" target="_blank" rel="noopener">olp-en-cefrj</a>; cùng nguồn EC Text Profiler dùng. Trang tra theo từ gốc nhưng không gắn từ loại, nên ước lượng thường cao hơn Text Profiler khoảng 1 điểm. Số liệu trang tự đếm là ước lượng; kết quả chuẩn lấy từ Text Profiler. Trang lưu nội dung trên trình duyệt này; hãy tự lưu file theo từng bước.</footer>
+
+<div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
+<script>
+(function(){
+"use strict";
+/*CORE*/
+/*UI*/
+})();
+</script>
+</body>
+</html>
