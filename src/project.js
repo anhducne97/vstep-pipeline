@@ -444,9 +444,20 @@ function hubBadge(){
   var fn = typeof frNewCount === "function" ? frNewCount() : 0; b.innerHTML = 'Nhóm' + (n + fn ? ' <span class="hubbadge">' + (n + fn) + '</span>' : '');
   var nb = document.getElementById("ntfbtn"), nu = typeof ntfUnread === "function" && LIB.user ? ntfUnread() : 0; if(nb){ nb.classList.toggle("hidden", !(LIB.user && LIB.role && LIB.role !== "none")); nb.innerHTML = '🔔' + (nu ? ' <span class="hubbadge">' + (nu > 99 ? "99+" : nu) + '</span>' : ''); nb.setAttribute("aria-label", "Thông báo" + (nu ? ", " + nu + " chưa đọc" : "")); }
 }
+/* đang mở bảng chọn ngày (ô ngày đang được chọn) thì hoãn vẽ lại trang Nhóm tới khi rời ô,
+   vì vẽ lại sẽ thay ô ngày mới và làm bảng chọn ngày tự tắt (thông báo tải lại mỗi phút, tên người tải xong…) */
+function hubDateBusy(el){
+  var ae = document.activeElement;
+  if(!ae || ae.type !== "date" || !el.contains(ae) || HUB.inChange) return false;
+  HUB.pendRender = true;
+  if(!ae.__hubWait){ ae.__hubWait = true; var go = function(){ ae.removeEventListener("blur", go); ae.__hubWait = false; if(HUB.pendRender){ HUB.pendRender = false; setTimeout(hubRender, 0); } }; ae.addEventListener("blur", go); }
+  return true;
+}
 function hubRender(){
   hubBadge();
   var el = hubEl(); if(!el || !HUB.open) return;
+  if(hubDateBusy(el)) return;
+  HUB.pendRender = false;
   var me = prjMe(), signed = LIB.user && LIB.role && LIB.role !== "none" && LIB.role !== "blocked";
   var frN = typeof frNewCount === "function" ? frNewCount() : 0;
   var pages = [["viec","Việc của tôi"],["duan","Dự án"],["dd","Diễn đàn" + (frN ? ' <span class="hubbadge">' + frN + '</span>' : '')],["hoso","Hồ sơ"]]; if(libIsAdmin()) pages.push(["tv","Thành viên"]);
@@ -956,6 +967,8 @@ function bindPrj(){
   });
   el.addEventListener("change", function(e){
     var t = e.target, p = prjById(PRJ.cur); if(!t.getAttribute || dateTyping(t)) return;
+    // thay đổi do chính ô này: vẽ lại ngay (không hoãn như các lần vẽ lại từ nơi khác)
+    HUB.inChange = true; setTimeout(function(){ HUB.inChange = false; }, 0);
     var a = t.getAttribute("data-prjas"), dd = t.getAttribute("data-prjdue"), sl = t.getAttribute("data-prjsel"), hr = t.getAttribute("data-hubrole");
     var find = function(id){ return LIB.items.filter(function(y){ return y.id === id; })[0]; };
     if(hr){ hubSetRole(hr, t.value); return; }
