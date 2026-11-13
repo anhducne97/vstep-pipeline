@@ -151,6 +151,14 @@ tr.prjpartrow td{background:var(--bg);padding:5px 10px 5px 22px}
 .ptadd{border-top:1px dashed var(--line);padding-top:10px;margin-top:6px}
 .ptadd input[type=text]{flex:0 1 220px}
 td.prjnow{box-shadow:inset 3px 0 0 var(--good)}
+details.ptn{margin:6px 0}
+details.ptn > summary{cursor:pointer;list-style:none;padding:8px 12px;border-radius:10px;background:var(--accent-soft);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+details.ptn > summary::-webkit-details-marker{display:none}
+details.ptn > summary::before{content:"▸";color:var(--accent);transition:transform .15s}
+details.ptn[open] > summary::before{transform:rotate(90deg)}
+details.ptn .ptnb{margin:6px 0 0 14px;padding-left:12px;border-left:2px solid var(--line)}
+details.ptn details.ptn > summary{background:var(--bg);padding:6px 10px}
+.ptnprj{font-weight:700;color:var(--accent)}.ptnset{font-weight:600}
 .prjact{border-top:1px dashed var(--line);margin-top:8px;padding-top:8px;display:grid;gap:6px}
 .prjact label{display:inline-flex;gap:6px;align-items:center}
 .prjact .prjrow label{display:grid;gap:3px}

@@ -486,16 +486,48 @@ function prjTaskCard(t, withPrj){
   var p = prjById(t.x.prj), ph = prjPhaseDueOf(t.x, t.r, p), d = ph.d, late = d && d < prjToday() && !prjDone(t.x) && t.s !== "done";
   return '<div class="htask ' + PRJ_ROLECLS[t.r] + '"><div class="htaskm"><div class="htaskt">' + esc(prjLabel(t.x) || t.x.title) + '</div><div class="htaskmeta"><span class="hrole ' + PRJ_ROLECLS[t.r] + '">' + esc(WF_ROLES[t.r]) + '</span><span class="hst ' + prjStCls(t.x) + '">' + esc(prjStLabel(t.x)) + '</span>' + prjDueChip(d, t.s !== "done" && !prjDone(t.x), ph.label) + (withPrj && t.x.prj ? '<span class="muted small">' + esc(prjName(t.x.prj)) + '</span>' : '') + ((t.x.meta || {}).topic ? '<span class="muted small">' + esc(t.x.meta.topic) + '</span>' : '') + '</div>' + prjProgHTML(t.x) + '</div><button class="btn' + (t.s === "now" ? " primary" : " quiet") + '" type="button" data-prjitem="' + esc(t.x.id) + '">' + (t.s === "now" ? "Làm tiếp →" : "Mở bài") + '</button></div>';
 }
+/* Việc của tôi xếp dạng cây: Dự án → Bộ đề → việc; nhớ nhánh nào đang mở, đóng */
+var PRJ_TREE_OPEN = {};
+function prjMineTree(list, withPrj, grp, sorter){
+  var today = prjToday(), byP = {}, order = [];
+  list.forEach(function(t){
+    var pid = t.x.prj || "", set = ((t.x.meta || {}).set) || "(chưa gắn bộ đề)";
+    if(!byP[pid]){ byP[pid] = {sets:{}, order:[], n:0, late:0}; order.push(pid); }
+    var P = byP[pid]; if(!P.sets[set]){ P.sets[set] = []; P.order.push(set); }
+    P.sets[set].push(t); P.n++;
+    var d = t.s === "now" ? prjRoleDue(t.x, t.r) : ""; if(d && d < today) P.late++;
+  });
+  var nat = function(a, b){ return a.localeCompare(b, "vi", {numeric:true}); };
+  var node = function(key, sum, body, dflt){ var o = PRJ_TREE_OPEN[key]; return '<details class="ptn" data-tree="' + esc(key) + '"' + ((o === undefined ? dflt : o) ? " open" : "") + '><summary>' + sum + '</summary><div class="ptnb">' + body + '</div></details>'; };
+  var nSets = order.reduce(function(n, pid){ return n + byP[pid].order.length; }, 0), setOpen = nSets <= 1;
+  var setsHTML = function(pid, P){
+    return P.order.sort(nat).map(function(set){
+      var ts = P.sets[set].slice().sort(sorter), kind = prjKindOf((prjById(pid) || {}), set);
+      var lateN = ts.filter(function(t){ var d = t.s === "now" ? prjRoleDue(t.x, t.r) : ""; return d && d < today; }).length;
+      var parts = ts.slice().sort(function(a, b){ return nat(prjLabel(a.x) || "", prjLabel(b.x) || ""); }).map(function(t){ var nd = prjNode((t.x.meta || {}).spec, (t.x.meta || {}).slot); return (nd.sub || nd.part || "") + " (" + (PRJ_SHORT[t.r] || t.r) + ")"; });
+      return node(grp + "|" + pid + "|" + set, '<span class="ptnset">' + (PRJ_ICO[kind] || "") + esc(set) + '</span> <span class="muted small">' + ts.length + ' việc: ' + esc(parts.join(", ")) + '</span>' + (lateN ? ' <span class="hdue late">' + lateN + ' quá hạn</span>' : ''), ts.map(function(t){ return prjTaskCard(t, false); }).join(""), setOpen);
+    }).join("");
+  };
+  if(!withPrj){ var only = order[0]; return only === undefined ? "" : setsHTML(only, byP[only]); }
+  return order.sort(function(a, b){ return nat((prjById(a) || {}).name || "", (prjById(b) || {}).name || ""); }).map(function(pid){
+    var P = byP[pid], p = prjById(pid) || {name:"(không thuộc dự án)"};
+    return node(grp + "|" + pid, '<span class="ptnprj">' + esc(p.name) + '</span> <span class="muted small">' + P.n + ' việc</span>' + (P.late ? ' <span class="hdue late">' + P.late + ' quá hạn</span>' : ''), setsHTML(pid, P), true);
+  }).join("");
+}
+function prjKindOf(p, set){ var k = (p.setKinds || {})[set]; if(k) return k; var m = /đọc|read/i.test(set) ? "R" : /nghe|listen/i.test(set) ? "L" : /viết|writ/i.test(set) ? "W" : /nói|speak/i.test(set) ? "S" : ""; return m; }
 function prjMineHTML(list, withPrj){
   var g = {now:[], later:[], done:[]};
   list.forEach(function(t){ if(g[t.s]) g[t.s].push(t); });
   var byDue = function(a, b){ var da = prjRoleDue(a.x, a.r) || "9", db = prjRoleDue(b.x, b.r) || "9"; return da < db ? -1 : da > db ? 1 : 0; };
+  var byTitle = function(a, b){ return (prjLabel(a.x) || a.x.title || "").localeCompare(prjLabel(b.x) || b.x.title || "", "vi", {numeric:true}); };
   if(!list.length) return '<div class="hubempty">Chưa được giao việc nào. Khi Điều phối giao việc, việc sẽ hiện ở đây.</div>';
-  var h = '<h3 class="hubh">Đến lượt bạn <span class="muted">(' + g.now.length + ')</span></h3>' + (g.now.length ? g.now.sort(byDue).map(function(t){ return prjTaskCard(t, withPrj); }).join("") : '<div class="hubempty">Không có việc đang chờ bạn. Nghỉ tay chút nhé.</div>');
-  h += '<details class="hubdet"><summary>Sắp tới <span class="muted">(' + g.later.length + ', bài chưa đến bước của bạn)</span></summary>' + g.later.sort(byDue).map(function(t){ return prjTaskCard(t, withPrj); }).join("") + '</details>';
-  h += '<details class="hubdet"><summary>Đã xong <span class="muted">(' + g.done.length + ')</span></summary>' + g.done.map(function(t){ return prjTaskCard(t, withPrj); }).join("") + '</details>';
+  var h = '<h3 class="hubh">Đến lượt bạn <span class="muted">(' + g.now.length + ')</span></h3>' + (g.now.length ? prjMineTree(g.now, withPrj, "now", byDue) : '<div class="hubempty">Không có việc đang chờ bạn. Nghỉ tay chút nhé.</div>');
+  var o = function(k){ return PRJ_TREE_OPEN[k] ? " open" : ""; };
+  h += '<details class="hubdet" data-tree="later"' + o("later") + '><summary>Sắp tới <span class="muted">(' + g.later.length + ', bài chưa đến bước của bạn)</span></summary>' + prjMineTree(g.later, withPrj, "later", byDue) + '</details>';
+  h += '<details class="hubdet" data-tree="done"' + o("done") + '><summary>Đã xong <span class="muted">(' + g.done.length + ')</span></summary>' + prjMineTree(g.done, withPrj, "done", byTitle) + '</details>';
   return h;
 }
+document.addEventListener("toggle", function(e){ var t = e.target; if(t && t.getAttribute && t.hasAttribute("data-tree")) PRJ_TREE_OPEN[t.getAttribute("data-tree")] = t.open; }, true);
 function hubTasksHTML(){
   var me = prjMe(), all = prjMineAll(), today = prjToday();
   var n = function(s){ return all.filter(function(t){ return t.s === s; }).length; }, late = all.filter(function(t){ var d = t.s === "now" ? prjRoleDue(t.x, t.r) : ""; return t.s !== "done" && t.s !== "stop" && d && d < today; }).length;
