@@ -158,7 +158,13 @@ details.ptn > summary::before{content:"▸";color:var(--accent);transition:trans
 details.ptn[open] > summary::before{transform:rotate(90deg)}
 details.ptn .ptnb{margin:6px 0 0 14px;padding-left:12px;border-left:2px solid var(--line)}
 details.ptn details.ptn > summary{background:var(--bg);padding:6px 10px}
-.ptnprj{font-weight:700;color:var(--accent)}.ptnset{font-weight:600}
+.ptnprj{font-weight:700;color:var(--accent)}
+.wspick{margin:0 0 12px;padding:10px 12px;border:1px dashed var(--line);border-radius:10px;background:var(--bg)}
+.wspicks{display:flex;flex-direction:column;gap:6px;margin-top:8px;max-height:280px;overflow:auto}
+.wspk{text-align:left;border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 10px;font:inherit;font-size:.92rem;cursor:pointer;line-height:1.35}
+.wspk:hover{border-color:var(--accent)}.wspk.on{border-color:var(--accent);background:var(--accent-soft)}
+.wspl{display:inline-block;font-size:.78rem;font-weight:600;color:var(--accent);margin-right:8px}
+input.flash{background:#fff6cc;transition:background .6s}.ptnset{font-weight:600}
 .prjact{border-top:1px dashed var(--line);margin-top:8px;padding-top:8px;display:grid;gap:6px}
 .prjact label{display:inline-flex;gap:6px;align-items:center}
 .prjact .prjrow label{display:grid;gap:3px}

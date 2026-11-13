@@ -268,6 +268,28 @@ function wsParse(raw){
   return res;
 }
 
+/* các chỗ trong đề để người thẩm định bấm chọn khi ghi chú (điền sẵn Vị trí và Trích) */
+function wsLocName(k){
+  var s = S.spec;
+  return ({sit:"Tình huống", ext:s === "W2" ? "Đoạn trích" : "Thư cho sẵn", req:s === "S2" ? "Câu hỏi" : "Yêu cầu viết", pts:"Ý phải trả lời", from:"Nguồn trích", adapted:"Adapted from",
+    t1:"Chủ đề 1", q1:"Chủ đề 1", t2:"Chủ đề 2", q2:"Chủ đề 2", o1:"Giải pháp 1", o2:"Giải pháp 2", o3:"Giải pháp 3", topic:"Chủ đề",
+    m1:"Sơ đồ tư duy, ý 1", m2:"Sơ đồ tư duy, ý 2", m3:"Sơ đồ tư duy, ý 3", f1:"Câu hỏi mở rộng 1", f2:"Câu hỏi mở rộng 2", f3:"Câu hỏi mở rộng 3"})[k] || k;
+}
+function wsUnits(){
+  var U = [];
+  (WS_F[S.spec] || []).forEach(function(f){
+    var k = f.k, v = wsV(k); if(!v || k === "theme" || k === "form" || k === "srcText" || k === "url") return;
+    if(k === "q1" || k === "q2" || k === "pts") wsLines(v).forEach(function(q, i){ U.push({loc:wsLocName(k) + ", câu " + (i + 1), text:q}); });
+    else if(k === "ext" || k === "sit"){ var ss = wsSents(v); if(ss.length > 1) ss.forEach(function(q, i){ U.push({loc:wsLocName(k) + ", câu " + (i + 1), text:q}); }); else U.push({loc:wsLocName(k), text:v}); }
+    else U.push({loc:(k === "t1" || k === "t2") ? wsLocName(k) + " (tên chủ đề)" : wsLocName(k), text:v});
+  });
+  return U;
+}
+function wsPickHTML(){
+  var U = wsUnits(); if(!U.length) return "";
+  return '<div class="wspick"><div class="small"><b>Bấm vào chỗ có lỗi</b> để điền sẵn Vị trí và Trích (không phải mở lại bước Soạn đề):</div><div class="wspicks">'
+    + U.map(function(u, i){ return '<button type="button" class="wspk" data-wspick="' + i + '"><span class="wspl">' + esc(u.loc) + '</span>' + esc(u.text.length > 140 ? u.text.slice(0, 137) + "…" : u.text) + '</button>'; }).join("") + '</div></div>';
+}
 /* ---------- giao diện ---------- */
 function wsFieldHTML(f){
   var v = wsData()[f.k] || "", lab = '<span class="lab">' + esc(f.label) + (f.optional ? ' <span class="muted">(không bắt buộc)</span>' : '') + '</span>' + (f.hint ? '<span class="hint">' + esc(f.hint) + '</span>' : '');
@@ -322,6 +344,15 @@ function bindWs(){
     wsData()[k] = e.target.value; wsAfterEdit(true);
   });
   document.addEventListener("click", function(e){
+    var pk = e.target.closest && e.target.closest("[data-wspick]");
+    if(pk){
+      var u = wsUnits()[+pk.getAttribute("data-wspick")], fm = pk.closest(".clform"); if(!u || !fm) return;
+      var set = function(ff, v){ var el = fm.querySelector('[data-ff="' + ff + '"]'); if(el){ el.value = v; el.classList.add("flash"); setTimeout(function(){ el.classList.remove("flash"); }, 700); } };
+      set("loc", u.loc); set("quote", u.text);
+      fm.querySelectorAll(".wspk.on").forEach(function(b){ b.classList.remove("on"); }); pk.classList.add("on");
+      var iss = fm.querySelector('[data-ff="issue"]'); if(iss && !iss.value) iss.focus();
+      return;
+    }
     var t = e.target.closest && e.target.closest("#ws-copy, #ws-fill, [data-wsdocx]"); if(!t) return;
     if(t.id === "ws-copy"){ copyText(wsPrompt(), t, "Sao chép câu lệnh", "Đã sao chép. Giờ dán vào AI"); return; }
     if(t.id === "ws-fill"){
