@@ -150,13 +150,46 @@ function prjLoad(){
 }
 function prjReload(){ PRJ.busy = true; hubRender(); return libList().then(function(){ try{ prjDueSweep(); }catch(e){} return peopleEnsure(); }).catch(function(e){ LIB.err = libErrText(e); }).then(function(){ PRJ.busy = false; hubRender(); }); }
 function prjErr(e){ PRJ.busy = false; PRJ.msg = ""; HUB.err = e && e.code === "permission-denied" ? "Máy chủ từ chối. Nếu đây là lần đầu dùng Dự án, quản trị cần dán lại luật bảo mật mới (README, mục Dự án) vào Firebase." : libErrText(e); hubRender(); }
-function prjCreate(name, due, sets){
+function prjEmailOk(e){ return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e); }
+function prjCreate(name, due, sets, coord){
   var fb = LIB.fb, me = prjMe(); name = String(name||"").trim();
   if(!name){ toast("Cần tên dự án."); return; }
+  coord = String(coord || "").trim().toLowerCase();
+  if(!coord || !libIsAdmin()) coord = me;
+  if(!prjEmailOk(coord)){ toast("Email Điều phối chưa đúng."); return; }
   var ref = fb.doc(fb.collection(LIB.db, "projects"));
-  var rec = {name:name.slice(0, 120), owner:me, ownerName:(LIB.user.displayName || me), members:[], sets:prjNewSets(sets).names, setKinds:prjNewSets(sets).kinds, due:due || "", note:"", createdAt:fb.serverTimestamp(), updatedAt:fb.serverTimestamp()};
+  var rec = {name:name.slice(0, 120), owner:coord, ownerName:(coord === me ? (LIB.user.displayName || me) : peopleName(coord)), createdBy:me, members:[], sets:prjNewSets(sets).names, setKinds:prjNewSets(sets).kinds, due:due || "", note:"", createdAt:fb.serverTimestamp(), updatedAt:fb.serverTimestamp()};
   PRJ.busy = true; hubRender();
-  fb.setDoc(ref, rec).then(function(){ PRJ.cur = ref.id; PRJ.tab = "thiet-lap"; HUB.page = "duan-ct"; toast("Đã tạo dự án " + name + ". Bạn là Điều phối. Mời thành viên và tạo khung bài ở mục Thiết lập."); return prjReload(); }).catch(prjErr);
+  fb.setDoc(ref, rec).then(function(){
+    PRJ.cur = ref.id; PRJ.tab = "thiet-lap"; HUB.page = "duan-ct";
+    if(coord === me) toast("Đã tạo dự án " + name + ". Bạn là Điều phối. Mời thành viên và tạo khung bài ở mục Thiết lập.");
+    else { toast("Đã tạo dự án " + name + " và giao Điều phối cho " + peopleName(coord) + "."); try{ ntfSend([{to:coord, type:"turn", text:"Bạn được giao làm Điều phối dự án " + name, link:{kind:"prj", prj:ref.id, tab:"thiet-lap"}}]); }catch(e){} }
+    return prjReload();
+  }).catch(prjErr);
+}
+/* quản trị đổi Điều phối: người cũ ở lại dự án với vai thành viên; bài của dự án chuyển phần Điều phối sang người mới */
+function prjSetCoord(p, em){
+  var fb = LIB.fb, old = p.owner; em = String(em || "").trim().toLowerCase();
+  if(!libIsAdmin()){ toast("Chỉ quản trị đổi được Điều phối."); return; }
+  if(!prjEmailOk(em)){ toast("Email Điều phối chưa đúng."); return; }
+  if(em === old){ toast(peopleName(em) + " đang là Điều phối."); return; }
+  if((PEOPLE[em] || {}).role === "blocked"){ toast("Tài khoản này đang bị khoá."); return; }
+  var members = (p.members || []).filter(function(e){ return e !== em; });
+  if(old && members.indexOf(old) < 0 && (PEOPLE[old] || {}).role !== "admin") members.push(old);
+  PRJ.busy = true; hubRender();
+  fb.updateDoc(fb.doc(LIB.db, "projects", p.id), {owner:em, ownerName:peopleName(em), members:members, updatedAt:fb.serverTimestamp()}).then(function(){
+    p.owner = em; p.members = members;
+    var xs = prjItems(p.id);
+    return Promise.all(xs.map(function(x){
+      var patch = {team:prjPeople(p.id)}, as = (x.wf && x.wf.as) || {};
+      if(!as.coord || as.coord === old) patch["wf.as.coord"] = em;
+      if(x.asg && x.asg.as && (!x.asg.as.coord || x.asg.as.coord === old)) patch["asg.as.coord"] = em;
+      return fb.updateDoc(fb.doc(LIB.db, "materials", x.id), patch);
+    }));
+  }).then(function(){
+    try{ ntfSend([{to:em, type:"turn", text:"Bạn được giao làm Điều phối dự án " + p.name, link:{kind:"prj", prj:p.id, tab:"thiet-lap"}}].concat(old ? [{to:old, type:"back", text:"Dự án " + p.name + " đã chuyển Điều phối sang " + peopleName(em) + "; bạn vẫn là thành viên", link:{kind:"prj", prj:p.id, tab:"thiet-lap"}}] : [])); }catch(e){}
+    toast("Đã giao Điều phối dự án cho " + peopleName(em) + "."); return prjReload();
+  }).catch(prjErr);
 }
 function prjNewSets(n){ var names = [], kinds = {}, pad = function(i){ return String(i).padStart(2, "0"); }; if(typeof n === "string"){ prjSplit(n).forEach(function(x){ names.push(x); }); return {names:names, kinds:kinds}; } ["R","L"].forEach(function(k){ for(var i = 1; i <= Math.min(20, n[k] || 0); i++){ var nm = PRJ_KIND[k] + " " + pad(i); names.push(nm); kinds[nm] = k; } }); return {names:names, kinds:kinds}; }
 function prjSplit(s){ var out = String(s||"").split(/[\n,;]+/).map(function(x){ return x.trim(); }).filter(Boolean); return out.filter(function(x, i){ return out.indexOf(x) === i; }); }
@@ -474,10 +507,11 @@ function prjBar(done, total){ var pc = total ? Math.round(done * 100 / total) : 
 function prjListHTML(){
   var vis = (PRJ.list || []).filter(prjVisible), today = prjToday();
   var h = '<div class="hubrow"><h2>Dự án</h2><button class="btn primary" type="button" id="prj-newtoggle">+ Dự án mới</button></div>';
-  if(HUB.newOpen || !vis.length) h += '<div class="hubcard"><h3>Tạo dự án mới</h3><p class="small muted">Bạn là Điều phối của dự án mình tạo: mời thành viên, tạo khung bài, giao việc và duyệt cổng 1, cổng 4.</p><div class="prjform">'
+  if(HUB.newOpen || !vis.length) h += '<div class="hubcard"><h3>Tạo dự án mới</h3><p class="small muted">' + (libIsAdmin() ? 'Quản trị tạo dự án và giao Điều phối cho một người; để trống ô Điều phối thì bạn làm Điều phối. ' : 'Bạn là Điều phối của dự án mình tạo. ') + 'Điều phối mời thành viên, tạo khung bài, giao việc và duyệt cổng 1, cổng 4.</p><div class="prjform">'
     + '<label class="small">Tên dự án<input type="text" id="prj-n" placeholder="Ví dụ: Đợt soạn tháng 12/2026"></label>'
     + '<div class="prjrow"><label class="small">Số đề Đọc<input type="number" min="0" max="20" id="prj-nr" placeholder="0" class="prjdays"></label><label class="small">Số đề Nghe<input type="number" min="0" max="20" id="prj-nl" placeholder="0" class="prjdays"></label><span class="small muted">Trang đặt tên Đề Đọc 01, Đề Nghe 01…; thêm, bớt sau ở mục Thiết lập được.</span></div>'
     + '<label class="small">Hạn hoàn thành dự án<input type="date" id="prj-d"></label>'
+    + (libIsAdmin() ? '<label class="small">Điều phối (để trống: bạn làm Điều phối)<input type="text" id="prj-c" list="prj-coords" placeholder="Email Google của người làm Điều phối">' + prjStaffList("prj-coords") + '</label>' : '')
     + '<div class="hubbtns"><button class="btn primary" type="button" id="prj-new">Tạo dự án</button>' + (vis.length ? '<button class="btn quiet" type="button" id="prj-newtoggle">Đóng</button>' : '') + '</div></div></div>';
   if(!vis.length) return h + '<div class="hubempty">Bạn chưa ở dự án nào. Tạo dự án ở trên, hoặc chờ Điều phối của dự án khác mời bạn.</div>';
   h += '<div class="hgrid">' + vis.map(function(p){
@@ -688,6 +722,9 @@ function prjSetupHTML(p, coord){
   if(coord) h += '<div class="prjrow"><input type="text" id="prj-inv" list="prj-staff" placeholder="Email Google của người cần mời (nhiều email cách nhau dấu phẩy)"><datalist id="prj-staff">' + staff.map(function(e){ return '<option value="' + esc(e) + '">' + esc(peopleName(e)) + '</option>'; }).join("") + '</datalist><button class="btn primary" type="button" id="prj-invite">Mời vào dự án</button></div><p class="small muted">Mời được cả người chưa đăng nhập trang lần nào: họ vào dự án ngay, và lần đầu đăng nhập bằng đúng Gmail đó là thấy dự án và việc được giao. Trang không tự gửi thư; bấm "Gửi lời mời qua Gmail" để mở thư soạn sẵn từ Gmail của bạn. <button class="btn quiet sm" type="button" id="prj-copylink">Chép đường link trang</button></p>';
   h += '</div>';
   h += '<div class="hubcard"><h3>Thông tin dự án</h3><div class="prjform"><label class="small">Tên dự án<input type="text" id="prj-en" value="' + esc(p.name) + '"' + dis + '></label><label class="small">Hạn hoàn thành dự án (bài chưa có hạn riêng thì theo hạn này)<input type="date" id="prj-ed" value="' + esc(p.due || "") + '"' + dis + '></label>' + (coord ? '<div class="hubbtns"><button class="btn" type="button" id="prj-esave">Lưu thông tin</button></div>' : '') + '</div></div>';
+  h += '<div class="hubcard"><h3>Điều phối</h3><p class="small">' + avatar(p.owner) + ' <b>' + esc(peopleName(p.owner)) + '</b> <span class="muted">' + esc(p.owner) + '</span></p>'
+    + (libIsAdmin() ? '<p class="small muted">Quản trị đổi được Điều phối. Người cũ ở lại dự án với vai thành viên; các bài của dự án chuyển phần Điều phối sang người mới.</p><div class="prjrow"><input type="text" id="prj-co" list="prj-coords2" placeholder="Email Google của Điều phối mới">' + prjStaffList("prj-coords2") + '<button class="btn" type="button" id="prj-cosave">Giao Điều phối</button></div>' : '<p class="small muted">Chỉ quản trị đổi được Điều phối.</p>')
+    + '</div>';
   h += prjTreeHTML(p, coord);
   if(coord){
     var at = prjAttachable(p);
@@ -817,7 +854,7 @@ function bindPrj(){
     if(id === "prj-home"){ prjGuard(function(){ PRJ.sel = {}; HUB.page = "duan"; PRJ.msg = ""; hubRender(); }); return; }
     if(id === "spec-save"){ var ta = document.getElementById("spec-json"); if(!ta || !ta.value.trim()){ toast("Chưa dán nội dung."); return; } PRJ.busy = true; specsSave(ta.value).then(function(){ PRJ.busy = false; toast("Đã lưu đặc tả riêng."); hubRender(); }, function(err){ PRJ.busy = false; toast("Không lưu được: " + (err && err.message ? err.message : err)); hubRender(); }); return; }
     if(id === "prj-reload"){ prjReload(); return; }
-    if(id === "prj-new"){ HUB.newOpen = false; prjCreate(el.querySelector("#prj-n").value, el.querySelector("#prj-d").value, {R:parseInt(el.querySelector("#prj-nr").value, 10) || 0, L:parseInt(el.querySelector("#prj-nl").value, 10) || 0}); return; }
+    if(id === "prj-new"){ var pc = el.querySelector("#prj-c"); HUB.newOpen = false; prjCreate(el.querySelector("#prj-n").value, el.querySelector("#prj-d").value, {R:parseInt(el.querySelector("#prj-nr").value, 10) || 0, L:parseInt(el.querySelector("#prj-nl").value, 10) || 0}, pc ? pc.value : ""); return; }
     if(t.hasAttribute("data-prjtab")){ PRJ.tab = t.getAttribute("data-prjtab"); PRJ.msg = ""; hubRender(); return; }
     if(t.hasAttribute("data-prjitem")){ prjOpenItem(t.getAttribute("data-prjitem")); return; }
     if(!p) return;
@@ -839,6 +876,7 @@ function bindPrj(){
     if(id === "prj-discard"){ PRJ.edit = {}; PRJ.msg = ""; hubRender(); return; }
     if(id === "prj-invite"){ prjInvite(p, el.querySelector("#prj-inv").value); return; }
     if(t.hasAttribute("data-prjunmem")){ prjUninvite(p, t.getAttribute("data-prjunmem")); return; }
+    if(id === "prj-cosave"){ var co = el.querySelector("#prj-co").value; if(!co.trim()){ toast("Nhập email Điều phối mới."); return; } if(confirm("Giao Điều phối dự án " + p.name + " cho " + co.trim() + "?")) prjSetCoord(p, co); return; }
     if(id === "prj-esave"){ var nm = el.querySelector("#prj-en").value.trim(); if(!nm){ toast("Cần tên dự án."); return; } prjUpdate(p, {name:nm, due:el.querySelector("#prj-ed").value || ""}, "Đã lưu thông tin dự án."); return; }
     if(id === "prj-mk"){ prjMakeItems(p, prjMkList(el)); return; }
     if(t.hasAttribute("data-prjaddset")){ var sn = el.querySelector("#prj-setn"), k = t.getAttribute("data-prjaddset"); var nm = (sn && sn.value.trim()) || (PRJ_KIND[k] + " " + String(prjSetList(p).filter(function(x){ return x.kind === k; }).length + 1).padStart(2, "0")); if(sn) sn.value = ""; prjAddSet(p, nm, k); return; }
@@ -870,4 +908,9 @@ function bindPrj(){
     if(t.hasAttribute("data-prjmk") || t.hasAttribute("data-prjmkpart")){ if(p) prjAfterRender(el); return; }
   });
   window.addEventListener("keydown", function(e){ if(e.key === "Escape" && HUB.open){ if(HUB.ask){ HUB.ask = null; hubRender(); } } });
+}
+
+function prjStaffList(id){
+  var em = (LIB.staff || []).filter(function(x){ return x.role !== "blocked"; }).map(function(x){ return x.email; });
+  return '<datalist id="' + id + '">' + em.map(function(e){ return '<option value="' + esc(e) + '">' + esc(peopleName(e)) + '</option>'; }).join("") + '</datalist>';
 }

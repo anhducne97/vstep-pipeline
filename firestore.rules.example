@@ -40,8 +40,9 @@ service cloud.firestore {
     // dự án: người tạo là Điều phối; chỉ Điều phối hoặc quản trị sửa, xoá dự án
     match /projects/{id} {
       allow read: if isStaff() || (active() && (resource.data.owner == me() || me() in resource.data.members));
-      allow create: if active() && request.resource.data.owner == me();
-      allow update: if active() && (resource.data.owner == me() || isAdmin()) && request.resource.data.owner == resource.data.owner;
+      // quản trị tạo dự án cho người khác làm Điều phối và đổi Điều phối được
+      allow create: if active() && (request.resource.data.owner == me() || isAdmin());
+      allow update: if active() && (resource.data.owner == me() || isAdmin()) && (request.resource.data.owner == resource.data.owner || isAdmin());
       allow delete: if active() && (resource.data.owner == me() || isAdmin());
     }
 
