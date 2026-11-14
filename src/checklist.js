@@ -128,7 +128,8 @@ var CL_ROWS = {NL:[
   {c:"NL-D6", g:"D", t:"Từ giữ lại để hỏi vẫn còn trong bài", src:"Quy trình trang soạn đề", tier:"qt", who:"M", ev:function(){
     var E = clE(); if(!E) return clNoDraft(); var L = E.C.keep.list, k = keepList();
     if(!k.length) return {s:"na", d:"Chưa chọn từ giữ lại."};
-    return {s:L.length ? "fail" : "ok", d:L.length ? "Đã mất: " + L.join(", ") + "." : "Còn đủ " + k.length + " từ.", keep:"Không bỏ hoặc thay các từ giữ lại: " + k.join(", ") + "."};
+    var src = typeof mapKeepSrc === "function" ? mapKeepSrc() : [], where = function(w){ var m = src.filter(function(x){ return x.w.toLowerCase() === w.toLowerCase(); })[0]; return m ? '"' + w + '" (' + m.f + " dòng " + m.line + " bản đồ chất liệu, mã " + m.code + ")" : '"' + w + '" (ô Từ giữ lại ở bước ' + (qIsR() ? "Viết bài" : "Viết kịch bản") + ")"; };
+    return {s:L.length ? "fail" : "ok", d:L.length ? "Bài không còn nguyên văn: " + L.map(where).join("; ") + ". Bài vừa sửa thì sửa lại chỗ ghi cho khớp bài mới (bước Chất liệu hoặc ô Từ giữ lại), hoặc đưa lại từ đó vào bài." : "Còn đủ " + k.length + " từ.", keep:"Không bỏ hoặc thay các từ giữ lại: " + k.join(", ") + "."};
   }}
 ], CH:[
   {c:"CH-A1", g:"A", t:"Đủ số câu của Part", src:"Bảng phân bố (VSTEP Specifications)", tier:"spec", who:"M"},

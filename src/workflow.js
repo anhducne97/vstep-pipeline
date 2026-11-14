@@ -341,6 +341,8 @@ function mapOrder(E){
   var num = {}; seq.forEach(function(x, i){ num[x.idx] = i + 1; });
   return {seq:seq, num:num, missing:E.res.filter(function(x){ return !x.span; })};
 }
+/* từ giữ lại lấy từ bản đồ chất liệu, kèm dòng và mã để báo đúng chỗ sửa */
+function mapKeepSrc(){ var M = S.map; if(!M) return []; var L = mapLines(), out = []; L.forEach(function(l, i){ var v = M.rows[l.key]; if(!v) return; if(v.w && /^(RE|VO|VO\(ID\))$/.test(v.code||"")) out.push({w:v.w, line:i + 1, code:v.code, f:"ô Từ"}); if(v.code === "IS" && v.q) out.push({w:v.q, line:i + 1, code:"IS", f:"ô Chỗ hỏi"}); }); return out; }
 function mapKeep(){ var M = S.map; if(!M) return []; var out = []; Object.keys(M.rows).forEach(function(k){ var v = M.rows[k]; if(v.w && /^(RE|VO|VO\(ID\))$/.test(v.code||"")) out.push(v.w); if(v.code === "IS" && v.q) out.push(v.q); }); return out; }
 function mapText(){
   var E = mapEval(); if(!E.res.some(function(x){ return x.v.q; })) return "";
