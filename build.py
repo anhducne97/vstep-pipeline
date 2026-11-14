@@ -30,3 +30,6 @@ import shutil
 shutil.copyfile(os.path.join(ROOT, 'src', 'vendor', 'firebase.mjs'), os.path.join(ROOT, 'dist', 'firebase.mjs'))
 shutil.copyfile(os.path.join(ROOT, 'src', 'vendor', 'docx.mjs'), os.path.join(ROOT, 'dist', 'docx.mjs'))
 print('Đã tạo dist/index.html (' + tag + ')')
+
+# bộ kiểm chạy bằng Node cho skill tự động (không chứa đặc tả riêng)
+subprocess.check_call(['python3', os.path.join(ROOT, 'tools', 'build_check.py')])
