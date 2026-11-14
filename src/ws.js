@@ -563,7 +563,7 @@ function wsDocChildren(D){
 }
 function wsDownload(btn){
   if(!wsHasContent()){ toast("Chưa có đề để xuất."); return; }
-  var old = btn.textContent; btn.disabled = true; btn.textContent = "Đang tạo file…";
+  var old = btn.textContent; btn.disabled = true; btn.setAttribute("data-why", "Đang tạo file, chờ trong giây lát."); btn.textContent = "Đang tạo file…";
   xpLib().then(function(D){
     var doc = new D.Document({styles:{default:{document:{run:{font:"Times New Roman", size:24}}}}, sections:[{properties:{page:{margin:{top:1134, bottom:1134, left:1134, right:1134}}}, children:wsDocChildren(D)}]});
     return D.Packer.toBlob(doc);
@@ -571,5 +571,5 @@ function wsDownload(btn){
     var a = document.createElement("a"), nm = ((S.code || "").trim() || SPEC[S.spec].label).replace(/[\\/:*?"<>|]+/g, "_");
     a.href = URL.createObjectURL(blob); a.download = nm + ".docx"; document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1500);
     toast("Đã tải file Word.");
-  }).catch(function(e){ toast("Không tạo được file: " + (e && e.message || e)); }).then(function(){ btn.disabled = false; btn.textContent = old; });
+  }).catch(function(e){ toast("Không tạo được file: " + (e && e.message || e)); }).then(function(){ btn.disabled = false; btn.removeAttribute("data-why"); btn.textContent = old; });
 }

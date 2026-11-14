@@ -173,14 +173,14 @@ function xpBuild(d){
 }
 function xpDownload(btn){
   if(!(S.slots.draft || "").trim()){ toast("Chưa có bài để xuất."); return; }
-  var old = btn ? btn.textContent : ""; if(btn){ btn.disabled = true; btn.textContent = "Đang tạo file…"; }
+  var old = btn ? btn.textContent : ""; if(btn){ btn.disabled = true; btn.setAttribute("data-why", "Đang tạo file, chờ trong giây lát."); btn.textContent = "Đang tạo file…"; }
   xpLib().then(function(d){ return d.Packer.toBlob(xpBuild(d)); }).then(function(blob){
     var name = ((S.code || "") + "_" + SPEC[S.spec].label).replace(/[\\\/:*?"<>|,]+/g, "").replace(/\s+/g, "_").replace(/^_+/, "") + ".docx";
     var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click();
     setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 2000);
     toast("Đã tạo " + name + ". Mở file để chèn ảnh minh chứng.");
   }).catch(function(e){ toast("Không tạo được file: " + (e && e.message ? e.message : e)); })
-  .then(function(){ if(btn){ btn.disabled = false; btn.textContent = old; } });
+  .then(function(){ if(btn){ btn.disabled = false; btn.removeAttribute("data-why"); btn.textContent = old; } });
 }
 function bindXp(){
   document.addEventListener("click", function(e){ var b = e.target.closest && e.target.closest("[data-xpdocx]"); if(b) xpDownload(b); });

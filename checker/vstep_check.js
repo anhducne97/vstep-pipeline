@@ -1116,7 +1116,7 @@ function renderB7(){
     var w = [];
     if(dn > maxD) w.push("Câu mới chênh " + dn + " từ (cho phép tối đa " + maxD + ").");
     if(flags.length) w.push("Từ mới vượt mức hoặc ngoài danh sách: " + esc(flags.join(", ")) + ".");
-    return '<div class="fx ' + (f.lvl==="nat" ? "see nat" : f.lvl) + (applied ? ' done' : '') + '"><div class="fxh"><label><input type="checkbox" data-fx="' + idx + '"' + (f.on ? ' checked' : '') + (loc ? '' : ' disabled') + '> Áp dụng</label><span class="tag">' + (f.lvl==="must" ? "PHẢI SỬA" : (f.lvl==="nat" ? "TỰ NHIÊN" : "NÊN XEM")) + '</span><span class="muted small">Sửa ' + esc(f.n) + '</span></div>'
+    return '<div class="fx ' + (f.lvl==="nat" ? "see nat" : f.lvl) + (applied ? ' done' : '') + '"><div class="fxh"><label><input type="checkbox" data-fx="' + idx + '"' + (f.on ? ' checked' : '') + (loc ? '' : ' disabled title="Không tìm thấy câu cần đổi trong bài hiện tại (bài đã đổi sau khi AI trả lời), nên không áp được."') + '> Áp dụng</label><span class="tag">' + (f.lvl==="must" ? "PHẢI SỬA" : (f.lvl==="nat" ? "TỰ NHIÊN" : "NÊN XEM")) + '</span><span class="muted small">Sửa ' + esc(f.n) + '</span></div>'
       + '<div class="row"><b>Đổi:</b> ' + wordDiffHTML(f.old, f.nw) + '</div>'
       + (f.why ? '<div class="row"><b>Vì:</b> ' + esc(f.why) + '</div>' : '')
       + '<div>' + st + '</div>' + (w.length ? '<div class="flag">' + w.join(" ") + '</div>' : '') + '</div>';
@@ -1379,7 +1379,7 @@ function renderSpec(){
   document.getElementById("specsum").innerHTML = parts.join(" · ") + "." + lockNote;
   var lh = document.getElementById("level-hint"); if(lh) lh.textContent = levelHint();
   var qf = document.getElementById("q-format"); if(qf) qf.textContent = qFormatText();
-  var pe = document.getElementById("set-paras"); pe.disabled = (!isR || S.spec==="R1"); if(S.spec==="R1") pe.value = 4;
+  var pe = document.getElementById("set-paras"); pe.disabled = (!isR || S.spec==="R1"); pe.title = S.spec==="R1" ? "Đọc Part 1 cố định 4 đoạn (QĐ 730)." : !isR ? "Số đoạn chỉ dùng cho bài Đọc." : ""; if(S.spec==="R1") pe.value = 4;
   var q = ["<b>Số câu:</b> " + esc(sp.qcount)];
   q.push("<b>Số câu theo bậc 3 / 4 / 5:</b> " + (sp.qdist ? esc(sp.qdist) : "cả bài Nghe 14 / 12 / 9; chia theo phần theo hướng dẫn của nhóm"));
   if(sp.skills) q.push("<b>Kỹ năng được hỏi:</b> " + esc(sp.skills));
@@ -1778,7 +1778,48 @@ function bindGates(){
     i.addEventListener("change", function(){ S.gates[k] = i.checked; save(); updateStepper(); });
   });
 }
+/* ---- nút hay ô bị khoá thì luôn báo lý do khi bấm ----
+   Nút (button): không dùng thuộc tính disabled thật (trình duyệt nuốt cú bấm, không báo được gì) mà dùng aria-disabled;
+   bấm vào thì hiện lý do. Ô nhập, ô chọn bị khoá: bắt sự kiện chạm (pointerdown) để báo lý do; lý do cũng hiện khi rê chuột.
+   Lý do lấy theo thứ tự: data-why, title, data-why của khung chứa, chế độ xem của bước. */
+var DIS_LAST = {t:0, m:""};
+function disWhy(el){
+  var w = el.getAttribute("data-why") || el.getAttribute("title") || "";
+  if(!w){ var c = el.closest("[data-why]"); if(c) w = c.getAttribute("data-why"); }
+  if(!w && el.hasAttribute("data-modelock")){ var sc = el.closest(".screen"); w = (sc && sc.getAttribute("data-modewhy")) || "Chế độ xem: bạn không sửa được ở bước này."; }
+  return w || "Chưa dùng được lúc này.";
+}
+function disSay(el){ var m = disWhy(el), now = Date.now(); if(m === DIS_LAST.m && now - DIS_LAST.t < 1500) return; DIS_LAST = {t:now, m:m}; toast(m); }
+function disInstall(){
+  try{
+    var d = Object.getOwnPropertyDescriptor(HTMLButtonElement.prototype, "disabled");
+    if(d && !HTMLButtonElement.prototype.__disPatched){
+      Object.defineProperty(HTMLButtonElement.prototype, "disabled", {configurable:true, get:function(){ return this.getAttribute("aria-disabled") === "true"; }, set:function(v){ if(v) this.setAttribute("aria-disabled", "true"); else this.removeAttribute("aria-disabled"); }});
+      HTMLButtonElement.prototype.__disPatched = true;
+    }
+  }catch(e){}
+  var fix = function(root){ (root.querySelectorAll ? root.querySelectorAll("button[disabled]") : []).forEach(function(b){ b.removeAttribute("disabled"); b.setAttribute("aria-disabled", "true"); }); if(root.tagName === "BUTTON" && root.hasAttribute("disabled")){ root.removeAttribute("disabled"); root.setAttribute("aria-disabled", "true"); } };
+  fix(document);
+  new MutationObserver(function(ms){ ms.forEach(function(m){ if(m.type === "attributes") fix(m.target); else m.addedNodes.forEach(function(n){ if(n.nodeType === 1) fix(n); }); }); }).observe(document.documentElement, {subtree:true, childList:true, attributes:true, attributeFilter:["disabled"]});
+  document.addEventListener("click", function(e){
+    var b = e.target.closest && e.target.closest('button[aria-disabled="true"]'); if(!b) return;
+    e.preventDefault(); e.stopImmediatePropagation(); disSay(b);
+  }, true);
+  document.addEventListener("pointerdown", function(e){
+    var t = e.target; if(!t || !t.closest) return;
+    var el = t.matches && t.matches("input:disabled, select:disabled, textarea:disabled") ? t : null;
+    if(!el){ var lb = t.closest("label"); var inp = lb && lb.querySelector("input:disabled, select:disabled"); if(inp) el = inp; }
+    if(el) disSay(el);
+  }, true);
+  // ô chữ chỉ đọc ở chế độ xem: gõ vào thì báo lý do
+  document.addEventListener("keydown", function(e){
+    var t = e.target; if(!t || !t.readOnly || !t.hasAttribute || !t.hasAttribute("data-modelock")) return;
+    if(e.key.length === 1 || e.key === "Backspace" || e.key === "Delete" || e.key === "Enter") disSay(t);
+  }, true);
+  document.addEventListener("paste", function(e){ var t = e.target; if(t && t.readOnly && t.hasAttribute && t.hasAttribute("data-modelock")) disSay(t); }, true);
+}
 function init(){
+  disInstall();
   applyOutputRules();
   load(); S.slots = S.slots||{}; S.fixOpen = S.fixOpen||{};
   if(!SPEC[S.spec]) S.spec = "R2";
@@ -1800,7 +1841,7 @@ function init(){
   document.getElementById("clear-all").addEventListener("click", function(){ clearData(true); togglePanel(false); toast("Đã xoá hết dữ liệu. Bắt đầu lại từ bước 1."); });
 }
 var toastT;
-function toast(msg){ var t = document.getElementById("toast"); t.textContent = msg; t.classList.remove("hidden"); clearTimeout(toastT); toastT = setTimeout(function(){ t.classList.add("hidden"); }, 2600); }
+function toast(msg){ var t = document.getElementById("toast"); t.textContent = msg; t.classList.remove("hidden"); clearTimeout(toastT); toastT = setTimeout(function(){ t.classList.add("hidden"); }, Math.min(9000, Math.max(2600, String(msg || "").length * 55))); }
 function clearData(all){
   S.gates = {}; S.fields = {}; S.slots = {}; S.code = ""; S.l1slot = "1"; S.qman = {}; S.fixOpen = {}; S.srcLang = "en"; S.srcMode = "text"; S.b7before = null; S.lib = null; S.notes = []; S.cl = {}; S.wf = null; S.map = null; S.prj = null; delete S.libCopyTitle; delete S.qBlindFor;
   if(all){
@@ -4638,7 +4679,7 @@ function clRowHTML(sc, e, mode){
   var needRead = r.full && !clReadState(sc).ok;
   if(human && e.s!=="na"){
     var dis = !can.ok ? ' disabled title="' + esc(can.why) + '"' : '';
-    act += '<button type="button" class="btn quiet sm' + (tk && tk.v==="ok" && e.h!=="recheck" ? " on" : "") + '" data-cltick="' + r.c + '" data-v="ok"' + (dis || (needRead ? ' disabled title="Đọc toàn ' + (sc === "CH" ? "bộ" : "bài") + ' trước (khung ở đầu checklist)"' : '')) + '>Đạt</button>'
+    act += '<button type="button" class="btn quiet sm' + (tk && tk.v==="ok" && e.h!=="recheck" ? " on" : "") + '" data-cltick="' + r.c + '" data-v="ok"' + (dis || (needRead ? ' disabled title="Bấm \'Tôi đã đọc toàn ' + (sc === "CH" ? "bộ" : "bài") + '\' ở khung đầu checklist trước, rồi mới bấm Đạt được."' : '')) + '>Đạt</button>'
       + '<button type="button" class="btn quiet sm' + (tk && tk.v==="no" ? " on no" : "") + '" data-cltick="' + r.c + '" data-v="no"' + dis + '>Chưa đạt</button>';
     // phiếu thẩm định: xem được người soạn tự đánh giá thế nào, nhưng chấm riêng
     if(mode !== "self"){ var st0 = clSelfTicks()[r.c]; if(st0) det += (det ? " " : "") + '<span class="muted">Người soạn tự đánh giá: ' + (st0.v === "ok" ? "Đạt" : "Chưa đạt") + (st0.note ? " (" + esc(st0.note) + ")" : "") + '.</span>'; }
@@ -4701,7 +4742,7 @@ function clPatchHTML(sc){
   if(!P.patches.length) return '<div class="note small">Không đọc được khối SỬA nào (mỗi khối cần dòng "SỬA số", "THAY:" và "BẰNG:").' + remindHTML(CL_REMIND) + '</div>';
   return '<div style="display:grid;gap:10px">' + P.patches.map(function(p, i){
     var st = p.err ? '<span class="flag">' + esc(p.err) + '</span>' : (p.out ? '<span class="flag">Nằm ở ' + esc(p.unit) + ', ngoài phạm vi ghi chú cho phép. Mặc định không áp dụng.</span>' : '<span class="okf">Khớp đúng một chỗ' + (p.unit ? " (" + esc(p.unit) + ")" : "") + '.</span>');
-    return '<div class="fx ' + (p.err ? "see done" : (p.out ? "see" : "must")) + '"><div class="fxh"><label><input type="checkbox" data-pon="' + i + '"' + (p.on ? " checked" : "") + (p.err ? " disabled" : "") + '> Áp dụng</label><span class="muted small">Sửa ' + esc(p.n) + (p.notes.length ? " · " + p.notes.map(function(n){ return n.code; }).join(", ") : "") + '</span></div><div class="row">' + wordDiffHTML(p.old, p.nw) + '</div><div>' + st + '</div></div>';
+    return '<div class="fx ' + (p.err ? "see done" : (p.out ? "see" : "must")) + '"><div class="fxh"><label><input type="checkbox" data-pon="' + i + '"' + (p.on ? " checked" : "") + (p.err ? ' disabled title="' + esc(p.err) + '"' : "") + '> Áp dụng</label><span class="muted small">Sửa ' + esc(p.n) + (p.notes.length ? " · " + p.notes.map(function(n){ return n.code; }).join(", ") : "") + '</span></div><div class="row">' + wordDiffHTML(p.old, p.nw) + '</div><div>' + st + '</div></div>';
   }).join("") + (P.skips.length ? '<div class="small muted">AI không sửa: ' + P.skips.map(esc).join("; ") + '</div>' : '') + '</div>'
     + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button type="button" class="btn primary" data-papply="' + sc + '">Áp dụng các chỗ đã chọn</button><span class="small muted">' + esc(P.msg||"") + '</span></div>';
 }
@@ -5643,7 +5684,7 @@ function wsDocChildren(D){
 }
 function wsDownload(btn){
   if(!wsHasContent()){ toast("Chưa có đề để xuất."); return; }
-  var old = btn.textContent; btn.disabled = true; btn.textContent = "Đang tạo file…";
+  var old = btn.textContent; btn.disabled = true; btn.setAttribute("data-why", "Đang tạo file, chờ trong giây lát."); btn.textContent = "Đang tạo file…";
   xpLib().then(function(D){
     var doc = new D.Document({styles:{default:{document:{run:{font:"Times New Roman", size:24}}}}, sections:[{properties:{page:{margin:{top:1134, bottom:1134, left:1134, right:1134}}}, children:wsDocChildren(D)}]});
     return D.Packer.toBlob(doc);
@@ -5651,7 +5692,7 @@ function wsDownload(btn){
     var a = document.createElement("a"), nm = ((S.code || "").trim() || SPEC[S.spec].label).replace(/[\\/:*?"<>|]+/g, "_");
     a.href = URL.createObjectURL(blob); a.download = nm + ".docx"; document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1500);
     toast("Đã tải file Word.");
-  }).catch(function(e){ toast("Không tạo được file: " + (e && e.message || e)); }).then(function(){ btn.disabled = false; btn.textContent = old; });
+  }).catch(function(e){ toast("Không tạo được file: " + (e && e.message || e)); }).then(function(){ btn.disabled = false; btn.removeAttribute("data-why"); btn.textContent = old; });
 }
 
 ;
@@ -6066,9 +6107,9 @@ function wfReviewHTML(){
       var g = qSig(it), a = w.take[g], d = w.dec[g] || {}, prev = wfPrevItem(it.n), changed = prev && qSig(prev) !== g;
       var codes = CL_ROWS.CH.map(function(r){ return r.c; }).concat(["KHÁC"]);
       return '<tr data-sig="' + g + '"><td class="clc"><b>Câu ' + it.n + '</b><div class="small muted">' + esc((it.lv||"") + " " + (it.mức||"") + " · " + (it.code||"")) + '</div></td><td>' + esc(it.stem||"") + '<div class="small">' + (a ? (a.a === it.ans ? '<span class="ok">Bạn chọn ' + a.a + ', đúng đáp án</span>' : '<span class="no">Bạn chọn ' + a.a + ', đáp án là ' + esc(it.ans||"?") + ': xem kỹ</span>') + (a.unsure ? ' <span class="warnc">· phân vân</span>' : '') : '<span class="muted">chưa làm</span>') + '</div>' + (changed ? '<details class="small"><summary class="warnc">Đã sửa sau lần xét trước: xem chỗ khác</summary>' + wordDiffHTML(wfItemText(prev), wfItemText(it)) + '</details>' : '') + '</td>'
-        + '<td class="cla"><select data-dec="d"' + (mine ? '' : ' disabled') + '><option value="">Quyết định…</option>' + WF_DEC.map(function(x){ return '<option' + (d.d === x ? " selected" : "") + '>' + x + '</option>'; }).join("") + '</select>'
-        + '<select data-dec="code"' + (mine ? '' : ' disabled') + '>' + codes.map(function(c){ return '<option' + ((d.code || "KHÁC") === c ? " selected" : "") + '>' + c + '</option>'; }).join("") + '</select>'
-        + '<input type="text" data-dec="note" placeholder="Nhận xét (bắt buộc khi chưa Đạt)" value="' + esc(d.note||"") + '"' + (mine ? '' : ' disabled') + '></td></tr>';
+        + '<td class="cla"><select data-dec="d"' + (mine ? '' : ' disabled title="Chỉ người thẩm định câu hỏi (' + esc(wfWhoName("tdch")) + ') quyết định."') + '><option value="">Quyết định…</option>' + WF_DEC.map(function(x){ return '<option' + (d.d === x ? " selected" : "") + '>' + x + '</option>'; }).join("") + '</select>'
+        + '<select data-dec="code"' + (mine ? '' : ' disabled title="Chỉ người thẩm định câu hỏi (' + esc(wfWhoName("tdch")) + ') quyết định."') + '>' + codes.map(function(c){ return '<option' + ((d.code || "KHÁC") === c ? " selected" : "") + '>' + c + '</option>'; }).join("") + '</select>'
+        + '<input type="text" data-dec="note" placeholder="Nhận xét (bắt buộc khi chưa Đạt)" value="' + esc(d.note||"") + '"' + (mine ? '' : ' disabled title="Chỉ người thẩm định câu hỏi (' + esc(wfWhoName("tdch")) + ') quyết định."') + '></td></tr>';
     }).join("") + '</tbody></table>';
   }
   return h;
@@ -6226,13 +6267,19 @@ function wfExtend(v){
 /* ---- giao diện: thanh quy trình ---- */
 function wfStChip(st){ return '<span class="wfst">' + esc(st || (S.prj ? "Chưa bắt đầu" : "Chưa vào quy trình")) + '</span>'; }
 function wfCondHTML(c){ return '<li class="' + (c.info ? "i" : (c.ok ? "g" : "b")) + '">' + (c.info ? "ℹ " : (c.ok ? "✓ " : "✗ ")) + esc(c.t) + '</li>'; }
+/* lý do một việc chưa bấm được: việc của ai, hoặc các điều kiện chưa đạt */
+function wfWhyText(A){
+  if(A.why && A.why.length) return "Chưa bấm được: " + A.why.join("; ") + ".";
+  var bad = (A.conds || []).filter(function(c){ return !c.ok && !c.info; }).map(function(c){ return c.t; });
+  return bad.length ? "Còn thiếu: " + bad.join("; ") + "." : "Chưa đủ điều kiện.";
+}
 function wfActHTML(A, isReq, i){
   var t = A.t;
   return '<div class="wfact' + (A.ok ? " ok" : "") + '"><div class="wfacth"><b>' + esc(t.label) + '</b>' + (isReq ? "" : ' <span class="small muted">→ ' + esc(t.toFn ? t.toFn(wfData()) : t.to) + '</span>') + ' <span class="small muted">· ' + WF_ROLES[t.role] + '</span></div>'
     + (A.why.length ? '<div class="small warnc">' + esc(A.why.join("; ")) + '</div>' : '')
     + (A.conds.length ? '<ul class="wfcond">' + A.conds.map(wfCondHTML).join("") + '</ul>' : '')
     + (t.note && !A.why.length ? '<textarea rows="2" data-wfnote="' + (isReq ? "r" : "t") + i + '" placeholder="' + esc(t.ph || "Nhận xét, lý do (bắt buộc)") + '"></textarea>' : '')
-    + '<button type="button" class="btn ' + (A.ok ? "primary" : "quiet") + '" data-wfgo="' + (isReq ? "r" : "t") + i + '"' + (A.ok ? "" : " disabled") + '>' + esc(t.label) + '</button></div>';
+    + '<button type="button" class="btn ' + (A.ok ? "primary" : "quiet") + '" data-wfgo="' + (isReq ? "r" : "t") + i + '"' + (A.ok ? "" : ' disabled title="' + esc(wfWhyText(A)) + '"') + '>' + esc(t.label) + '</button></div>';
 }
 function wfRender(){
   var box = document.getElementById("wfbar"); if(!box) return;
@@ -6258,8 +6305,8 @@ function wfRender(){
   // phân công
   var canAs = dev || wfIsCoordUser() || (!w.st && !S.prj);
   var pool = (S.prj && typeof prjPeople === "function") ? prjPeople(S.prj.id) : ((typeof LIB !== "undefined" && LIB.staff) ? LIB.staff.map(function(x){ return x.email; }) : []);
-  h += '<details data-k="as"' + (openK.as ? " open" : "") + '><summary>Phân công</summary><div class="wfas">' + WF_ROLE_ORDER.map(function(r){ return '<label class="small">' + WF_ROLES[r] + '<input type="email" data-wfas="' + r + '" list="wf-staff" value="' + esc(w.as[r]||"") + '" placeholder="' + (r === "coord" ? "để trống: mọi quản trị" : "email Google") + '"' + (canAs ? "" : " disabled") + '>' + (r !== "coord" ? '<span class="wfrdue"><span class="muted">xong trước</span><input type="date" data-wfrdue="' + r + '" value="' + esc((w.dues || {})[r] || "") + '"' + (canAs ? "" : " disabled") + '></span>' : '') + '</label>'; }).join("") + '<datalist id="wf-staff">' + pool.map(function(x){ return '<option value="' + esc(x) + '">'; }).join("") + '</datalist>'
-    + '<label class="small">Hạn hoàn thành bài<input type="date" id="wf-due" value="' + esc(w.due || "") + '"' + (canAs ? "" : " disabled") + '></label>'
+  h += '<details data-k="as"' + (openK.as ? " open" : "") + '><summary>Phân công</summary><div class="wfas">' + WF_ROLE_ORDER.map(function(r){ return '<label class="small">' + WF_ROLES[r] + '<input type="email" data-wfas="' + r + '" list="wf-staff" value="' + esc(w.as[r]||"") + '" placeholder="' + (r === "coord" ? "để trống: mọi quản trị" : "email Google") + '"' + (canAs ? "" : ' disabled title="Chỉ Điều phối hoặc quản trị đổi phân công và hạn."') + '>' + (r !== "coord" ? '<span class="wfrdue"><span class="muted">xong trước</span><input type="date" data-wfrdue="' + r + '" value="' + esc((w.dues || {})[r] || "") + '"' + (canAs ? "" : ' disabled title="Chỉ Điều phối hoặc quản trị đổi phân công và hạn."') + '></span>' : '') + '</label>'; }).join("") + '<datalist id="wf-staff">' + pool.map(function(x){ return '<option value="' + esc(x) + '">'; }).join("") + '</datalist>'
+    + '<label class="small">Hạn hoàn thành bài<input type="date" id="wf-due" value="' + esc(w.due || "") + '"' + (canAs ? "" : ' disabled title="Chỉ Điều phối hoặc quản trị đổi phân công và hạn."') + '></label>'
     + (w.as.nl && w.as.nl === w.as.tdnl ? '<p class="small no">Người soạn ngữ liệu trùng người thẩm định ngữ liệu: không ai duyệt bài của chính mình.</p>' : '') + (w.as.ch && w.as.ch === w.as.tdch ? '<p class="small no">Người soạn câu hỏi trùng người thẩm định câu hỏi.</p>' : '') + (w.as.nl && w.as.nl === w.as.ch ? '<p class="small muted">Nên để người soạn câu hỏi khác người soạn ngữ liệu (khuyến khích, không bắt buộc).</p>' : '')
     + (S.prj ? '<p class="small muted">Bài thuộc dự án ' + esc(S.prj.name || "") + '. Điều phối phân công nhiều bài cùng lúc ở trang Nhóm → Dự án.</p>' : '') + (canAs ? '' : '<p class="small muted">Chỉ Điều phối hoặc quản trị đổi phân công.</p>') + '</div></details>';
   // nhật ký
@@ -6316,7 +6363,7 @@ function mapRender(){
     + E.glob.map(function(g){ return '<div class="small warnc">• ' + esc(g.t) + '</div>'; }).join("")
     + '<p class="small muted">Dòng xếp theo bảng phân bố. <b>→ Câu n</b> là số câu trong đề, tính theo vị trí chỗ hỏi trong bài; câu về cả bài (MI, TO) xếp cuối (quy ước nhóm CH-B3). Câu lệnh soạn câu hỏi ở bước 9 dùng đúng thứ tự này.</p>'
     + '<table class="cltab maptab"><tbody>' + E.res.map(function(x, i){
-      var v = x.v, l = x.l, k = l.key, dis = lk ? " disabled" : "";
+      var v = x.v, l = x.l, k = l.key, dis = lk ? ' disabled title="Bài đã khoá sau thẩm định ngữ liệu: bản đồ chất liệu không sửa nữa. Cần đổi thì gửi Yêu cầu sửa ngữ liệu."' : "";
       return '<tr class="clr ' + x.s + '"><td class="clc"><b>' + (i+1) + '</b><div class="small muted">' + esc(l.lv + " " + l.m) + '</div>' + (ORD.num[i] ? '<div class="small mapqn" title="Số câu trong đề: theo vị trí chỗ hỏi trong bài; câu về cả bài xếp cuối">→ Câu ' + ORD.num[i] + '</div>' : '') + '</td><td>'
         + '<div class="mapf"><select data-mk="' + k + '" data-mf="code"' + dis + '><option value="">Mã…</option>' + l.codes.map(function(c){ return '<option' + (x.code === c ? " selected" : "") + '>' + c + '</option>'; }).join("") + '</select>' + (v.codeAuto && x.code ? '<span class="small muted" title="Trang chọn sẵn mã đầu tiên của dòng này trong bảng phân bố' + (v.codeAI ? '; AI ghi ' + esc(v.codeAI) + ', mã này không có ở dòng này' : '') + '. Đổi được.">chọn sẵn' + (v.codeAI ? ' (AI ghi ' + esc(v.codeAI) + ')' : '') + '</span>' : '')
         + (l.sk ? '<span class="small muted">' + esc(l.sk.map(function(s){ return LSK[s] ? LSK[s][1] : s; }).join("; ")) + '</span>' : '')
@@ -6354,7 +6401,7 @@ function wfPropHTML(){
       + '<p class="small muted">Có chủ đề và điền khung Thông tin nguồn (cuối bước này) rồi thì gửi để Điều phối duyệt trước khi viết bài.</p>'
       + (P.conds.length ? '<ul class="wfcond">' + P.conds.map(wfCondHTML).join("") + '</ul>' : '')
       + (P.why.length ? '<div class="small warnc">' + esc(P.why.join("; ")) + '</div>' : '')
-      + '<div><button type="button" class="btn ' + (P.ok ? "primary" : "quiet") + '" data-g1go="propose"' + (P.ok ? "" : " disabled") + '>Gửi đề xuất chủ đề</button></div>';
+      + '<div><button type="button" class="btn ' + (P.ok ? "primary" : "quiet") + '" data-g1go="propose"' + (P.ok ? "" : ' disabled title="Chưa đủ điều kiện ghi ở trên."') + '>Gửi đề xuất chủ đề</button></div>';
   }
   if(st === "Chủ đề đề xuất") return '<div class="wfg1h"><div><div class="kicker">Cổng 1</div><h3>Đề xuất đang chờ duyệt</h3></div><button type="button" class="btn sm" data-rvopen="1">Mở Phiếu duyệt</button></div><p class="small muted">' + (wfCan("coord") ? 'Thầy cô là Điều phối: bấm Mở Phiếu duyệt (hoặc nút Phiếu duyệt ở góc dưới bên phải) để xét và duyệt.' : 'Điều phối (' + esc(wfWhoName("coord")) + ') đang xét. Yêu cầu sửa (nếu có) hiện trong Phiếu duyệt.') + '</p>';
   return "";
@@ -6396,7 +6443,7 @@ function wfG1Acts(left){
   var A = wfAvail(wfFind("g1ok")), h = "";
   var why = A.why.concat(left.length ? ["còn " + left.length + " tiêu chí chưa Đạt: " + left.join(", ")] : []);
   h += '<div class="wfg1a">'
-    + '<div class="wfg1go"><button type="button" class="btn ' + (A.ok ? "primary" : "quiet") + ' big" data-g1go="ok"' + (A.ok ? "" : " disabled") + '>Duyệt đề xuất</button><span class="small' + (A.ok ? " muted" : " warnc") + '">' + (A.ok ? "Bài chuyển sang Đang adapt; người soạn nhận thông báo để viết tiếp." : esc("Chưa duyệt được: " + why.join("; ") + ".")) + '</span></div>'
+    + '<div class="wfg1go"><button type="button" class="btn ' + (A.ok ? "primary" : "quiet") + ' big" data-g1go="ok"' + (A.ok ? "" : ' disabled title="' + esc(wfWhyText(A)) + '"') + '>Duyệt đề xuất</button><span class="small' + (A.ok ? " muted" : " warnc") + '">' + (A.ok ? "Bài chuyển sang Đang adapt; người soạn nhận thông báo để viết tiếp." : esc("Chưa duyệt được: " + why.join("; ") + ".")) + '</span></div>'
     + '<div class="wfg1fix"><label class="small" for="wf-g1fix"><b>Cần người soạn sửa đề xuất?</b> Ghi rõ sửa gì. Bài giữ trạng thái chờ duyệt, người soạn nhận thông báo; sửa xong thầy cô duyệt lại ở phiếu này.</label>'
     + '<textarea id="wf-g1fix" rows="3" data-g1note="fix" placeholder="Ví dụ: [NL-A4] Chưa có giấy phép sử dụng của nguồn."></textarea><div><button type="button" class="btn" data-g1go="fix">Gửi yêu cầu sửa</button></div></div>'
     + '<details class="wfg1no"><summary class="small">Không duyệt chủ đề này, cho thay bài</summary><textarea rows="2" data-g1note="no" placeholder="Vì sao cho thay bài (bắt buộc)"></textarea><div><button type="button" class="btn quiet" data-g1go="no">Không duyệt, thay bài</button></div></details>'
@@ -6676,6 +6723,7 @@ function wfModeApply(){
     bar.className = "modebar " + m.mode; if(bar.getAttribute("data-h") !== html){ bar.innerHTML = html; bar.setAttribute("data-h", html); }
   }
   var lock = !!m && m.mode !== "edit";
+  if(m) scr.setAttribute("data-modewhy", (m.head || "Chế độ xem").replace(/^[^\wÀ-ỹ]+/, "") + (m.sub ? ". " + String(m.sub).replace(/<[^>]+>/g, "") : "")); else scr.removeAttribute("data-modewhy");
   scr.querySelectorAll("textarea, input, select, #mapbox button").forEach(function(el){
     if(el.closest(WF_MODE_KEEP) || el.type === "search" || el.type === "hidden" || el.type === "file") return;
     var text = el.tagName === "TEXTAREA" || (el.tagName === "INPUT" && /^(text|number|url|email|)$/.test(el.type || ""));

@@ -674,7 +674,7 @@ function renderB7(){
     var w = [];
     if(dn > maxD) w.push("Câu mới chênh " + dn + " từ (cho phép tối đa " + maxD + ").");
     if(flags.length) w.push("Từ mới vượt mức hoặc ngoài danh sách: " + esc(flags.join(", ")) + ".");
-    return '<div class="fx ' + (f.lvl==="nat" ? "see nat" : f.lvl) + (applied ? ' done' : '') + '"><div class="fxh"><label><input type="checkbox" data-fx="' + idx + '"' + (f.on ? ' checked' : '') + (loc ? '' : ' disabled') + '> Áp dụng</label><span class="tag">' + (f.lvl==="must" ? "PHẢI SỬA" : (f.lvl==="nat" ? "TỰ NHIÊN" : "NÊN XEM")) + '</span><span class="muted small">Sửa ' + esc(f.n) + '</span></div>'
+    return '<div class="fx ' + (f.lvl==="nat" ? "see nat" : f.lvl) + (applied ? ' done' : '') + '"><div class="fxh"><label><input type="checkbox" data-fx="' + idx + '"' + (f.on ? ' checked' : '') + (loc ? '' : ' disabled title="Không tìm thấy câu cần đổi trong bài hiện tại (bài đã đổi sau khi AI trả lời), nên không áp được."') + '> Áp dụng</label><span class="tag">' + (f.lvl==="must" ? "PHẢI SỬA" : (f.lvl==="nat" ? "TỰ NHIÊN" : "NÊN XEM")) + '</span><span class="muted small">Sửa ' + esc(f.n) + '</span></div>'
       + '<div class="row"><b>Đổi:</b> ' + wordDiffHTML(f.old, f.nw) + '</div>'
       + (f.why ? '<div class="row"><b>Vì:</b> ' + esc(f.why) + '</div>' : '')
       + '<div>' + st + '</div>' + (w.length ? '<div class="flag">' + w.join(" ") + '</div>' : '') + '</div>';
@@ -937,7 +937,7 @@ function renderSpec(){
   document.getElementById("specsum").innerHTML = parts.join(" · ") + "." + lockNote;
   var lh = document.getElementById("level-hint"); if(lh) lh.textContent = levelHint();
   var qf = document.getElementById("q-format"); if(qf) qf.textContent = qFormatText();
-  var pe = document.getElementById("set-paras"); pe.disabled = (!isR || S.spec==="R1"); if(S.spec==="R1") pe.value = 4;
+  var pe = document.getElementById("set-paras"); pe.disabled = (!isR || S.spec==="R1"); pe.title = S.spec==="R1" ? "Đọc Part 1 cố định 4 đoạn (QĐ 730)." : !isR ? "Số đoạn chỉ dùng cho bài Đọc." : ""; if(S.spec==="R1") pe.value = 4;
   var q = ["<b>Số câu:</b> " + esc(sp.qcount)];
   q.push("<b>Số câu theo bậc 3 / 4 / 5:</b> " + (sp.qdist ? esc(sp.qdist) : "cả bài Nghe 14 / 12 / 9; chia theo phần theo hướng dẫn của nhóm"));
   if(sp.skills) q.push("<b>Kỹ năng được hỏi:</b> " + esc(sp.skills));
@@ -1336,7 +1336,48 @@ function bindGates(){
     i.addEventListener("change", function(){ S.gates[k] = i.checked; save(); updateStepper(); });
   });
 }
+/* ---- nút hay ô bị khoá thì luôn báo lý do khi bấm ----
+   Nút (button): không dùng thuộc tính disabled thật (trình duyệt nuốt cú bấm, không báo được gì) mà dùng aria-disabled;
+   bấm vào thì hiện lý do. Ô nhập, ô chọn bị khoá: bắt sự kiện chạm (pointerdown) để báo lý do; lý do cũng hiện khi rê chuột.
+   Lý do lấy theo thứ tự: data-why, title, data-why của khung chứa, chế độ xem của bước. */
+var DIS_LAST = {t:0, m:""};
+function disWhy(el){
+  var w = el.getAttribute("data-why") || el.getAttribute("title") || "";
+  if(!w){ var c = el.closest("[data-why]"); if(c) w = c.getAttribute("data-why"); }
+  if(!w && el.hasAttribute("data-modelock")){ var sc = el.closest(".screen"); w = (sc && sc.getAttribute("data-modewhy")) || "Chế độ xem: bạn không sửa được ở bước này."; }
+  return w || "Chưa dùng được lúc này.";
+}
+function disSay(el){ var m = disWhy(el), now = Date.now(); if(m === DIS_LAST.m && now - DIS_LAST.t < 1500) return; DIS_LAST = {t:now, m:m}; toast(m); }
+function disInstall(){
+  try{
+    var d = Object.getOwnPropertyDescriptor(HTMLButtonElement.prototype, "disabled");
+    if(d && !HTMLButtonElement.prototype.__disPatched){
+      Object.defineProperty(HTMLButtonElement.prototype, "disabled", {configurable:true, get:function(){ return this.getAttribute("aria-disabled") === "true"; }, set:function(v){ if(v) this.setAttribute("aria-disabled", "true"); else this.removeAttribute("aria-disabled"); }});
+      HTMLButtonElement.prototype.__disPatched = true;
+    }
+  }catch(e){}
+  var fix = function(root){ (root.querySelectorAll ? root.querySelectorAll("button[disabled]") : []).forEach(function(b){ b.removeAttribute("disabled"); b.setAttribute("aria-disabled", "true"); }); if(root.tagName === "BUTTON" && root.hasAttribute("disabled")){ root.removeAttribute("disabled"); root.setAttribute("aria-disabled", "true"); } };
+  fix(document);
+  new MutationObserver(function(ms){ ms.forEach(function(m){ if(m.type === "attributes") fix(m.target); else m.addedNodes.forEach(function(n){ if(n.nodeType === 1) fix(n); }); }); }).observe(document.documentElement, {subtree:true, childList:true, attributes:true, attributeFilter:["disabled"]});
+  document.addEventListener("click", function(e){
+    var b = e.target.closest && e.target.closest('button[aria-disabled="true"]'); if(!b) return;
+    e.preventDefault(); e.stopImmediatePropagation(); disSay(b);
+  }, true);
+  document.addEventListener("pointerdown", function(e){
+    var t = e.target; if(!t || !t.closest) return;
+    var el = t.matches && t.matches("input:disabled, select:disabled, textarea:disabled") ? t : null;
+    if(!el){ var lb = t.closest("label"); var inp = lb && lb.querySelector("input:disabled, select:disabled"); if(inp) el = inp; }
+    if(el) disSay(el);
+  }, true);
+  // ô chữ chỉ đọc ở chế độ xem: gõ vào thì báo lý do
+  document.addEventListener("keydown", function(e){
+    var t = e.target; if(!t || !t.readOnly || !t.hasAttribute || !t.hasAttribute("data-modelock")) return;
+    if(e.key.length === 1 || e.key === "Backspace" || e.key === "Delete" || e.key === "Enter") disSay(t);
+  }, true);
+  document.addEventListener("paste", function(e){ var t = e.target; if(t && t.readOnly && t.hasAttribute && t.hasAttribute("data-modelock")) disSay(t); }, true);
+}
 function init(){
+  disInstall();
   applyOutputRules();
   load(); S.slots = S.slots||{}; S.fixOpen = S.fixOpen||{};
   if(!SPEC[S.spec]) S.spec = "R2";
@@ -1358,7 +1399,7 @@ function init(){
   document.getElementById("clear-all").addEventListener("click", function(){ clearData(true); togglePanel(false); toast("Đã xoá hết dữ liệu. Bắt đầu lại từ bước 1."); });
 }
 var toastT;
-function toast(msg){ var t = document.getElementById("toast"); t.textContent = msg; t.classList.remove("hidden"); clearTimeout(toastT); toastT = setTimeout(function(){ t.classList.add("hidden"); }, 2600); }
+function toast(msg){ var t = document.getElementById("toast"); t.textContent = msg; t.classList.remove("hidden"); clearTimeout(toastT); toastT = setTimeout(function(){ t.classList.add("hidden"); }, Math.min(9000, Math.max(2600, String(msg || "").length * 55))); }
 function clearData(all){
   S.gates = {}; S.fields = {}; S.slots = {}; S.code = ""; S.l1slot = "1"; S.qman = {}; S.fixOpen = {}; S.srcLang = "en"; S.srcMode = "text"; S.b7before = null; S.lib = null; S.notes = []; S.cl = {}; S.wf = null; S.map = null; S.prj = null; delete S.libCopyTitle; delete S.qBlindFor;
   if(all){

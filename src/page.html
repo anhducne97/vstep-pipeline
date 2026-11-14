@@ -98,6 +98,7 @@ textarea.sm{min-height:90px}
 
 /* Buttons */
 button{font:inherit;cursor:pointer}
+button[aria-disabled="true"]{opacity:.5;cursor:not-allowed}
 .btn{border:1px solid var(--accent);background:var(--card);color:var(--accent);border-radius:10px;padding:8px 16px;font-weight:600;font-size:.95rem}
 .btn.primary{background:var(--accent);color:var(--accent-ink)}
 a.btn{text-decoration:none;display:inline-block}
@@ -1323,7 +1324,7 @@ pre{max-width:100%;overflow-x:auto}
   <div class="card clbox" data-cl="NL"></div>
 
   <div class="checks"><h3>Trước khi sang bước sau</h3>
-    <label><input type="checkbox" data-gate="cl-ck" disabled><span>Checklist ngữ liệu đạt (tự đánh dấu): không còn dòng "Phải sửa", mọi dòng "Người" đã được bấm Đạt, không còn ghi chú PHẢI SỬA đang mở.</span></label>
+    <label><input type="checkbox" data-gate="cl-ck" disabled data-why="Trang tự đánh dấu ô này khi đủ điều kiện ghi bên cạnh; không bấm tay."><span>Checklist ngữ liệu đạt (tự đánh dấu): không còn dòng "Phải sửa", mọi dòng "Người" đã được bấm Đạt, không còn ghi chú PHẢI SỬA đang mở.</span></label>
   </div>
   <div class="navrow"><button class="btn quiet" type="button" data-prev>← Quay lại</button><span class="navmsg"></span><button class="btn primary big" type="button" data-next>Tiếp tục →</button></div>
 </section>
@@ -1414,8 +1415,8 @@ pre{max-width:100%;overflow-x:auto}
   <div class="card clbox" data-cl="CH"></div>
 
   <div class="checks"><h3>Trước khi sang bước sau</h3>
-    <label><input type="checkbox" data-gate="ch-man" disabled><span>Mọi câu đều được bạn chọn "Đạt" ở phần soát tay (tự đánh dấu khi xong): câu bậc 4 cao, bậc 5 có hàm ngôn thật; phương án nhiễu đúng khuôn của QĐ 730 và đều có tác dụng; mỗi câu đúng một đáp án.</span></label>
-    <label><input type="checkbox" data-gate="ch-ck" disabled><span>Checklist câu hỏi đạt (tự đánh dấu): không còn dòng "Phải sửa", mọi dòng "Người" đã được bấm Đạt (gồm: các câu không gợi ý đáp án cho nhau, người thẩm định tự làm đúng hết), không còn ghi chú PHẢI SỬA đang mở.</span></label>
+    <label><input type="checkbox" data-gate="ch-man" disabled data-why="Trang tự đánh dấu ô này khi đủ điều kiện ghi bên cạnh; không bấm tay."><span>Mọi câu đều được bạn chọn "Đạt" ở phần soát tay (tự đánh dấu khi xong): câu bậc 4 cao, bậc 5 có hàm ngôn thật; phương án nhiễu đúng khuôn của QĐ 730 và đều có tác dụng; mỗi câu đúng một đáp án.</span></label>
+    <label><input type="checkbox" data-gate="ch-ck" disabled data-why="Trang tự đánh dấu ô này khi đủ điều kiện ghi bên cạnh; không bấm tay."><span>Checklist câu hỏi đạt (tự đánh dấu): không còn dòng "Phải sửa", mọi dòng "Người" đã được bấm Đạt (gồm: các câu không gợi ý đáp án cho nhau, người thẩm định tự làm đúng hết), không còn ghi chú PHẢI SỬA đang mở.</span></label>
   </div>
   <div class="navrow"><button class="btn quiet" type="button" data-prev>← Quay lại</button><span class="navmsg"></span><button class="btn primary big" type="button" data-next>Tiếp tục →</button></div>
 </section>
@@ -1510,7 +1511,7 @@ pre{max-width:100%;overflow-x:auto}
   <div class="clbox" data-cl="WS"></div>
   <div class="card"><h3>Xuất file Word</h3><p class="small muted">Theo bố cục phần WRITING, SPEAKING của biểu mẫu đề hoàn chỉnh. Mỗi nhiệm vụ một file; ghép vào file đề chung của nhóm.</p><button class="btn primary" type="button" data-wsdocx>Tải file Word</button></div>
   <div class="checks"><h3>Trước khi nộp</h3>
-    <label><input type="checkbox" data-gate="ws-ck" disabled><span>Checklist đạt (trang tự đánh dấu).</span></label>
+    <label><input type="checkbox" data-gate="ws-ck" disabled data-why="Trang tự đánh dấu ô này khi đủ điều kiện ghi bên cạnh; không bấm tay."><span>Checklist đạt (trang tự đánh dấu).</span></label>
   </div>
   <div class="navrow"><button class="btn quiet" type="button" data-prev>← Quay lại</button><span class="navmsg"></span><span></span></div>
 </section>

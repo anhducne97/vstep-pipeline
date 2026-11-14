@@ -641,7 +641,7 @@ function clRowHTML(sc, e, mode){
   var needRead = r.full && !clReadState(sc).ok;
   if(human && e.s!=="na"){
     var dis = !can.ok ? ' disabled title="' + esc(can.why) + '"' : '';
-    act += '<button type="button" class="btn quiet sm' + (tk && tk.v==="ok" && e.h!=="recheck" ? " on" : "") + '" data-cltick="' + r.c + '" data-v="ok"' + (dis || (needRead ? ' disabled title="Đọc toàn ' + (sc === "CH" ? "bộ" : "bài") + ' trước (khung ở đầu checklist)"' : '')) + '>Đạt</button>'
+    act += '<button type="button" class="btn quiet sm' + (tk && tk.v==="ok" && e.h!=="recheck" ? " on" : "") + '" data-cltick="' + r.c + '" data-v="ok"' + (dis || (needRead ? ' disabled title="Bấm \'Tôi đã đọc toàn ' + (sc === "CH" ? "bộ" : "bài") + '\' ở khung đầu checklist trước, rồi mới bấm Đạt được."' : '')) + '>Đạt</button>'
       + '<button type="button" class="btn quiet sm' + (tk && tk.v==="no" ? " on no" : "") + '" data-cltick="' + r.c + '" data-v="no"' + dis + '>Chưa đạt</button>';
     // phiếu thẩm định: xem được người soạn tự đánh giá thế nào, nhưng chấm riêng
     if(mode !== "self"){ var st0 = clSelfTicks()[r.c]; if(st0) det += (det ? " " : "") + '<span class="muted">Người soạn tự đánh giá: ' + (st0.v === "ok" ? "Đạt" : "Chưa đạt") + (st0.note ? " (" + esc(st0.note) + ")" : "") + '.</span>'; }
@@ -704,7 +704,7 @@ function clPatchHTML(sc){
   if(!P.patches.length) return '<div class="note small">Không đọc được khối SỬA nào (mỗi khối cần dòng "SỬA số", "THAY:" và "BẰNG:").' + remindHTML(CL_REMIND) + '</div>';
   return '<div style="display:grid;gap:10px">' + P.patches.map(function(p, i){
     var st = p.err ? '<span class="flag">' + esc(p.err) + '</span>' : (p.out ? '<span class="flag">Nằm ở ' + esc(p.unit) + ', ngoài phạm vi ghi chú cho phép. Mặc định không áp dụng.</span>' : '<span class="okf">Khớp đúng một chỗ' + (p.unit ? " (" + esc(p.unit) + ")" : "") + '.</span>');
-    return '<div class="fx ' + (p.err ? "see done" : (p.out ? "see" : "must")) + '"><div class="fxh"><label><input type="checkbox" data-pon="' + i + '"' + (p.on ? " checked" : "") + (p.err ? " disabled" : "") + '> Áp dụng</label><span class="muted small">Sửa ' + esc(p.n) + (p.notes.length ? " · " + p.notes.map(function(n){ return n.code; }).join(", ") : "") + '</span></div><div class="row">' + wordDiffHTML(p.old, p.nw) + '</div><div>' + st + '</div></div>';
+    return '<div class="fx ' + (p.err ? "see done" : (p.out ? "see" : "must")) + '"><div class="fxh"><label><input type="checkbox" data-pon="' + i + '"' + (p.on ? " checked" : "") + (p.err ? ' disabled title="' + esc(p.err) + '"' : "") + '> Áp dụng</label><span class="muted small">Sửa ' + esc(p.n) + (p.notes.length ? " · " + p.notes.map(function(n){ return n.code; }).join(", ") : "") + '</span></div><div class="row">' + wordDiffHTML(p.old, p.nw) + '</div><div>' + st + '</div></div>';
   }).join("") + (P.skips.length ? '<div class="small muted">AI không sửa: ' + P.skips.map(esc).join("; ") + '</div>' : '') + '</div>'
     + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button type="button" class="btn primary" data-papply="' + sc + '">Áp dụng các chỗ đã chọn</button><span class="small muted">' + esc(P.msg||"") + '</span></div>';
 }
