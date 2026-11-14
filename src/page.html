@@ -978,7 +978,7 @@ pre{max-width:100%;overflow-x:auto}
   </div>
     <div class="card">
     <h3>Thông tin nguồn cho phiếu nộp</h3>
-    <p class="small muted">Bắt buộc trước khi đề xuất chủ đề (Điều phối xét ở cổng 1). Phiếu ở bước Nộp lấy lại từ đây.</p>
+    <p class="small muted">Bắt buộc trước khi gửi thẩm định ngữ liệu (người thẩm định xét ở cổng 2). Phiếu ở bước Nộp lấy lại từ đây.</p>
     <div class="tablewrap"><table class="form">
       <tr><th style="width:34%">Tên nguồn, đơn vị xuất bản</th><td colspan="3"><input type="text" id="pc-src" aria-label="Tên nguồn"></td></tr>
       <tr><th>Đường link, ngày truy cập</th><td colspan="3"><input type="text" id="pc-url" aria-label="Đường link"></td></tr>
@@ -1453,6 +1453,42 @@ pre{max-width:100%;overflow-x:auto}
     <label><input type="checkbox" data-gate="np-7"><span>Không đưa câu hỏi hay đề chưa công bố lên AI.</span></label>
   </div>
   <div class="navrow"><button class="btn quiet" type="button" data-prev>← Quay lại</button><span class="navmsg"></span><span></span></div>
+</section>
+
+<!-- VIẾT, NÓI: CHỦ ĐỀ (cùng cách làm với bước Chủ đề của Đọc, Nghe) -->
+<section class="screen hidden" id="ws-chude" data-branch="W S" data-name="Chủ đề">
+  <div class="kicker">Bước 2</div>
+  <h2>Chọn chủ đề</h2>
+  <p class="lead">AI đề xuất 10 chủ đề hợp với nhiệm vụ. Bạn chọn một.</p>
+  <div class="card act"><div class="n">1</div><div class="actbody">
+    <span class="who">Bạn làm · không bắt buộc</span>
+    <h3 class="acttitle">Ghi các chủ đề đã dùng</h3>
+    <div data-field="usedTopics" data-label="Chủ đề các bài khác trong đề" data-hint="Để AI không đề xuất chủ đề trùng. Câu lệnh tự thêm chủ đề các bài Viết, Nói và các bài cùng bộ đề trong thư viện."></div>
+  </div></div>
+  <div class="card act"><div class="n">2</div><div class="actbody">
+    <span class="who">AI làm</span>
+    <h3 class="acttitle">Nhờ AI gợi ý chủ đề</h3>
+    <div id="ws-topicai"></div>
+  </div></div>
+  <div class="card act"><div class="n">3</div><div class="actbody">
+    <span class="who">Bạn làm</span>
+    <h3 class="acttitle">Chọn và ghi chủ đề</h3>
+    <div id="ws-topicbox"></div>
+  </div></div>
+  <div class="checks"><h3>Trước khi sang bước sau</h3>
+    <label><input type="checkbox" data-gate="ws-cd1"><span>Chủ đề đúng nhiệm vụ: <span data-v="genre"></span>.</span></label>
+    <label><input type="checkbox" data-gate="ws-cd2"><span>Chủ đề không nhạy cảm, không thiên về một nhóm thí sinh, không chép từ đề đã công bố.</span></label>
+  </div>
+  <div class="navrow"><button class="btn quiet" type="button" data-prev>← Quay lại</button><span class="navmsg"></span><button class="btn primary big" type="button" data-next>Tiếp tục →</button></div>
+</section>
+
+<!-- VIẾT TASK 2: NGUỒN -->
+<section class="screen hidden" id="ws-nguon" data-branch="W" data-specs="W2" data-name="Nguồn">
+  <div class="kicker">Bước 2</div>
+  <h2>Tìm nguồn và rút đoạn trích</h2>
+  <p class="lead">Task 2 lấy đoạn trích từ một bài viết thật và ghi nguồn ở dòng "Adapted from". Tìm nguồn, ghi thông tin nguồn và dán văn bản gốc. Đoạn trích rút ở bước Soạn đề.</p>
+  <div id="ws-src"></div>
+  <div class="navrow"><button class="btn quiet" type="button" data-prev>← Quay lại</button><span class="navmsg"></span><button class="btn primary big" type="button" data-next>Tiếp tục →</button></div>
 </section>
 
 <!-- VIẾT, NÓI: SOẠN ĐỀ -->

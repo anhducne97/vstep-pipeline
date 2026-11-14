@@ -16,11 +16,16 @@ var WS_F = {
     {k:"req", label:"Yêu cầu viết", type:"area", rows:2, ph:"Write a letter responding to Mr. Noah Watson."},
     {k:"pts", label:"Các ý phải trả lời (nếu ghi rõ; mỗi ý một dòng)", type:"area", rows:3, optional:true, hint:"Để trống nếu yêu cầu chỉ là \"Write a letter responding to …\"."}],
   W2:[WS_THEME,
+    {k:"srcTitle", src:true, label:"Tiêu đề bài gốc", type:"text", ph:"Vietnam's young people turn to online courses"},
+    {k:"srcPub", src:true, label:"Tác giả hoặc đơn vị xuất bản", type:"text", ph:"VnExpress International"},
+    {k:"srcYear", src:true, label:"Ngày hoặc năm đăng", type:"text", ph:"2025"},
+    {k:"url", src:true, label:"Link nguồn", type:"text", ph:"https://…"},
+    {k:"srcLic", src:true, label:"Giấy phép sử dụng", type:"text", optional:true, hint:"Ghi đúng như trang gốc (CC BY, CC BY-SA…); không thấy giấy phép mở thì ghi \"không công bố giấy phép mở\".", ph:"CC BY 4.0"},
+    {k:"srcShot", src:true, label:"Đã chụp màn hình bài gốc (minh chứng nguồn)", type:"check", optional:true},
+    {k:"srcText", src:true, label:"Văn bản gốc (không in vào đề)", type:"area", rows:8, optional:true, hint:"Dán bài gốc để AI rút đoạn trích và để trang đo phần chép nguyên văn."},
     {k:"from", label:"Đoạn trích lấy từ đâu (sau \"Read the following extract from\")", type:"text", ph:"an article about online learning"},
-    {k:"srcText", label:"Văn bản nguồn (để AI rút đoạn trích; không in vào đề)", type:"area", rows:5, optional:true, hint:"Dán bài gốc nếu muốn AI viết đoạn trích dựa trên nguồn thật."},
     {k:"ext", label:"Đoạn trích (extract)", type:"area", rows:6, words:true},
-    {k:"adapted", label:"Adapted from (trích nguồn)", type:"text", hint:"VNCETA yêu cầu trích nguồn đoạn trích của Task 2.", ph:"tên bài, tác giả hoặc nơi đăng, năm"},
-    {k:"url", label:"Link nguồn", type:"text", optional:true, ph:"https://…"},
+    {k:"adapted", label:"Adapted from (trích nguồn)", type:"text", hint:"Trang tự ghép từ thông tin ở bước Nguồn; sửa tay được.", ph:"tên bài, tác giả hoặc nơi đăng, năm"},
     {k:"req", label:"Yêu cầu viết", type:"area", rows:2, ph:"Write an essay to an educated reader to discuss whether …"}],
   S1:[WS_THEME,
     {k:"t1", label:"Chủ đề 1 (sau \"Let's talk about\")", type:"text", ph:"your free time activities"},
@@ -90,18 +95,34 @@ function wsInput(){
   if(s === "S3") return ["topic","m1","m2","m3","f1","f2","f3"].map(wsV).join("\n");
   return "";
 }
-function wsHasContent(){ return (WS_F[S.spec] || []).some(function(f){ return f.k !== "theme" && f.k !== "form" && wsV(f.k); }); }
+function wsHasContent(){ return (WS_F[S.spec] || []).some(function(f){ return !f.src && f.k !== "theme" && f.k !== "form" && wsV(f.k); }); }
+function wsAdaptedAuto(){ var t = wsV("srcTitle"), p = wsV("srcPub"), y = wsV("srcYear"); return [t ? "\u201c" + t + "\u201d" : "", p, y].filter(Boolean).join(", "); }
 function wsSync(){
   if(!wsOn()) return;
   S.slots = S.slots || {};
   S.slots.topic = wsV("theme");
+  if(S.spec === "W2"){
+    var D = wsData(), au = wsAdaptedAuto();
+    if(au && (!D.adapted || D.adapted === D.adaptedAuto)){ D.adapted = au; } D.adaptedAuto = au;
+    S.fields = S.fields || {}; S.fields["pc-url"] = wsV("url"); S.fields["pc-src"] = wsV("adapted");
+  }
   var t = wsHasContent() ? wsText() : "";
   if(S.slots.draft !== t){ S.slots.draft = t; S.slots.approved = t; }
 }
 
 /* ---------- checklist WS (dùng chung khung checklist có mã) ---------- */
-function wsMiss(){ return (WS_F[S.spec] || []).filter(function(f){ return !f.optional && f.k !== "srcText" && f.k !== "theme" && !wsV(f.k); }).map(function(f){ return f.label.replace(/\s*\(.*$/, ""); }); }
+function wsMiss(){ return (WS_F[S.spec] || []).filter(function(f){ return !f.optional && !f.src && f.k !== "theme" && !wsV(f.k); }).map(function(f){ return f.label.replace(/\s*\(.*$/, ""); }); }
 function wsNoContent(){ return wsHasContent() ? null : {s:"na", d:"Chưa có đề."}; }
+/* phần chép nguyên văn: từ của đoạn trích nằm trong chuỗi ≥ 5 từ liên tiếp trùng bài gốc */
+function wsCopied(ext, src){
+  var tok = function(t){ return (String(t).toLowerCase().match(/[a-z0-9']+/g) || []); }, E = tok(ext), R = tok(src), N = 5, G = {};
+  for(var i = 0; i + N <= R.length; i++) G[R.slice(i, i + N).join(" ")] = 1;
+  var mark = E.map(function(){ return false; });
+  for(var j = 0; j + N <= E.length; j++) if(G[E.slice(j, j + N).join(" ")]) for(var k = j; k < j + N; k++) mark[k] = true;
+  var cnt = mark.filter(Boolean).length, best = 0, cur = 0, end = -1;
+  mark.forEach(function(m, i){ cur = m ? cur + 1 : 0; if(cur > best){ best = cur; end = i; } });
+  return {pct:E.length ? 100 * cnt / E.length : 0, longest:best, run:best ? E.slice(end - best + 1, end + 1).join(" ") : ""};
+}
 function wsCovB1(t){ if(!String(t || "").trim()) return null; var vp = vocabProfile(t); if(!vp || !vp.N) return null; return {cov:vp.cum[2], vp:vp}; }
 function wsAbove(vp, n){ var L = (vp.lemmas || []).filter(function(x){ return x.lv > 2; }).map(function(x){ return x.w + " (" + (LVL[x.lv] || "?") + ")"; }); return L.concat((vp.offList || []).map(function(x){ return x.w + " (ngoài danh sách)"; })).slice(0, n || 10); }
 var WS_ROWS = [
@@ -112,7 +133,7 @@ var WS_ROWS = [
     return m.length ? {s:"fail", d:"Còn trống: " + m.join(", ") + "."} : {s:"ok", d:"Đủ các phần.", keep:"Giữ đủ các phần của biểu mẫu."};
   }},
   // Viết
-  {c:"WS-B1", g:"B", sp:["W1"], t:"Thư hoặc email cho sẵn dài 80–90 từ (chỉ tính phần extract)", src:"Ghi chép tập huấn, phần Viết Task 1", tier:"dx", who:"M", ev:function(){
+  {c:"WS-B1", g:"B", sp:["W1"], t:"Thư hoặc email cho sẵn dài 80–90 từ (chỉ tính phần extract)", src:"QĐ 730 mục 2.3.1 (ngữ liệu nguồn Bài viết 1: 80–90 từ); ghi chép tập huấn", tier:"qd", who:"M", ev:function(){
     var t = wsV("ext"); if(!t) return {s:"na", d:"Chưa có thư cho sẵn."}; var n = wc(t);
     if(n >= 80 && n <= 90) return {s:"ok", d:n + " từ.", keep:"Giữ thư cho sẵn trong 80–90 từ."};
     return {s:"fail", d:n + " từ: cần " + (n < 80 ? "thêm " + (80 - n) + " đến " + (90 - n) : "bớt " + (n - 90) + " đến " + (n - 80)) + " từ."};
@@ -132,7 +153,7 @@ var WS_ROWS = [
   {c:"WS-B6", g:"B", sp:["W1","W2"], t:"Đã dự đoán bài làm: các ý yêu cầu viết được trong số từ và thời gian; văn phong và yêu cầu nhận thức hợp bậc", src:"Ghi chép tập huấn, quy trình soạn đề Viết (bước 4)", tier:"dx", who:"H", dep:"text"},
   {c:"WS-B7", g:"B", sp:["W2"], t:"Có trích nguồn đoạn trích (Adapted from …)", src:"Yêu cầu sản phẩm của VNCETA (mục 2.4.3c)", tier:"spec", who:"M", ev:function(){
     var n = wsNoContent(); if(n) return n; var a = wsV("adapted");
-    return a ? {s:"ok", d:"Adapted from " + a + (wsV("url") ? " · " + wsV("url") : "") + ". Đoạn trích " + wc(wsV("ext")) + " từ (không có quy định số từ)."} : {s:"fail", d:"Chưa ghi nguồn của đoạn trích."};
+    return a ? {s:"ok", d:"Adapted from " + a + (wsV("url") ? " · " + wsV("url") : "") + "."} : {s:"fail", d:"Chưa ghi nguồn của đoạn trích."};
   }},
   {c:"WS-B8", g:"B", sp:["W2"], t:"Yêu cầu viết bắt đầu bằng \"Write an essay …\"", src:"Biểu mẫu đề hoàn chỉnh và đề mẫu QĐ 730", tier:"spec", who:"M", ev:function(){
     var t = wsV("req"); if(!t) return {s:"na", d:"Chưa có yêu cầu."};
@@ -141,6 +162,32 @@ var WS_ROWS = [
   {c:"WS-B9", g:"B", sp:["W2"], t:"Chủ đề không đòi kiến thức chuyên môn sâu; đoạn trích cho bối cảnh và dẫn tới vấn đề cần bàn, không cho sẵn quá nhiều ý để thí sinh chép, không có nhiều cụm học thuật hay chuyên ngành vượt bậc 3", src:"Ghi chép tập huấn, phần Viết Task 2", tier:"dx", who:"H", dep:"text"},
   {c:"WS-B10", g:"B", sp:["W2"], t:"Yêu cầu nêu rõ nhiệm vụ lập luận (trình bày quan điểm, đánh giá, thảo luận ưu nhược); đủ mở để phát triển các lập luận khác nhau; không mơ hồ, không giả định (A is harmful), không định hướng thí sinh đồng tình với một quan điểm", src:"Ghi chép tập huấn, phần Viết Task 2", tier:"dx", who:"H", dep:"text"},
   {c:"WS-B11", g:"B", sp:["W2"], t:"Phạm vi vấn đề vừa với bài tối thiểu 250 từ trong 40 phút", src:"Ghi chép tập huấn, phần Viết Task 2", tier:"dx", who:"H", dep:"text"},
+  {c:"WS-B12", g:"B", sp:["W2"], t:"Đoạn trích dài 50–60 từ", src:"QĐ 730 mục 2.3.1 (ngữ liệu nguồn Bài viết 2: đoạn văn, đoạn trích báo hoặc bài giảng, 50–60 từ)", tier:"qd", who:"M", ev:function(){
+    var t = wsV("ext"); if(!t) return {s:"na", d:"Chưa có đoạn trích."}; var n = wc(t);
+    if(n >= 50 && n <= 60) return {s:"ok", d:n + " từ.", keep:"Giữ đoạn trích trong 50–60 từ."};
+    return {s:"fail", d:n + " từ: cần " + (n < 50 ? "thêm " + (50 - n) + " đến " + (60 - n) : "bớt " + (n - 60) + " đến " + (n - 50)) + " từ."};
+  }},
+  {c:"WS-B13", g:"B", sp:["W2"], t:"Đoạn trích đề cập và thảo luận một chủ đề liên quan đến Việt Nam hoặc khu vực", src:"QĐ 730 mục 2.3.1 (ngữ liệu nguồn Bài viết 2)", tier:"qd", who:"H", dep:"text"},
+  {c:"WS-B14", g:"B", sp:["W2"], t:"Nguồn chính thống: có link hoặc ảnh bài gốc, ảnh chụp màn hình; ghi giấy phép", src:"Phụ lục tập huấn Ứng dụng AI (A3, D)", tier:"dx", who:"MH", dep:"text", ev:function(){
+    var miss = [];
+    if(!wsV("url")) miss.push("link"); if(!wsV("srcTitle")) miss.push("tiêu đề bài gốc"); if(!wsV("srcPub")) miss.push("tác giả hoặc đơn vị xuất bản"); if(!wsV("srcYear")) miss.push("ngày đăng");
+    if(!wsV("srcLic")) miss.push("giấy phép"); if(!wsData().srcShot) miss.push("ảnh chụp màn hình");
+    return miss.length ? {s:"fail", d:"Bước Nguồn còn thiếu: " + miss.join(", ") + "."} : {s:"ok", d:wsV("srcPub") + " · " + wsV("srcYear") + " · " + wsV("srcLic") + ". Người thẩm định xem nguồn có chính thống không."};
+  }},
+  {c:"WS-B15", g:"B", sp:["W2"], t:"Chỉ lấy ý của bài gốc, không chép nguyên đoạn (dưới 20% bài gốc)", src:"Phụ lục tập huấn Ứng dụng AI (A3, D)", tier:"dx", who:"MH", dep:"text", ev:function(){
+    var e = wsV("ext"), src = wsV("srcText"); if(!e) return {s:"na", d:"Chưa có đoạn trích."};
+    if(!src) return {s:"warn", d:"Chưa dán văn bản gốc ở bước Nguồn nên trang chưa đo được phần chép nguyên văn."};
+    var C = wsCopied(e, src);
+    var d = "Trang đo: " + clNum(C.pct, 0) + "% số từ của đoạn trích nằm trong chuỗi từ 5 từ trở lên trùng nguyên văn bài gốc" + (C.longest ? "; chuỗi dài nhất " + C.longest + " từ: \"" + C.run + "\"" : "") + ".";
+    return {s:C.pct > 20 ? "warn" : "ok", d:d + (C.pct > 20 ? " Viết lại bằng lời mới những chỗ chép." : "")};
+  }},
+  {c:"WS-B16", g:"B", sp:["W2"], t:"Đã đối chiếu sự kiện, con số, người nói giữa bài gốc và đoạn trích; không thêm hay đổi chiều quan điểm", src:"Phụ lục tập huấn Ứng dụng AI (D, bước B7)", tier:"dx", who:"H", dep:"text"},
+  {c:"WS-B17", g:"B", sp:["W2"], t:"Nguồn và chủ đề không nhạy cảm (chính trị, tôn giáo, sắc tộc, bệnh tật, tai nạn), không vi phạm pháp luật, văn hoá", src:"Phụ lục tập huấn Ứng dụng AI (A3, B1)", tier:"dx", who:"H", dep:"text"},
+  {c:"WS-B18", g:"B", sp:["W2"], t:"Không trùng nguồn hoặc chủ đề với bài đã có trong thư viện", src:"Ghi chép tập huấn (chủ đề trùng giữa thành viên)", tier:"dx", who:"M", ev:function(){
+    if(!wsV("url") && !wsV("theme")) return {s:"na", d:"Chưa có chủ đề và nguồn."};
+    if(typeof LIB === "undefined" || !LIB.items || !LIB.items.length) return {s:"na", d:"Chưa tải thư viện (đăng nhập để kiểm)."};
+    var d = libDupes(); return d.length ? {s:"fail", d:"Trùng với: " + d.map(function(x){ return x.x.title + " (" + x.why + ")"; }).join("; ") + "."} : {s:"ok", d:"Không trùng với bài nào trong thư viện."};
+  }},
   // Nói
   {c:"WS-C1", g:"C", sp:["S1"], t:"Hai chủ đề khác nhau", src:"QĐ 730 mục 2.4.1", tier:"qd", who:"M", ev:function(){
     var a = wsV("t1"), b = wsV("t2"); if(!a && !b) return {s:"na", d:"Chưa có chủ đề."};
@@ -228,9 +275,9 @@ function wsPrompt(){
     "- POINTS: để trống, hoặc liệt kê các ý phải trả lời nếu muốn ghi rõ (mỗi ý một dòng).",
     "- Tên người trong đề là tên giả; giọng văn của thư cho sẵn hợp với quan hệ hai người.");
   if(s === "W2") L.push("- Thí sinh viết bài luận (tối thiểu 250 từ, 40 phút) dùng lí do và ví dụ để bảo vệ ý kiến, quan điểm.",
-    "- EXTRACT: đoạn trích ngắn, ngôn ngữ bậc 3, cho bối cảnh và dẫn tới vấn đề cần bàn; không cho sẵn quá nhiều ý để thí sinh chép; không có cụm học thuật, chuyên ngành vượt bậc 3." + (wsV("srcText") ? " Viết đoạn trích dựa trên VĂN BẢN NGUỒN bên dưới (chỉ lấy ý, viết lại bằng lời mới)." : ""),
+    "- EXTRACT: đoạn văn hoặc đoạn trích báo, bài giảng dài 50–60 từ, đề cập và thảo luận một chủ đề liên quan đến Việt Nam hoặc khu vực (QĐ 730). Ngôn ngữ bậc 3; cho bối cảnh và dẫn tới vấn đề cần bàn; không cho sẵn quá nhiều ý để thí sinh chép; không có cụm học thuật, chuyên ngành vượt bậc 3." + (wsV("srcText") ? " Viết đoạn trích dựa trên VĂN BẢN NGUỒN bên dưới: chỉ lấy ý, viết lại bằng lời mới (không chép quá 20% câu chữ của bài gốc); giữ đúng sự kiện, con số, người nói; không thêm quan điểm hay số liệu ngoài nguồn." : ""),
     "- FROM: nơi lấy đoạn trích, viết tiếp sau \"Read the following extract from\" (ví dụ \"an article about online learning\").",
-    "- ADAPTED FROM: nguồn thật của đoạn trích (tên bài, tác giả hoặc nơi đăng, năm)." + (wsV("srcText") ? "" : " Nếu không có nguồn thật, ghi \"CẦN BỔ SUNG\"."),
+    "- ADAPTED FROM: " + (wsV("adapted") ? "chép đúng dòng sau: " + wsV("adapted") : "nguồn thật của đoạn trích (tên bài, tác giả hoặc nơi đăng, năm). Nếu không có nguồn thật, ghi \"CẦN BỔ SUNG\"."),
     "- TASK: một câu bắt đầu bằng \"Write an essay to an educated reader to discuss …\", nêu rõ nhiệm vụ lập luận (trình bày quan điểm, đánh giá, thảo luận ưu nhược); đủ mở; không mơ hồ; không giả định (A is harmful); không định hướng thí sinh đồng tình với một quan điểm.",
     "- Chủ đề không đòi kiến thức chuyên môn sâu; phạm vi vừa bài 250 từ trong 40 phút.");
   if(s === "S1") L.push("- Giám khảo hỏi thí sinh 3–6 câu thuộc hai chủ đề quen thuộc khác nhau; mỗi chủ đề ít nhất 1 câu (nên 3 câu mỗi chủ đề).",
@@ -252,6 +299,68 @@ function wsPrompt(){
   if(s === "W2" && wsV("srcText")) L.push("", "VĂN BẢN NGUỒN (chỉ để lấy ý):", wsV("srcText"));
   return L.join("\n");
 }
+/* Task 2: câu lệnh tìm nguồn (bước Nguồn, theo Phụ lục B2) và câu lệnh kiểm khớp nguồn (bước Soạn đề, sau khi có đoạn trích; theo Phụ lục D, B7) */
+/* gợi ý chủ đề theo mẫu B1 của Phụ lục tập huấn, thêm tiêu chí riêng của từng nhiệm vụ (QĐ 730, ghi chép tập huấn) */
+function wsUsedTopics(){
+  if(typeof LIB === "undefined" || !LIB.items) return [];
+  var set = (S.libSet || "").trim(), cur = S.lib && S.lib.id, seen = {}, out = [];
+  LIB.items.forEach(function(x){
+    var m = x.meta || {}, t = (m.topic || "").trim(); if(!t || x.id === cur) return;
+    if(!((set && m.set === set) || m.skill === "W" || m.skill === "S")) return;
+    var k = t.toLowerCase(); if(seen[k]) return; seen[k] = 1; out.push(t);
+  });
+  return out.slice(0, 40);
+}
+function wsTopicPrompt(){
+  var s = S.spec, sp = SPEC[s], man = String((S.slots || {}).usedTopics || "").split(/[;\n]+/).map(function(x){ return x.trim(); }).filter(Boolean), used = man.concat(wsUsedTopics().filter(function(t){ return man.indexOf(t) < 0; })), L = [];
+  L.push("Bạn là chuyên gia ra đề thi VSTEP. Hãy đề xuất 10 chủ đề cho " + sp.label + " (QĐ 730/QĐ-BGDĐT: " + sp.genre + ").", "", "Yêu cầu chung:",
+    "- Mới, đa dạng, cập nhật, phù hợp với người Việt Nam (yêu cầu sản phẩm của VNCETA).",
+    "- Không nhạy cảm về chính trị, tôn giáo, sắc tộc, chiến tranh, bệnh tật, tai nạn; không vi phạm pháp luật, văn hoá; không thiên về một nhóm thí sinh (giới, vùng miền, sở thích, trải nghiệm riêng).",
+    "- Không chép từ đề thi, sách luyện thi đã công bố.",
+    "- Không trùng lĩnh vực với các chủ đề đã có: " + (used.length ? used.join("; ") : "chưa có") + ".", "", "Yêu cầu riêng:");
+  if(s === "W1") L.push("- Mỗi chủ đề là một tình huống, sự kiện quen thuộc trong cuộc sống đòi hỏi hồi đáp bằng thư hoặc email (QĐ 730), ví dụ trả lời thư mời, hỏi thông tin, giải thích, đề xuất.",
+    "- Nêu được vì sao phải viết, viết cho ai, quan hệ người viết và người nhận, mục đích; nhiệm vụ không đòi lập luận vượt bậc 3 (ghi chép tập huấn).");
+  if(s === "W2") L.push("- Chủ đề liên quan đến Việt Nam hoặc khu vực (QĐ 730: đoạn trích đề cập và thảo luận chủ đề liên quan đến Việt Nam hoặc khu vực).",
+    "- Có một vấn đề nhiều phía để bàn, đủ cho bài luận nêu quan điểm, đánh giá hoặc thảo luận ưu nhược điểm tối thiểu 250 từ trong 40 phút.",
+    "- Không đòi kiến thức chuyên môn sâu (ghi chép tập huấn); dễ tìm được bài báo chính thống về chủ đề để rút đoạn trích.");
+  if(s === "S1") L.push("- Mỗi dòng là MỘT CẶP hai chủ đề quen thuộc, khác nhau (QĐ 730: hai chủ đề khác nhau), ví dụ \"your free time\" và \"your neighbourhood\".",
+    "- Thí sinh nào cũng có thể nói được; không giả định trải nghiệm (ví dụ không giả định thí sinh đã ra nước ngoài, có xe riêng).");
+  if(s === "S2") L.push("- Mỗi chủ đề là một tình huống có một người hoặc nhóm cần giúp và 3 giải pháp (QĐ 730), ví dụ chọn phương tiện, chọn cách học, chọn quà.",
+    "- Ba giải pháp cân đối về độ dài, nội dung, phạm vi, thời gian, nguồn lực; giải pháp nào cũng có cân nhắc thật (ghi chép tập huấn).");
+  if(s === "S3") L.push("- Mỗi chủ đề viết được thành một câu hoàn chỉnh (QĐ 730), đủ rộng để phát triển ý trong 5 phút, có thể chia thành 3 ý cho sơ đồ tư duy.",
+    "- Không áp đặt lập trường (không viết kiểu \"why A is better than B\"), hạn chế thuật ngữ chuyên ngành; mở được câu hỏi mở rộng cho bậc 3, 4, 5 (ghi chép tập huấn).");
+  L.push("", "Trình bày bảng: chủ đề" + (s === "S2" ? " (tình huống và 3 giải pháp)" : s === "S1" ? " (cặp hai chủ đề)" : "") + " | lĩnh vực | vì sao phù hợp | rủi ro cần tránh.");
+  return L.join("\n");
+}
+function wsRenderTopic(){
+  var a = document.getElementById("ws-topicai"), b = document.getElementById("ws-topicbox"); if(!a || !b || !wsOn()) return;
+  a.innerHTML = '<p class="small muted">Câu lệnh theo mẫu B1 (lập danh sách chủ đề) của Phụ lục tập huấn, thêm tiêu chí riêng của ' + esc(SPEC[S.spec].label) + ' theo QĐ 730 và ghi chép tập huấn. AI trả về bảng: chủ đề | lĩnh vực | vì sao phù hợp | rủi ro cần tránh. Mở cuộc trò chuyện mới cho mỗi câu lệnh.</p><button class="btn primary" type="button" id="ws-copytopic">Sao chép câu lệnh gợi ý chủ đề</button>';
+  // đang gõ trong ô chủ đề thì không vẽ lại ô đó (chỉ khi chính ô này vừa đổi); mở bài khác thì luôn vẽ lại
+  if(wsRenderTopic.hold && b.contains(document.activeElement)) return;
+  b.innerHTML = wsFieldHTML({k:"theme", label:"Chủ đề bạn chọn", hint:"Chép một chủ đề trong bảng AI đưa ra. Có thể viết cụ thể hơn." + (S.spec === "W2" ? " Câu lệnh tìm nguồn ở bước sau dùng chủ đề này." : " Câu lệnh soạn nháp ở bước Soạn đề dùng chủ đề này.") + " Thư viện báo khi trùng chủ đề với bài đã có.", ph:S.spec === "S1" ? "ví dụ: your free time; your neighbourhood" : "ví dụ: học kỹ năng mới qua mạng"});
+}
+function wsThemeLine(){ return '<p class="small">Chủ đề: <b>' + esc(wsV("theme") || "chưa chọn") + '</b> <button class="btn sm quiet" type="button" data-wsgo="ws-chude">' + (wsV("theme") ? "Đổi ở bước Chủ đề" : "Chọn ở bước Chủ đề") + '</button></p>'; }
+function wsSrcPrompt(){
+  var th = wsV("theme") || "[chủ đề]";
+  return ["(Bật chế độ tìm kiếm web hoặc deep research.)",
+    "Tìm 5 nguồn chính thống về chủ đề: " + th + ". Loại nguồn chấp nhận: báo chính thống, trang cơ quan nhà nước, tổ chức quốc tế, tạp chí khoa học phổ thông, hoặc trang có giấy phép mở. Ưu tiên nguồn tiếng Anh.",
+    "Nguồn dùng để rút một đoạn trích 50–60 từ cho Viết Task 2 của đề thi VSTEP (bài luận nêu quan điểm, đánh giá hoặc thảo luận ưu nhược điểm), nên nguồn cần:",
+    "- đề cập và thảo luận một chủ đề liên quan đến Việt Nam hoặc khu vực (QĐ 730);",
+    "- nêu một vấn đề có nhiều phía để bàn (đồng ý và phản đối, lợi và hại, các cách đánh giá khác nhau); bài nêu cả hai phía là nguồn tốt;",
+    "- chủ đề phổ thông, không đòi kiến thức chuyên môn sâu; không nhạy cảm về chính trị, tôn giáo, sắc tộc, bệnh tật, tai nạn; không vi phạm pháp luật, văn hoá;",
+    "- mới, cập nhật.",
+    "",
+    "Với mỗi nguồn ghi: tiêu đề | đơn vị xuất bản hoặc tác giả | ngày đăng | URL | giấy phép sử dụng (nếu có) | vấn đề cần bàn (1 câu) | các phía, quan điểm chính (mỗi phía 1 dòng).",
+    "",
+    "Không bịa nguồn. URL nào chưa chắc, ghi \"chưa xác minh\"."].join("\n");
+}
+function wsFitPrompt(){
+  return ["So sánh ĐOẠN TRÍCH với BÀI GỐC dưới đây. Đoạn trích là ngữ liệu đầu vào Viết Task 2 của đề thi VSTEP, chỉ được lấy ý của bài gốc.",
+    "Liệt kê từng lỗi theo các loại: (1) sai sự kiện, con số, ngày tháng, tên riêng; (2) sai người nói, người làm; (3) quan điểm bị đổi chiều hoặc nói chắc hơn, yếu hơn bài gốc; (4) thêm ý, số liệu hay quan điểm bài gốc không có; (5) chép nguyên văn một câu hoặc cụm dài của bài gốc.",
+    "Với mỗi lỗi ghi: loại | chỗ trong đoạn trích (chép nguyên văn) | chỗ tương ứng trong bài gốc | cách sửa. Không liệt kê chỗ chỉ rút gọn hoặc diễn đạt khác mà nghĩa giữ nguyên.",
+    "Có lỗi thì viết lại cả đoạn trích đã sửa (50–60 từ, ngôn ngữ bậc 3) trong một khối code. Không có lỗi thì trả lời đúng một dòng: Không phát hiện.",
+    "", "ĐOẠN TRÍCH:", wsV("ext") || "[chưa có đoạn trích]", "", "BÀI GỐC:", wsV("srcText") || "[dán bài gốc]"].join("\n");
+}
 function wsParse(raw){
   var keys = WS_OUT[S.spec] || [], txt = String(raw || ""), out = {}, cur = null;
   var cb = txt.match(/```[a-z]*\n?([\s\S]*?)(```|$)/i); if(cb) txt = cb[1];
@@ -265,6 +374,7 @@ function wsParse(raw){
   Object.keys(out).forEach(function(k){ var v = out[k].join("\n").replace(/^\s+|\s+$/g, ""); if(WS_MAP[k]) res[WS_MAP[k]] = v; });
   if(res.form) res.form = /mail/i.test(res.form) ? "email" : "letter";
   if(res.adapted && /CẦN BỔ SUNG/i.test(res.adapted)) res.adapted = "";
+  if(S.spec === "W2" && wsAdaptedAuto()) delete res.adapted;
   return res;
 }
 
@@ -278,7 +388,7 @@ function wsLocName(k){
 function wsUnits(){
   var U = [];
   (WS_F[S.spec] || []).forEach(function(f){
-    var k = f.k, v = wsV(k); if(!v || k === "theme" || k === "form" || k === "srcText" || k === "url") return;
+    var k = f.k, v = wsV(k); if(!v || f.src || k === "theme" || k === "form") return;
     if(k === "q1" || k === "q2" || k === "pts") wsLines(v).forEach(function(q, i){ U.push({loc:wsLocName(k) + ", câu " + (i + 1), text:q}); });
     else if(k === "ext" || k === "sit"){ var ss = wsSents(v); if(ss.length > 1) ss.forEach(function(q, i){ U.push({loc:wsLocName(k) + ", câu " + (i + 1), text:q}); }); else U.push({loc:wsLocName(k), text:v}); }
     else U.push({loc:(k === "t1" || k === "t2") ? wsLocName(k) + " (tên chủ đề)" : wsLocName(k), text:v});
@@ -294,6 +404,7 @@ function wsPickHTML(){
 function wsFieldHTML(f){
   var v = wsData()[f.k] || "", lab = '<span class="lab">' + esc(f.label) + (f.optional ? ' <span class="muted">(không bắt buộc)</span>' : '') + '</span>' + (f.hint ? '<span class="hint">' + esc(f.hint) + '</span>' : '');
   var cnt = f.words ? ' <span class="small muted" data-wswc="' + f.k + '">' + (v.trim() ? wc(v) + " từ" : "") + '</span>' : '';
+  if(f.type === "check") return '<label class="field"><span style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-ws="' + f.k + '"' + (wsData()[f.k] ? " checked" : "") + '> <span class="lab" style="margin:0">' + esc(f.label) + '</span></span></label>';
   if(f.type === "select") return '<label class="field">' + lab + '<select data-ws="' + f.k + '">' + f.options.map(function(o){ return '<option' + (o === (v || f.options[0]) ? " selected" : "") + '>' + esc(o) + '</option>'; }).join("") + '</select></label>';
   if(f.type === "area") return '<label class="field">' + lab + '<textarea data-ws="' + f.k + '" rows="' + (f.rows || 3) + '"' + (f.ph ? ' placeholder="' + esc(f.ph) + '"' : '') + '>' + esc(v) + '</textarea>' + cnt + '</label>';
   return '<label class="field">' + lab + '<input type="text" data-ws="' + f.k + '" value="' + esc(v) + '"' + (f.ph ? ' placeholder="' + esc(f.ph) + '"' : '') + '></label>';
@@ -324,37 +435,61 @@ function wsSelfHTML(){
   return h;
 }
 function wsRenderSelf(){ var b = document.getElementById("ws-self"); if(b && wsOn()) b.innerHTML = wsSelfHTML(); }
+function wsF(k){ return (WS_F[S.spec] || []).filter(function(f){ return f.k === k; })[0]; }
+function wsSrcStatHTML(){
+  var e = wsV("ext"), src = wsV("srcText"), h = "";
+  if(src) h += '<span class="small muted">Văn bản gốc: ' + wc(src) + ' từ.</span> ';
+  if(e && src){ var C = wsCopied(e, src); h += '<span class="small ' + (C.pct > 20 ? "no" : "ok") + '">Đoạn trích hiện có ' + clNum(C.pct, 0) + '% số từ nằm trong chuỗi ≥ 5 từ trùng nguyên văn bài gốc.</span>'; }
+  return h;
+}
+function wsRenderSrc(){
+  var box = document.getElementById("ws-src"); if(!box) return;
+  if(S.spec !== "W2"){ box.innerHTML = ""; return; }
+  var au = wsV("adapted");
+  box.innerHTML = '<div class="info small"><b>QĐ 730, ngữ liệu nguồn Bài viết 2:</b> một đoạn văn cho sẵn, đoạn trích trong báo hoặc đoạn bài giảng, đề cập đến và thảo luận về một chủ đề liên quan đến Việt Nam hoặc khu vực (50–60 từ). <b>Phụ lục tập huấn:</b> nguồn chính thống, có link hoặc ảnh bài gốc, ảnh chụp màn hình, ghi giấy phép; chỉ tham khảo ý tưởng (dưới 20% bài gốc).</div>'
+    + '<div class="card act"><div class="n">1</div><div class="actbody"><h3 class="acttitle">Tìm nguồn</h3>' + wsThemeLine() + '<p class="small muted">Câu lệnh theo mẫu tìm nguồn của Phụ lục tập huấn (B2), thêm tiêu chí riêng của Task 2. Bật tìm kiếm web hoặc deep research; mở cuộc trò chuyện mới. Mở từng link để kiểm, không dùng nguồn \"chưa xác minh\".</p><button class="btn primary" type="button" id="ws-copysrc">Sao chép câu lệnh tìm nguồn</button></div></div>'
+    + '<div class="card act"><div class="n">2</div><div class="actbody"><h3 class="acttitle">Ghi nguồn đã chọn</h3><div class="grid2">' + ["srcTitle","srcPub","srcYear","url"].map(function(k){ return wsFieldHTML(wsF(k)); }).join("") + '</div>' + wsFieldHTML(wsF("srcLic")) + wsFieldHTML(wsF("srcShot"))
+    + '<p class="small">Dòng trong đề: <b>Adapted from</b> <span id="ws-adpv">' + esc(au || "…") + '</span></p></div></div>'
+    + '<div class="card act"><div class="n">3</div><div class="actbody"><h3 class="acttitle">Dán văn bản gốc</h3>' + wsFieldHTML(wsF("srcText")) + '<div id="ws-srcstat">' + wsSrcStatHTML() + '</div><p class="small muted">Sang bước Soạn đề: câu lệnh soạn nháp dùng văn bản gốc này để rút đoạn trích 50–60 từ.</p></div></div>';
+}
 function wsRenderForm(){
+  wsRenderTopic(); wsRenderSrc();
   var box = document.getElementById("ws-form"); if(!box) return;
   if(!wsOn()){ box.innerHTML = ""; return; }
   var sp = SPEC[S.spec], F = WS_F[S.spec];
   box.innerHTML = '<div class="info small"><b>' + esc(sp.label) + ':</b> ' + esc(sp.genre) + '. ' + esc(sp.qd) + '.</div>'
     + '<div class="card act"><div class="n">1</div><div class="actbody"><h3 class="acttitle">Soạn nháp bằng AI (không bắt buộc)</h3>'
-    + wsFieldHTML(F[0]) + (S.spec === "W2" ? wsFieldHTML(F.filter(function(f){ return f.k === "srcText"; })[0]) : "")
+    + (S.spec === "W2" ? wsThemeLine() + '<p class="small">' + (wsV("srcText") ? 'câu lệnh dùng văn bản gốc ở bước Nguồn (' + wc(wsV("srcText")) + ' từ).' : '<span class="no">chưa dán văn bản gốc ở bước Nguồn.</span>') + '</p>' : wsThemeLine())
     + '<p class="small muted">Câu lệnh nhờ AI viết một đề mới theo đặc tả. Mỗi lần dán câu lệnh, mở một cuộc trò chuyện mới. Nhóm không đưa đề chưa công bố lên AI thì bỏ qua bước này và soạn thẳng ở mục 2.</p>'
     + '<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn primary" type="button" id="ws-copy">Sao chép câu lệnh</button></div>'
     + '<label class="field"><span class="lab">Dán câu trả lời của AI</span><span class="hint">Bấm nút Copy ở góc khối code của AI rồi dán vào đây; trang tự điền các ô ở mục 2.</span><textarea id="ws-paste" rows="4" placeholder="THEME: …"></textarea></label>'
     + '<div><button class="btn" type="button" id="ws-fill">Điền vào các ô</button> <span class="small muted" id="ws-fillmsg"></span></div></div></div>'
     + '<div class="card act"><div class="n">2</div><div class="actbody"><h3 class="acttitle">Các phần của đề</h3><div class="wsgrid"><div>'
-    + F.filter(function(f){ return f.k !== "theme" && f.k !== "srcText"; }).map(wsFieldHTML).join("")
+    + F.filter(function(f){ return f.k !== "theme" && !f.src; }).map(wsFieldHTML).join("")
     + '</div><div><div class="small muted">Đề như khi in</div><div id="ws-preview">' + wsPreviewHTML() + '</div></div></div></div></div>'
-    + '<div class="card act"><div class="n">3</div><div class="actbody"><h3 class="acttitle">Tự kiểm theo checklist</h3><p class="small muted">Cùng các tiêu chí người thẩm định dùng ở bước Kiểm và xuất. Sửa hết dòng đỏ rồi mới gửi thẩm định.</p><div id="ws-self">' + wsSelfHTML() + '</div></div></div>';
+    + (S.spec === "W2" ? '<div class="card act"><div class="n">3</div><div class="actbody"><h3 class="acttitle">Kiểm khớp nguồn</h3><p class="small muted">Có đoạn trích ở mục 2 rồi thì nhờ AI so đoạn trích với văn bản gốc ở bước Nguồn: sai sự kiện, con số, người nói; quan điểm đổi chiều; thêm ý ngoài nguồn; chép nguyên văn. AI báo "Không phát hiện" thì người soạn tự đối chiếu lại rồi bấm Đạt ở dòng WS-B16.</p><button class="btn" type="button" id="ws-copyfit">Sao chép câu lệnh kiểm khớp nguồn</button></div></div>' : '')
+    + '<div class="card act"><div class="n">' + (S.spec === "W2" ? 4 : 3) + '</div><div class="actbody"><h3 class="acttitle">Tự kiểm theo checklist</h3><p class="small muted">Cùng các tiêu chí người thẩm định dùng ở bước Kiểm và xuất. Sửa hết dòng đỏ rồi mới gửi thẩm định.</p><div id="ws-self">' + wsSelfHTML() + '</div></div></div>';
 }
 var wsT = null;
 function wsAfterEdit(full){
   wsSync(); save();
   var pv = document.getElementById("ws-preview"); if(pv) pv.innerHTML = wsPreviewHTML();
+  var st = document.getElementById("ws-srcstat"); if(st) st.innerHTML = wsSrcStatHTML();
+  var ap = document.getElementById("ws-adpv"); if(ap) ap.textContent = wsV("adapted") || "…";
   document.querySelectorAll("[data-wswc]").forEach(function(el){ var v = wsV(el.getAttribute("data-wswc")); el.textContent = v ? wc(v) + " từ" : ""; });
   clearTimeout(wsT); wsT = setTimeout(function(){ try{ wsRenderSelf(); }catch(e){} try{ clRender(); }catch(e){} try{ renderChip(); }catch(e){} updateStepper(); }, full ? 0 : 400);
 }
 function bindWs(){
   document.addEventListener("input", function(e){
-    var k = e.target.getAttribute && e.target.getAttribute("data-ws"); if(!k || !wsOn()) return;
+    var k = e.target.getAttribute && e.target.getAttribute("data-ws"); if(!k || !wsOn() || e.target.type === "checkbox") return;
     wsData()[k] = e.target.value; wsAfterEdit(false);
   });
   document.addEventListener("change", function(e){
     var k = e.target.getAttribute && e.target.getAttribute("data-ws"); if(!k || !wsOn()) return;
-    wsData()[k] = e.target.value; wsAfterEdit(true);
+    wsData()[k] = e.target.type === "checkbox" ? e.target.checked : e.target.value;
+    if(k === "theme"){ wsSync(); wsRenderSrc(); var fm = document.getElementById("ws-form"); if(fm && document.getElementById("ws-soan").classList.contains("hidden")){ wsRenderTopic.hold = true; try{ wsRenderForm(); } finally { wsRenderTopic.hold = false; } } }
+    if(k === "srcTitle" || k === "srcPub" || k === "srcYear"){ wsSync(); var ad = document.querySelector('[data-ws="adapted"]'); if(ad) ad.value = wsV("adapted"); }
+    wsAfterEdit(true);
   });
   document.addEventListener("click", function(e){
     var pk = e.target.closest && e.target.closest("[data-wspick]");
@@ -366,7 +501,11 @@ function bindWs(){
       var iss = fm.querySelector('[data-ff="issue"]'); if(iss && !iss.value) iss.focus();
       return;
     }
-    var t = e.target.closest && e.target.closest("#ws-copy, #ws-fill, [data-wsdocx]"); if(!t) return;
+    var go = e.target.closest && e.target.closest("[data-wsgo]"); if(go){ show(go.getAttribute("data-wsgo")); return; }
+    var t = e.target.closest && e.target.closest("#ws-copy, #ws-fill, [data-wsdocx], #ws-copysrc, #ws-copyfit, #ws-copytopic"); if(!t) return;
+    if(t.id === "ws-copytopic"){ copyText(wsTopicPrompt(), t, "Sao chép câu lệnh gợi ý chủ đề", "Đã sao chép. Giờ dán vào AI"); return; }
+    if(t.id === "ws-copysrc"){ copyText(wsSrcPrompt(), t, "Sao chép câu lệnh tìm nguồn", "Đã sao chép. Giờ dán vào AI"); return; }
+    if(t.id === "ws-copyfit"){ if(!wsV("ext") || !wsV("srcText")){ toast(!wsV("srcText") ? "Chưa có văn bản gốc: dán ở bước Nguồn." : "Chưa có đoạn trích: điền ô Đoạn trích ở mục 2."); return; } copyText(wsFitPrompt(), t, "Sao chép câu lệnh kiểm khớp nguồn", "Đã sao chép. Giờ dán vào AI"); return; }
     if(t.id === "ws-copy"){ copyText(wsPrompt(), t, "Sao chép câu lệnh", "Đã sao chép. Giờ dán vào AI"); return; }
     if(t.id === "ws-fill"){
       var raw = (document.getElementById("ws-paste") || {}).value || "", r = wsParse(raw), n = Object.keys(r).length, msg = document.getElementById("ws-fillmsg");

@@ -915,7 +915,7 @@ function renderSpec(){
 }
 
 /* ---------- Branch + navigation ---------- */
-function screens(){ var sk = SPEC[S.spec].skill; return Array.prototype.filter.call(document.querySelectorAll(".screen"), function(s){ var b = s.getAttribute("data-branch"); return b==="all" || b.split(" ").indexOf(sk) >= 0; }); }
+function screens(){ var sk = SPEC[S.spec].skill; return Array.prototype.filter.call(document.querySelectorAll(".screen"), function(s){ var b = s.getAttribute("data-branch"); var sx = s.getAttribute("data-specs"); return (b==="all" || b.split(" ").indexOf(sk) >= 0) && (!sx || sx.split(" ").indexOf(S.spec) >= 0); }); }
 function applyBranch(){
   var sp = SPEC[S.spec], b = sp.skill;
   document.querySelectorAll("[data-branchtext]").forEach(function(el){ el.classList.toggle("hidden", el.getAttribute("data-branchtext")!==b); });
@@ -1250,7 +1250,7 @@ function bindFields(){
   ids.forEach(function(id){
     var el = document.getElementById(id); if(!el || el.dataset.bound) return; el.dataset.bound = "1";
     if(S.fields[id]!==undefined) el.value = S.fields[id];
-    var h = function(){ var sc = el.closest(".screen"); if(sc && typeof wfCanEditScreen === "function" && !wfCanEditScreen(sc.id)){ el.value = S.fields[id] || ""; toast("Chế độ xem: bạn không sửa được ô này."); return; } S.fields[id] = el.value; save(); }; el.addEventListener("input", h); el.addEventListener("change", h);
+    var h = function(){ var sc = el.closest(".screen"); if(sc && typeof wfCanEditScreen === "function" && !wfCanEditScreen(sc.id)){ el.value = S.fields[id] || ""; toast("Chế độ xem: bạn không sửa được ô này."); return; } S.fields[id] = el.value; save(); if(/^pc-(src|url|lic)$/.test(id) && typeof wfRender === "function"){ clearTimeout(bindFields.t); bindFields.t = setTimeout(wfRender, 300); } }; el.addEventListener("input", h); el.addEventListener("change", h);
   });
 }
 function phieuText(){

@@ -36,6 +36,7 @@ function frLoad(){
     var seen = {}, out = []; ss.forEach(function(s){ s.docs.forEach(function(d){ if(seen[d.id]) return; seen[d.id] = 1; var x = d.data(); x.id = d.id; out.push(x); }); });
     FORUM.list = out.sort(function(a, b){ return (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (b.lastAt || 0) - (a.lastAt || 0); }); FORUM.err = "";
     if(!frSeen()) frSeenSet({base:Date.now() - 7 * 864e5, ids:{}});
+    if(HUB.restoreTh){ var rt = HUB.restoreTh; HUB.restoreTh = null; if(HUB.page === "dd-ct" && frCur()) setTimeout(function(){ frOpen(rt); }, 0); }
     var ppl = {}; out.forEach(function(t){ ppl[t.author] = 1; if(t.lastBy) ppl[t.lastBy] = 1; }); frPeople(Object.keys(ppl));
   }).catch(function(e){ FORUM.list = FORUM.list || []; FORUM.err = e && e.code === "permission-denied" ? "rules" : libErrText(e); }).then(function(){ hubRender(); });
 }
