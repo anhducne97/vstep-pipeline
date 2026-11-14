@@ -71,11 +71,40 @@ function parseAnchors(notes){
   });
   return found ? map : null;
 }
+// khung câu hỏi ở bước 4: "CÂU 3 | B3 trung bình | DE[P] | đoạn 2 | trích"
+var FRAME_RE = /^\s*[-*•]?\s*C[ÂA]U\s+(\d+|–|-)\s*\|\s*(B[345])\s+(thấp|trung bình|cao)\s*\|\s*([^|\n]*?)\s*(?:\|\s*([^|\n]*?)\s*)?(?:\|\s*(.*?))?\s*$/i;
+function parseFrame(notes){
+  var out = [];
+  (notes||"").normalize("NFC").split(/\n/).forEach(function(line){
+    var m = line.replace(/\*\*/g,"").match(FRAME_RE); if(!m) return;
+    var none = /không có/i.test(m[4]||"");
+    out.push({n:/\d/.test(m[1]) ? +m[1] : 0, lv:m[2].toUpperCase(), m:m[3].toLowerCase(), code:none ? "" : (typeof qNormCode === "function" ? qNormCode(m[4]) : m[4].toUpperCase()), para:(m[5]||"").trim(), quote:none ? "" : (m[6]||"").replace(/^["“'”]+|["“”']+$/g,"").trim(), none:none});
+  });
+  return out.length ? out : null;
+}
 function normQ(s){ return (s||"").toLowerCase().replace(/[’‘]/g,"'").replace(/[“”]/g,'"').replace(/[^a-z0-9' ]+/g," ").replace(/\s+/g," ").trim(); }
 function renderAnchors(){
   var boxes = document.querySelectorAll(".anchormap"); if(!boxes.length) return;
   var sp = SPEC[S.spec];
   if(sp.skill!=="R" || !sp.skills){ boxes.forEach(function(b){ b.innerHTML = ""; }); return; }
+  var fr = parseFrame(S.slots.notes), FL = typeof mapLines === "function" ? mapLines() : [];
+  if(fr && FL.length){
+    var dd = normQ(S.slots.draft), used = {}, real = fr.filter(function(x){ return !x.none; });
+    real.forEach(function(x){ var l = FL.filter(function(l){ return !used[l.key] && l.lv === x.lv && l.m === x.m && l.codes.indexOf(x.code) >= 0; })[0]; if(l){ used[l.key] = 1; x.ok = true; } });
+    var paras = SPEC[S.spec].skill === "R" ? analyze(S.slots.draft||"").body.length : 0, cov = {}; real.forEach(function(x){ var p = (x.para.match(/\d+/)||[])[0]; if(p) cov[p] = 1; });
+    var noPara = []; for(var p = 1; p <= paras; p++) if(!cov[p]) noPara.push(p);
+    var nOk = real.filter(function(x){ return x.ok; }).length;
+    boxes.forEach(function(box){
+      var checkDraft = box.hasAttribute("data-check");
+      box.innerHTML = '<p class="small"><b>Khung câu hỏi: ' + nOk + ' / ' + FL.length + ' ô của bảng phân bố có chỗ hỏi.</b>' + (noPara.length ? ' Đoạn ' + noPara.join(", ") + ' chưa có câu.' : '') + '</p><ul class="anc">'
+        + fr.slice().sort(function(a, b){ return (a.n || 99) - (b.n || 99); }).map(function(x){
+          if(x.none) return '<li class="w"><b>' + esc(x.lv + " " + x.m) + '</b> không có chỗ tự nhiên</li>';
+          var still = !checkDraft || !x.quote || dd.indexOf(normQ(x.quote)) >= 0;
+          return '<li class="' + (x.ok && still ? "g" : "w") + '"><b>Câu ' + (x.n || "?") + ' · ' + esc(x.lv + " " + x.m) + ' · ' + esc(x.code) + '</b> ' + esc(x.para) + (x.quote ? ': <i>' + esc(x.quote) + '</i>' : '') + (!x.ok ? ' <span>(mã hoặc ô không khớp bảng phân bố, hoặc ô đã có câu)</span>' : '') + (checkDraft && !still ? ' <span>(không còn nguyên văn trong bài, có thể đã bị sửa)</span>' : '') + '</li>';
+        }).join("") + '</ul><p class="small muted">Chỉ để tham khảo, không bắt sửa bài. Bước 8 (Chất liệu) có nút điền bản đồ từ khung này.</p>';
+    });
+    return;
+  }
   var codes = sp.skills.split(/\s*,\s*/), map = parseAnchors(S.slots.notes), d = normQ(S.slots.draft);
   boxes.forEach(function(box){
     var checkDraft = box.hasAttribute("data-check");
@@ -518,7 +547,9 @@ function extendVars(v){
   qExtend(v);
   if(typeof wfExtend==="function") wfExtend(v);
   v.sourceNeeds = SOURCE_NEEDS[S.spec] || SOURCE_NEEDS[S.spec.slice(0,2)] || "";
-  v.anchorReq = SPEC[S.spec].skill==="R" ? "BẢN ĐỒ ĐIỂM NEO: mỗi dòng theo khuôn MÃ | đoạn số | trích ngắn tối đa 12 từ, chép nguyên văn từ bài, cho các mã: " + (SPEC[S.spec].skills||"") + ". Mã nào bài không có chỗ tự nhiên để hỏi, ghi: MÃ | không có. Không sửa bài để lấp mã còn thiếu." : "";
+  var frameRows = SPEC[S.spec].skill==="R" && typeof mapLines === "function" ? mapLines() : [];
+  v.anchorReq = frameRows.length ? "KHUNG " + frameRows.length + " CÂU HỎI theo bảng phân bố của " + SPEC[S.spec].label + " (VSTEP Reading Specifications). Khi biên tập, giữ cho bài có một chỗ hỏi tự nhiên cho từng ô dưới đây, rồi ghi mỗi câu một dòng theo khuôn: CÂU số | bậc mức | MÃ | đoạn số | trích ngắn tối đa 12 từ, chép nguyên văn từ bài.\n   Quy tắc: mỗi ô đúng một câu, mã chọn trong các mã của ô; đánh số câu theo vị trí chỗ hỏi trong bài (CÂU 1 gần đầu bài nhất), câu hỏi về cả bài (MI cả bài, TO) đánh số cuối và ghi đoạn là \"cả bài\" (quy ước nhóm CH-B3); mỗi đoạn có ít nhất một câu; mỗi chỗ hỏi chỉ dùng cho một câu, câu văn dành cho câu chèn câu (IS) không làm chỗ hỏi của câu khác (CH-B6). Ô nào bài không có chỗ tự nhiên thì ghi: CÂU – | bậc mức | không có. Không thêm thông tin ngoài nguồn hay câu gượng ép chỉ để lấp ô.\n   CÁC Ô:\n" + frameRows.map(function(l, i){ return "   Ô " + (i+1) + " | " + l.lv + " " + l.m + " | chọn một mã: " + l.codes.join(", "); }).join("\n")
+    : SPEC[S.spec].skill==="R" ? "BẢN ĐỒ ĐIỂM NEO: mỗi dòng theo khuôn MÃ | đoạn số | trích ngắn tối đa 12 từ, chép nguyên văn từ bài, cho các mã: " + (SPEC[S.spec].skills||"") + ". Mã nào bài không có chỗ tự nhiên để hỏi, ghi: MÃ | không có. Không sửa bài để lấp mã còn thiếu." : "";
   var pdfR = S.srcMode==="pdf" && S.srcLang!=="vi";
   var origPdf = pdfR && origId()==="src";
   v.pageNote = pdfR ? ", kèm số trang trong file PDF" : "";

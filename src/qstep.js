@@ -801,6 +801,13 @@ function checkQ(){
       if(!hit.length) x.warns.push("căn cứ không thuộc chỗ hỏi nào trong bản đồ chất liệu đã duyệt: người thẩm định xét câu này");
       else if(!hit.some(function(m){ return !m.code || m.code === x.it.code; })) x.warns.push("mã " + x.it.code + " khác mã của dòng bản đồ chất liệu có chỗ hỏi này (" + hit.map(function(m){ return m.code; }).join(", ") + ")");
     });
+    // đúng câu số n của bản đồ (đã xếp theo thứ tự trong đề)
+    if(typeof mapOrder === "function" && typeof mapStatus === "function" && mapStatus().full){
+      var ORD = mapOrder();
+      res.items.forEach(function(x){ var e = ORD.seq[(+x.it.n || 0) - 1]; if(!e) return;
+        if(x.it.lv !== e.l.lv || x.it.mức !== e.l.m || x.it.code !== e.code) x.warns.push("theo bản đồ chất liệu, câu " + x.it.n + " là " + e.l.lv + " " + e.l.m + " · " + e.code + (e.para ? " · đoạn " + e.para : "") + "; câu này ghi " + [x.it.lv, x.it.mức].join(" ") + " · " + x.it.code);
+      });
+    }
   }
   // bài Đọc: đoạn nào chưa có câu hỏi
   if(isR && paras.length > 1){
@@ -891,7 +898,7 @@ function qExtend(v){
   v.qN = qExpected(); v.qBlueprint = qBlueprintText(); v.qRules = qRulesText(); v.qFormat = qFormatText();
   var grp = SPEC[S.spec].grp;
   v.qPartNote = (!qIsR() && grp && QPART["L"+grp]) ? "Bối cảnh: " + QPART["L"+grp] + "\n" : "";
-  var notes = slotVal("notes")||"", al = notes.split("\n").filter(function(l){ return ANCHOR_RE.test(l.replace(/\*\*/g,"")); });
+  var notes = slotVal("notes")||"", al = notes.split("\n").filter(function(l){ l = l.replace(/\*\*/g,""); return ANCHOR_RE.test(l) || FRAME_RE.test(l.normalize("NFC")); });
   v.qAnchors = qIsR() && al.length ? "- Dùng các điểm neo đã ghi khi biên tập (mã | đoạn | trích) làm chỗ ra câu hỏi khi phù hợp:\n" + al.join("\n") + "\n" : "";
   v.readOrListenNounCap = qIsR() ? "BÀI ĐỌC" : "KỊCH BẢN";
   v.qPassNote = qIsR() ? " (các nhãn [Đoạn N] chỉ để đánh số đoạn, không thuộc bài)" : "";

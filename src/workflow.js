@@ -321,10 +321,21 @@ function mapStatus(){
   var E = mapEval(), bad = E.res.filter(function(x){ return x.s === "fail"; });
   return {E:E, full:!bad.length && E.res.length > 0, why:bad.length ? bad.length + " dòng chưa đạt (dòng " + bad.map(function(x){ return x.idx + 1; }).join(", ") + ")" : ""};
 }
+// thứ tự câu trong đề (quy ước nhóm CH-B3): theo vị trí chỗ hỏi trong bài; câu về cả bài (MI, TO) xếp cuối
+var MAP_GLOBAL = {MI:1, TO:1};
+function mapOrder(E){
+  E = E || mapEval();
+  var placed = E.res.filter(function(x){ return x.span; });
+  var seq = placed.filter(function(x){ return !MAP_GLOBAL[x.code]; }).sort(function(a, b){ return a.span[0] - b.span[0] || a.idx - b.idx; })
+    .concat(placed.filter(function(x){ return MAP_GLOBAL[x.code]; }));
+  var num = {}; seq.forEach(function(x, i){ num[x.idx] = i + 1; });
+  return {seq:seq, num:num, missing:E.res.filter(function(x){ return !x.span; })};
+}
 function mapKeep(){ var M = S.map; if(!M) return []; var out = []; Object.keys(M.rows).forEach(function(k){ var v = M.rows[k]; if(v.w && /^(RE|VO|VO\(ID\))$/.test(v.code||"")) out.push(v.w); if(v.code === "IS" && v.q) out.push(v.q); }); return out; }
 function mapText(){
   var E = mapEval(); if(!E.res.some(function(x){ return x.v.q; })) return "";
-  return E.res.map(function(x, i){ var v = x.v; return "DÒNG " + (i+1) + " | " + x.l.lv + " " + x.l.m + " | " + (x.code || "?") + (x.para ? " | đoạn " + x.para : "") + " | CHỖ HỎI: \"" + (v.q||"") + "\"" + (v.w ? " | TỪ: " + v.w : "") + (v.alt ? " | DỰ PHÒNG: \"" + v.alt + "\"" : "") + (v.dis ? " | NHIỄU: " + v.dis : ""); }).join("\n");
+  var O = mapOrder(E), line = function(x){ var v = x.v; return x.l.lv + " " + x.l.m + " | " + (x.code || "?") + (MAP_GLOBAL[x.code] ? " | cả bài" : x.para ? " | đoạn " + x.para : "") + " | CHỖ HỎI: \"" + (v.q||"") + "\"" + (v.w ? " | TỪ: " + v.w : "") + (v.alt ? " | DỰ PHÒNG: \"" + v.alt + "\"" : "") + (v.dis ? " | NHIỄU: " + v.dis : ""); };
+  return O.seq.map(function(x, i){ return "CÂU " + (i+1) + " | " + line(x); }).concat(O.missing.map(function(x){ return "CHƯA CÓ CHỖ HỎI | " + x.l.lv + " " + x.l.m + " | " + (x.code || "?"); })).join("\n");
 }
 function mapParseAI(raw){
   var M = mapData(), L = mapLines(), n = 0, t = cleanPaste(raw||"").replace(/\*\*/g,"");
@@ -346,6 +357,17 @@ function mapParseAI(raw){
   save(); return n;
 }
 function mapFromAnchors(){
+  var fr = typeof parseFrame === "function" ? parseFrame(S.slots.notes) : null;
+  if(fr && fr.length){
+    var M0 = mapData(), used0 = {}, n0 = 0, L0 = mapLines();
+    fr.filter(function(x){ return x.quote; }).forEach(function(x){
+      var l = L0.filter(function(l){ return l.lv === x.lv && l.m === x.m && !used0[l.key] && !(M0.rows[l.key] && M0.rows[l.key].q) && (!x.code || l.codes.indexOf(x.code) >= 0); })[0]
+        || L0.filter(function(l){ return l.lv === x.lv && l.m === x.m && !used0[l.key] && !(M0.rows[l.key] && M0.rows[l.key].q); })[0];
+      if(!l) return; used0[l.key] = 1;
+      var v = M0.rows[l.key] = M0.rows[l.key] || {}; v.q = x.quote; if(x.code && l.codes.indexOf(x.code) >= 0){ v.code = x.code; v.codeAuto = false; } n0++;
+    });
+    if(n0){ save(); return n0; }
+  }
   var map = parseAnchors(S.slots.notes); if(!map) return 0;
   var M = mapData(), used = {}, n = 0;
   mapLines().forEach(function(l){
@@ -364,7 +386,7 @@ function wfExtend(v){
     + (grp === 1 ? "\n- Bài ngắn một câu hỏi: mọi chi tiết cụ thể (giờ, ngày, địa điểm, tên, con số) là thông tin để hỏi hoặc thông tin nhiễu cho câu đó; không đưa chi tiết cụ thể nào khác." : grp === 2 ? "\n- Hội thoại: giữ lượt lời ngắn, đổi lượt như nói chuyện thật. Giảm thừa bằng cách bỏ chủ đề con không dùng, không gộp nhiều ý vào một lượt lời dài. Nếu cắt ý thừa làm bài thiếu số từ, thêm lượt hỏi lại, xác nhận, đính chính mang thông tin nhiễu của chính ý đang nói, không mở ý mới." : "\n- Bài nói: ý nào được triển khai cũng gắn với một câu hỏi; ví dụ, số liệu chỉ giữ khi là căn cứ hoặc nhiễu; câu chuyển ý được giữ.")
     + "\n- Trong phần ghi chú cuối bài (sau dòng ghi số từ), liệt kê ngắn từng câu hỏi dự kiến: thông tin để hỏi; thông tin nhiễu.";
   v.factsNoWaste = qIsR() ? "" : " Bài nghe sẽ có " + nQ + " câu hỏi: chỉ rút những dữ kiện đủ cho " + nQ + " câu (mỗi câu một thông tin để hỏi và 1–2 thông tin cạnh tranh, như một con số, tên hoặc lựa chọn khác); bỏ phần còn lại để bài nghe không có thông tin thừa (hướng dẫn của Bộ).";
-  var mt = mapText(); if(mt){ v.qAnchors = "- BẢN ĐỒ CHẤT LIỆU ĐÃ DUYỆT: mỗi câu dùng đúng chỗ hỏi của một dòng (cùng bậc, mức, mã); không hỏi ngoài bản đồ:\n" + mt + "\n"; }
+  var mt = mapText(); if(mt){ v.qAnchors = "- BẢN ĐỒ CHẤT LIỆU ĐÃ DUYỆT, đã xếp theo thứ tự câu trong đề (theo vị trí chỗ hỏi trong bài; câu về cả bài ở cuối): soạn CÂU 1, CÂU 2… đúng số câu, bậc, mức, mã và chỗ hỏi của từng dòng; không đổi thứ tự, không hỏi ngoài bản đồ:\n" + mt + "\n"; }
 }
 
 /* ---- giao diện: thanh quy trình ---- */
@@ -452,15 +474,16 @@ function mapRender(){
   if(!mapLines().length){ box.innerHTML = '<p class="small warnc">' + esc(qbpWhy()) + '</p>'; return; }
   var M0 = mapData();
   if(!M0.autoDone && wfCanEditScreen("chat-lieu") && (S.slots.draft||"").trim() && !Object.keys(M0.rows).some(function(k){ return M0.rows[k].q; }) && parseAnchors(S.slots.notes)){ M0.autoDone = true; var na = mapFromAnchors(); if(na) toast("Đã điền sẵn " + na + " dòng bản đồ từ điểm neo AI ghi ở bước 4."); }
-  var E = mapEval(), M = mapData(), lk = wfDraftLocked();
+  var E = mapEval(), M = mapData(), lk = wfDraftLocked(), ORD = mapOrder(E);
   var nOk = E.res.filter(function(x){ return x.s === "ok"; }).length, nF = E.res.filter(function(x){ return x.s === "fail"; }).length;
   var foc = document.activeElement && box.contains(document.activeElement) ? {k:document.activeElement.getAttribute("data-mk"), f:document.activeElement.getAttribute("data-mf"), s:document.activeElement.selectionStart} : null;
   var h = '<h3>Bản đồ chất liệu theo bảng phân bố</h3><p class="small muted">Mỗi dòng là một câu hỏi của bảng phân bố. Chọn mã, chép nguyên văn chỗ hỏi trong bài và ít nhất 2 trích dẫn làm chất liệu nhiễu. Ô bậc 4–5 nên có thêm chỗ hỏi dự phòng. Từ được hỏi (RE, VO, câu IS) tự vào danh sách từ giữ lại. Bài chỉ gửi thẩm định được khi không còn dòng đỏ.</p>'
     + '<div class="clsum"><span class="cls ok">✓ ' + nOk + ' dòng đạt</span><span class="cls fail">! ' + nF + ' dòng chưa đạt</span><span class="cls warn">? ' + (E.res.length - nOk - nF) + ' dòng nên xem</span></div>'
     + E.glob.map(function(g){ return '<div class="small warnc">• ' + esc(g.t) + '</div>'; }).join("")
+    + '<p class="small muted">Dòng xếp theo bảng phân bố. <b>→ Câu n</b> là số câu trong đề, tính theo vị trí chỗ hỏi trong bài; câu về cả bài (MI, TO) xếp cuối (quy ước nhóm CH-B3). Câu lệnh soạn câu hỏi ở bước 9 dùng đúng thứ tự này.</p>'
     + '<table class="cltab maptab"><tbody>' + E.res.map(function(x, i){
       var v = x.v, l = x.l, k = l.key, dis = lk ? " disabled" : "";
-      return '<tr class="clr ' + x.s + '"><td class="clc"><b>' + (i+1) + '</b><div class="small muted">' + esc(l.lv + " " + l.m) + '</div></td><td>'
+      return '<tr class="clr ' + x.s + '"><td class="clc"><b>' + (i+1) + '</b><div class="small muted">' + esc(l.lv + " " + l.m) + '</div>' + (ORD.num[i] ? '<div class="small mapqn" title="Số câu trong đề: theo vị trí chỗ hỏi trong bài; câu về cả bài xếp cuối">→ Câu ' + ORD.num[i] + '</div>' : '') + '</td><td>'
         + '<div class="mapf"><select data-mk="' + k + '" data-mf="code"' + dis + '><option value="">Mã…</option>' + l.codes.map(function(c){ return '<option' + (x.code === c ? " selected" : "") + '>' + c + '</option>'; }).join("") + '</select>' + (v.codeAuto && x.code ? '<span class="small muted" title="Trang chọn sẵn mã đầu tiên của dòng này trong bảng phân bố' + (v.codeAI ? '; AI ghi ' + esc(v.codeAI) + ', mã này không có ở dòng này' : '') + '. Đổi được.">chọn sẵn' + (v.codeAI ? ' (AI ghi ' + esc(v.codeAI) + ')' : '') + '</span>' : '')
         + (l.sk ? '<span class="small muted">' + esc(l.sk.map(function(s){ return LSK[s] ? LSK[s][1] : s; }).join("; ")) + '</span>' : '')
         + (/^(RE|VO|VO\(ID\))$/.test(x.code) ? '<input type="text" data-mk="' + k + '" data-mf="w" placeholder="' + (x.code === "RE" ? "đại từ" : "từ, cụm được hỏi") + '" value="' + esc(v.w||"") + '"' + dis + '>' : '') + (x.lvl ? '<span class="small muted">mức ' + esc(x.lvl) + '</span>' : '') + (x.para ? '<span class="small muted">đoạn ' + x.para + '</span>' : '') + '</div>'
