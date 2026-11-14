@@ -26,8 +26,11 @@ function applyOutputRules(){
   });
 }
 /* ---------- Làm sạch chữ dán từ chatbot ---------- */
+/* chữ dán vào có thể ở dạng tách dấu (Unicode NFD, hay gặp khi chép trên máy Mac/iPhone): "DÒNG" thành D + O + dấu huyền + NG,
+   các khuôn tìm "DÒNG", "CÂU", "CHỖ HỎI"… sẽ không nhận ra; đưa về dạng dựng sẵn (NFC) trước khi đọc */
 function cleanPaste(t){
-  return (t||"").replace(/\r/g,"").replace(/[​-‍﻿]/g,"").replace(/ /g," ")
+  t = t || ""; if(t.normalize) t = t.normalize("NFC");
+  return t.replace(/\r/g,"").replace(/[​-‍﻿]/g,"").replace(/ /g," ")
     .split("\n").filter(function(l){ return !/^\s*```[\w-]*\s*$/.test(l); }).join("\n").replace(/^\s+|\s+$/g,"");
 }
 var SPLIT_RE = /\n[ \t]*(?:={2,}[ \t]*(?:GHI CH[ÚU]|THAY Đ[ỔO]I|THAY DOI)[ \t]*={2,}|-{3,}|\*{3,}|_{3,})[ \t]*(?:\n|$)/i;
