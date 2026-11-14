@@ -632,6 +632,42 @@ function clTierHTML(r){ var t = CL_TIER[r.tier || (/QĐ 730/.test(r.src||"") ? "
 var CL_WHO = {M:"Máy", H:"Người", MH:"Máy + người", Q:"Soát từng câu"};
 var CL_IC = {ok:"✓", fail:"!", warn:"?", na:"–", todo:"○", recheck:"↺"};
 function clStatusHTML(e, mode){ return '<span class="cls ' + e.s + '">' + CL_IC[e.s] + " " + ((mode === "self" && CL_SLAB_SELF[e.s]) || CL_SLAB[e.s]) + '</span>'; }
+/* tự đánh giá: chỗ sửa của từng dòng (bước, ô cần sửa); bấm "Sửa →" là nhảy tới đó */
+function clFixTarget(sc, code, e){
+  var R = typeof qIsR === "function" ? qIsR() : true, draftScr = R ? "viet-bai" : "viet-kich-ban";
+  var t = null;
+  if(sc === "NL"){
+    if(/^NL-A[1235]$/.test(code)) t = {scr:"chu-de", sel:'[data-slot="topic"]'};
+    else if(/^NL-A[46]$/.test(code)) t = {scr:"nguon", sel:code === "NL-A4" ? "#pc-src" : '[data-slot="src"]'};
+    else if(code === "NL-B12") t = {scr:"tu-vung", sel:null};
+    else if(/^NL-D/.test(code)) t = {scr:"chat-lieu", sel:"#mapbox"};
+    else t = {scr:draftScr, sel:'[data-slot="draft"]'};
+  } else if(sc === "CH"){
+    var n = e && e.list && e.list.filter(function(x){ return x.n; })[0];
+    t = {scr:"cau-hoi", sel:'[data-slot="questions"]', find:n ? n.n : 0};
+  } else if(sc === "WS"){
+    if(code === "WS-A1") t = {scr:"ws-chude", sel:'[data-ws="theme"]'};
+    else if(/^WS-B1[478]$/.test(code) && document.getElementById("ws-nguon")) t = {scr:"ws-nguon", sel:null};
+    else t = {scr:"ws-soan", sel:null};
+  }
+  if(!t) return null;
+  var el = document.getElementById(t.scr); if(!el) return null;
+  t.name = el.getAttribute("data-name") || t.scr; return t;
+}
+function clGoFix(sc, code){
+  var ev = clEval(sc, "self"), t = clFixTarget(sc, code, ev[code]); if(!t) return;
+  var from = (document.querySelector(".screen:not(.hidden)") || {}).getAttribute ? document.querySelector(".screen:not(.hidden)").getAttribute("data-name") : "";
+  show(t.scr);
+  setTimeout(function(){
+    var scr = document.getElementById(t.scr), f = t.sel ? [].slice.call(scr.querySelectorAll(t.sel)).filter(function(x){ return x.offsetParent; })[0] : null;
+    if(f){
+      f.scrollIntoView({block:"center"});
+      if(f.focus && /TEXTAREA|INPUT/.test(f.tagName)){ f.focus({preventScroll:true});
+        if(t.find && f.tagName === "TEXTAREA"){ var m = new RegExp("^[ \\t>*•\\-]*C[ÂA]U\\s+" + t.find + "\\b", "im").exec(f.value); if(m){ f.setSelectionRange(m.index, m.index + m[0].length); var lh = parseFloat(getComputedStyle(f).lineHeight) || 20; f.scrollTop = Math.max(0, f.value.slice(0, m.index).split("\n").length - 3) * lh; } } }
+    }
+    toast("Sửa " + code + " ở đây. Xong thì quay lại checklist" + (from ? " (bước " + from + ")" : "") + " bấm Đạt cho dòng này.");
+  }, 120);
+}
 function clRowHTML(sc, e, mode){
   var r = e.r, tk = clTicksOf(mode)[r.c], human = r.who==="H" || r.who==="MH", can = clCanTick(sc, mode);
   var notesN = clNotes(sc).filter(function(n){ return n.code===r.c && n.st==="Mở"; }).length;
@@ -647,6 +683,7 @@ function clRowHTML(sc, e, mode){
     // phiếu thẩm định: xem được người soạn tự đánh giá thế nào, nhưng chấm riêng
     if(mode !== "self"){ var st0 = clSelfTicks()[r.c]; if(st0) det += (det ? " " : "") + '<span class="muted">Người soạn tự đánh giá: ' + (st0.v === "ok" ? "Đạt" : "Chưa đạt") + (st0.note ? " (" + esc(st0.note) + ")" : "") + '.</span>'; }
   }
+  if(mode === "self" && (e.s === "fail" || e.s === "warn" || e.s === "recheck" || (tk && tk.v === "no"))){ var ft = clFixTarget(sc, r.c, e); if(ft) act += '<button type="button" class="btn sm clgofix" data-clgofix="' + r.c + '" title="Đến bước ' + esc(ft.name) + ' để sửa">Sửa →</button>'; }
   act += '<button type="button" class="btn quiet sm" data-clnote="' + r.c + '" title="Thêm ghi chú cho tiêu chí này">+ Ghi chú</button>';
   var aid = (r.who === "H" || r.who === "MH") && CL_AIDS[r.c] ? '<details class="claid" data-aid="' + r.c + '"' + (clAidOpen[r.c] ? " open" : "") + '><summary class="small">Xem để xét</summary><div class="claidb">' + (clAidOpen[r.c] ? (function(){ try{ return clAid(r.c); }catch(x){ return ""; } })() : "") + '</div></details>' : '';
   return '<tr class="clr ' + e.s + '"><td class="clc"><b>' + esc(r.c) + '</b></td><td>' + esc(r.t) + '<div class="small muted">' + clTierHTML(r) + esc(r.src) + ' · ' + CL_WHO[r.who] + (r.full ? ' · <span class="cls na">đọc toàn ' + (sc === "CH" ? "bộ" : "bài") + '</span>' : '') + (notesN ? ' · <span class="no">' + notesN + ' ghi chú mở</span>' : '') + '</div></td><td>' + clStatusHTML(e, mode) + (det ? '<div class="small">' + det + '</div>' : '') + '</td><td class="cla">' + act + '</td></tr>' + (aid ? '<tr class="claidrow"><td></td><td colspan="3">' + aid + '</td></tr>' : '');
@@ -779,9 +816,10 @@ function bindCl(){
       var mode = box.getAttribute("data-rv") ? "rv" : "self", can = clCanTick(sc, mode); if(!can.ok){ toast(can.why); return; }
       var r = CL_ROWS[sc].filter(function(x){ return x.c===a; })[0], v = t.getAttribute("data-v"), tk = clTicksOf(mode);
       if(tk[a] && tk[a].v===v && !(v==="ok" && clStale(r, tk[a]).length)) delete tk[a]; else tk[a] = {v:v, sig:clSig(r), at:Date.now(), by:wfMe(), dev:wfDevOn()};
-      save(); if(v==="no" && tk[a]){ clForm[sc] = {code:a, sev:"PHẢI SỬA"}; clRender(); var fm = box.querySelector('[data-k="form"]'); if(fm){ fm.open = true; fm.scrollIntoView({block:"center"}); } } else clRender();
+      save(); if(v==="no" && tk[a] && mode !== "self"){ clForm[sc] = {code:a, sev:"PHẢI SỬA"}; clRender(); var fm = box.querySelector('[data-k="form"]'); if(fm){ fm.open = true; fm.scrollIntoView({block:"center"}); } } else clRender();
       updateStepper(); return;
     }
+    if((a = t.getAttribute("data-clgofix"))){ clGoFix(sc, a); return; }
     if((a = t.getAttribute("data-clnote"))){ clForm[sc] = {code:a, sev:"PHẢI SỬA"}; clRender(); var f2 = box.querySelector('[data-k="form"]'); if(f2){ f2.open = true; f2.scrollIntoView({block:"center"}); var q = f2.querySelector('[data-ff="text"]'); if(q) q.focus(); } return; }
     if(t.hasAttribute("data-fsave")){
       var fb = box.querySelector("[data-clform]"), f0 = clFormRead(fb), msg = fb.querySelector("[data-fmsg]");
