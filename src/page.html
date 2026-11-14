@@ -633,6 +633,11 @@ textarea.wflocked{background:var(--bg);color:var(--muted)}
 .rvbody{overflow:auto;padding:14px 16px 24px;display:grid;gap:14px;align-content:start}
 .rvbody .wfg1{border:0;padding:0;background:none;box-shadow:none}
 .rvgate{display:grid;gap:14px}
+.sugbox .sugbody{display:grid;gap:10px;margin-top:10px}
+.sugta{width:100%;font:inherit;line-height:1.55}
+.sugcard{border:2px solid var(--line)}
+.sugcard.open{border-color:var(--info);background:var(--info-soft)}
+.sugcard .fx{background:var(--card)}
 .rvbody .clbox{border:1px solid var(--line);border-radius:12px;padding:12px}
 .rvacts{display:grid;gap:10px;grid-template-columns:1fr}
 .rvlead{display:grid;gap:6px}
@@ -1534,8 +1539,8 @@ pre{max-width:100%;overflow-x:auto}
   <div class="rvhead"><div><div class="kicker" id="rv-kick">Phiếu duyệt</div><b id="rv-title"></b></div><button type="button" class="btn quiet sm" id="rv-close" aria-label="Thu gọn phiếu duyệt">Thu gọn ✕</button></div>
   <div class="rvbody">
     <div class="wfg1 hidden" id="wf-g1"></div>
-    <div class="rvgate hidden" id="wf-g2"><div id="wf-g2h"></div><div class="clbox" data-cl="NL" data-rv="1"></div><div class="wfacts rvacts" id="wf-g2a"></div></div>
-    <div class="rvgate hidden" id="wf-g3"><div id="wf-g3h"></div><div class="hidden" id="wf-review"></div><div class="clbox" data-cl="CH" data-rv="1"></div><div class="wfacts rvacts" id="wf-g3a"></div></div>
+    <div class="rvgate hidden" id="wf-g2"><div id="wf-g2h"></div><div class="clbox" data-cl="NL" data-rv="1"></div><div id="wf-g2s"></div><div class="wfacts rvacts" id="wf-g2a"></div></div>
+    <div class="rvgate hidden" id="wf-g3"><div id="wf-g3h"></div><div class="hidden" id="wf-review"></div><div class="clbox" data-cl="CH" data-rv="1"></div><div id="wf-g3s"></div><div class="wfacts rvacts" id="wf-g3a"></div></div>
     <div class="rvgate hidden" id="wf-gx"><div id="wf-gxh"></div><div class="wfacts rvacts" id="wf-gxa"></div></div>
   </div>
 </aside>

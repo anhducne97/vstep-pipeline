@@ -60,6 +60,14 @@ function wfSelfCond(sc){
   });
   return wfCond(!miss.length && !no.length, "Đã tự đánh giá mọi dòng Người của checklist " + sc + " và bấm Đạt" + (miss.length ? ": chưa xét " + miss.join(", ") : "") + (no.length ? (miss.length ? "; " : ": ") + "đang tự chấm Chưa đạt " + no.join(", ") + " (sửa rồi chấm lại)" : ""));
 }
+/* trả sửa: chốt phần sửa trực tiếp thành đề xuất cho người soạn */
+function wfSugSend(sc){ if(typeof sugCommit !== "function") return; var n = sugCommit(sc); if(n) setTimeout(function(){ toast("Đã gửi " + n + " chỗ sửa trực tiếp cho người soạn nhận hoặc bỏ."); }, 900); }
+function wfSugConds(sc, forReviewer){
+  if(typeof sugList !== "function") return [];
+  if(forReviewer){ var n = sugDraftPairs(sc).length; return n ? [wfCond(false, "Còn " + n + " chỗ sửa trực tiếp chưa gửi: bấm Trả sửa để gửi người soạn, hoặc Bỏ hết phần đang sửa")] : []; }
+  var L = sugList(sc); if(!L.length) return [];
+  var o = sugOpen(sc).length; return [wfCond(!o, "Đã nhận hoặc bỏ mọi đề xuất sửa của người thẩm định" + (o ? ": còn " + o : ""))];
+}
 function wfDupCond(){ var d = (typeof LIB !== "undefined" && LIB.items && LIB.items.length) ? libDupes() : []; return [wfCond(!d.length, d.length ? "Trùng bài trong thư viện: " + d.map(function(x){ return x.x.title; }).join("; ") : "Không trùng bài trong thư viện")]; }
 function wfApplies(t){ return !t.off && (!t.only || t.only === (wfIsWS() ? "WS" : "RL")); }
 function wfWSHuman(){ return clRows("WS").filter(function(r){ return r.who === "H" || r.who === "MH"; }).map(function(r){ return r.c; }); }
@@ -67,8 +75,8 @@ function wfWSCond(id){
   var w = wfData();
   if(id === "propose"){ var d = (typeof LIB !== "undefined" && LIB.items.length) ? libDupes() : []; return [wfCond(wsV("theme"), "Có chủ đề (bước Soạn đề)"), wfCond(!d.length, d.length ? "Trùng chủ đề với bài trong thư viện: " + d.map(function(x){ return x.x.title; }).join(", ") : "Không trùng chủ đề với bài trong thư viện")]; }
   if(id === "g1ok") return [wfCond(wsV("theme"), "Có chủ đề")];
-  if(id === "nlsub"){ var ev = clEval("WS"), f = wfMachineFails("WS", ev); return [wfCond(wsV("theme"), "Có chủ đề (bước Chủ đề)"), wfCond(wsHasContent(), "Có đề"), wfCond(!f.length, "Mọi dòng máy kiểm của checklist WS không đỏ" + (f.length ? ": còn " + f.join(", ") : "")), wfSelfCond("WS")]; }
-  if(id === "g2ok"){ var sum = clSummary("WS"), by = wfTickBy(wfWSHuman(), w.as.nl === w.as.tdnl ? "" : w.as.nl); return [wfCond(sum.pass, "Checklist WS đạt: không đỏ, mọi dòng Người đã bấm Đạt, không còn ghi chú PHẢI SỬA mở"), wfCond(!by.length, by.length ? "Các dòng " + by.join(", ") + " do chính người soạn bấm Đạt: người thẩm định phải tự xét" : "Các dòng Người do người thẩm định xét")]; }
+  if(id === "nlsub"){ var ev = clEval("WS"), f = wfMachineFails("WS", ev); return [wfCond(wsV("theme"), "Có chủ đề (bước Chủ đề)"), wfCond(wsHasContent(), "Có đề"), wfCond(!f.length, "Mọi dòng máy kiểm của checklist WS không đỏ" + (f.length ? ": còn " + f.join(", ") : "")), wfSelfCond("WS")].concat(wfSugConds("WS")); }
+  if(id === "g2ok"){ var sum = clSummary("WS"), by = wfTickBy(wfWSHuman(), w.as.nl === w.as.tdnl ? "" : w.as.nl); return [wfCond(sum.pass, "Checklist WS đạt: không đỏ, mọi dòng Người đã bấm Đạt, không còn ghi chú PHẢI SỬA mở"), wfCond(!by.length, by.length ? "Các dòng " + by.join(", ") + " do chính người soạn bấm Đạt: người thẩm định phải tự xét" : "Các dòng Người do người thẩm định xét")].concat(wfSugConds("WS", true)); }
   return null;
 }
 
@@ -87,32 +95,32 @@ var WF_T = [
   // "Chủ đề đề xuất" chỉ còn ở bài cũ: coi như đang soạn.
   {id:"nlsub", from:["", "Chủ đề đề xuất", "Đang adapt","Ngữ liệu cần sửa"], to:"Chờ thẩm định ngữ liệu", role:"nl", label:"Gửi thẩm định ngữ liệu", cond:function(){ var _ws = wfIsWS() ? wfWSCond("nlsub") : null; if(_ws) return _ws.concat(wfDupCond());
     var ev = wfNL(), f = wfMachineFails("NL", ev), b7 = ["nd-1","nd-2","nd-3"].every(function(g){ return S.gates && S.gates[g]; }), m = mapStatus();
-    return [wfCond((S.slots.topic||"").trim(), "Có chủ đề (bước Chủ đề)"), wfCond(ev["NL-A4"] && ev["NL-A4"].d.indexOf("Chưa ghi") < 0, "Có nguồn, URL, giấy phép (khung Thông tin nguồn ở bước Nguồn)"), wfCond((S.slots.draft||"").trim(), "Có bài"), wfCond(!f.length, "Mọi dòng máy kiểm của checklist NL không đỏ" + (f.length ? ": còn " + f.join(", ") : "")), wfSelfCond("NL"), wfCond(b7, "Đã đối chiếu nguồn (bước Nội dung, 3 ô cuối bước)"), wfCond(m.full, "Bản đồ chất liệu phủ đủ mọi dòng của bảng phân bố" + (m.full ? "" : ": " + m.why)), wfCond(!wfOpenMust("NL"), "Không còn ghi chú NL PHẢI SỬA đang mở")].concat(wfDupCond());
+    return [wfCond((S.slots.topic||"").trim(), "Có chủ đề (bước Chủ đề)"), wfCond(ev["NL-A4"] && ev["NL-A4"].d.indexOf("Chưa ghi") < 0, "Có nguồn, URL, giấy phép (khung Thông tin nguồn ở bước Nguồn)"), wfCond((S.slots.draft||"").trim(), "Có bài"), wfCond(!f.length, "Mọi dòng máy kiểm của checklist NL không đỏ" + (f.length ? ": còn " + f.join(", ") : "")), wfSelfCond("NL")].concat(wfSugConds("NL")).concat([wfCond(b7, "Đã đối chiếu nguồn (bước Nội dung, 3 ô cuối bước)"), wfCond(m.full, "Bản đồ chất liệu phủ đủ mọi dòng của bảng phân bố" + (m.full ? "" : ": " + m.why)), wfCond(!wfOpenMust("NL"), "Không còn ghi chú NL PHẢI SỬA đang mở")]).concat(wfDupCond());
   }},
   {id:"g2ok", from:["Chờ thẩm định ngữ liệu"], to:"Ngữ liệu đã duyệt (khoá)", role:"tdnl", four:"nl", label:"Duyệt cổng 2 và khoá bài", cond:function(){ var _ws = wfIsWS() ? wfWSCond("g2ok") : null; if(_ws) return _ws;
     var sum = clSummary("NL"), by = wfTickBy(["NL-C1","NL-C2","NL-C3","NL-C4","NL-C5","NL-D1","NL-D2","NL-D5"], wfData().as.nl === wfData().as.tdnl ? "" : wfData().as.nl);
-    return [wfCond(sum.pass, "Checklist NL đạt: không đỏ, mọi dòng Người đã bấm Đạt, không còn ghi chú PHẢI SỬA mở"), wfCond(!by.length, by.length ? "Các dòng " + by.join(", ") + " do chính người soạn bấm Đạt: người thẩm định phải tự xét" : "Các dòng Người do người thẩm định bấm")];
+    return [wfCond(sum.pass, "Checklist NL đạt: không đỏ, mọi dòng Người đã bấm Đạt, không còn ghi chú PHẢI SỬA mở"), wfCond(!by.length, by.length ? "Các dòng " + by.join(", ") + " do chính người soạn bấm Đạt: người thẩm định phải tự xét" : "Các dòng Người do người thẩm định bấm")].concat(wfSugConds("NL", true));
   }, act:function(w){ var d = S.slots.draft||""; w.lock = {ver:(w.lock ? w.lock.ver : (w.lockVerMax || 0)) + 1, hash:qHash(d), text:d, at:Date.now(), by:wfWho()}; w.req = null; }},
   {id:"g2back", from:["Chờ thẩm định ngữ liệu"], to:"Ngữ liệu cần sửa", role:"tdnl", four:"nl", label:"Trả sửa ngữ liệu", cond:function(){
-    var w = wfData(); return [wfCond(wfOpenMust(wfSc()) || clNotes(wfSc()).some(function(n){ return n.st === "Mở"; }), "Có ghi chú NL đang mở (nhận xét theo đoạn hoặc theo dòng bản đồ)"), wfCond(w.rounds.nl < WF_MAXROUND, "Chưa quá " + WF_MAXROUND + " lần trả sửa (đã " + w.rounds.nl + "); quá thì Điều phối quyết")];
-  }, act:function(w){ w.rounds.nl++; }},
-  {id:"g2backc", from:["Chờ thẩm định ngữ liệu"], to:"Ngữ liệu cần sửa", role:"coord", label:"Điều phối: trả sửa thêm lần nữa", note:true, cond:function(){ var w = wfData(); return [wfCond(w.rounds.nl >= WF_MAXROUND, "Đã trả sửa " + w.rounds.nl + " lần (Điều phối chỉ quyết khi đủ " + WF_MAXROUND + " lần)")]; }, act:function(w){ w.rounds.nl++; }},
+    var w = wfData(), nS = typeof sugDraftPairs === "function" ? sugDraftPairs(wfSc()).length : 0; return [wfCond(wfOpenMust(wfSc()) || clNotes(wfSc()).some(function(n){ return n.st === "Mở"; }) || nS, "Có ghi chú đang mở hoặc chỗ sửa trực tiếp" + (nS ? " (" + nS + " chỗ sửa sẽ gửi người soạn)" : "")), wfCond(w.rounds.nl < WF_MAXROUND, "Chưa quá " + WF_MAXROUND + " lần trả sửa (đã " + w.rounds.nl + "); quá thì Điều phối quyết")];
+  }, act:function(w){ w.rounds.nl++; wfSugSend(wfSc()); }},
+  {id:"g2backc", from:["Chờ thẩm định ngữ liệu"], to:"Ngữ liệu cần sửa", role:"coord", label:"Điều phối: trả sửa thêm lần nữa", note:true, cond:function(){ var w = wfData(); return [wfCond(w.rounds.nl >= WF_MAXROUND, "Đã trả sửa " + w.rounds.nl + " lần (Điều phối chỉ quyết khi đủ " + WF_MAXROUND + " lần)")]; }, act:function(w){ w.rounds.nl++; wfSugSend(wfSc()); }},
   {id:"g2no", from:["Chờ thẩm định ngữ liệu","Ngữ liệu cần sửa","Đang adapt"], to:"Thay bài / Loại", role:"tdnl", label:"Thay bài", note:true, cond:function(){ return []; }},
   {id:"g2noc", from:["", "Chủ đề đề xuất", "Đang adapt","Chờ thẩm định ngữ liệu","Ngữ liệu cần sửa","Ngữ liệu đã duyệt (khoá)","Đang soạn câu hỏi","Chờ thẩm định câu hỏi","Câu hỏi cần sửa"], to:"Thay bài / Loại", role:"coord", label:"Điều phối: thay bài hoặc loại", note:true, cond:function(){ return []; }},
   {id:"chstart", only:"RL", from:["Ngữ liệu đã duyệt (khoá)"], to:"Đang soạn câu hỏi", role:"ch", label:"Nhận bài, bắt đầu soạn câu hỏi", cond:function(){ return [wfCond(wfData().lock, "Bài đã khoá")]; }, act:function(w){ w.qVer = w.lock.ver; }},
   {id:"chsub", only:"RL", from:["Đang soạn câu hỏi","Câu hỏi cần sửa"], to:"Chờ thẩm định câu hỏi", role:"ch", label:"Gửi thẩm định câu hỏi", cond:function(){
     var w = wfData(), ev = clEval("CH"), f = wfMachineFails("CH", ev), self = wfRowsOk(ev, ["CH-E1","CH-E2","CH-E3","CH-E4"]);
-    return [wfCond(wfQItems().length, "Có bộ câu hỏi"), wfCond(!f.length, "Mọi dòng máy kiểm của checklist CH không đỏ" + (f.length ? ": còn " + f.join(", ") : "")), wfCond(!self.length, "Đã tự soát 4 mục từng câu (CH-E1 đến E4)" + (self.length ? ": chưa xong " + self.join(", ") : "")), wfSelfCond("CH"), wfCond(!w.req, "Không có yêu cầu sửa ngữ liệu đang mở"), wfCond(w.lock && w.qVer === w.lock.ver, "Câu hỏi soạn trên bản khoá mới nhất" + (w.lock ? " (bản " + w.lock.ver + ")" : "")), wfCond(!wfOpenMust("CH"), "Không còn ghi chú CH PHẢI SỬA đang mở")];
+    return [wfCond(wfQItems().length, "Có bộ câu hỏi"), wfCond(!f.length, "Mọi dòng máy kiểm của checklist CH không đỏ" + (f.length ? ": còn " + f.join(", ") : "")), wfCond(!self.length, "Đã tự soát 4 mục từng câu (CH-E1 đến E4)" + (self.length ? ": chưa xong " + self.join(", ") : "")), wfSelfCond("CH"), wfCond(!w.req, "Không có yêu cầu sửa ngữ liệu đang mở"), wfCond(w.lock && w.qVer === w.lock.ver, "Câu hỏi soạn trên bản khoá mới nhất" + (w.lock ? " (bản " + w.lock.ver + ")" : "")), wfCond(!wfOpenMust("CH"), "Không còn ghi chú CH PHẢI SỬA đang mở")].concat(wfSugConds("CH"));
   }},
   {id:"g3ok", only:"RL", from:["Chờ thẩm định câu hỏi"], to:"Câu hỏi đã duyệt", role:"tdch", four:"ch", label:"Duyệt cổng 3", cond:function(){
     var R = wfReviewState(), ev = clEval("CH"), f = wfMachineFails("CH", ev), hb = wfRowsOk(ev, ["CH-D5","CH-E5"]), by = wfTickBy(["CH-D5","CH-E5"], wfData().as.ch === wfData().as.tdch ? "" : wfData().as.ch);
-    return [wfCond(R.n && R.taken === R.n, "Người thẩm định đã làm cả bộ khi ẩn đáp án (" + R.taken + "/" + R.n + ")"), wfCond(R.n && R.pass === R.n, "Mọi câu có quyết định Đạt (" + R.pass + "/" + R.n + ")"), wfCond(!hb.length && !by.length, "Dòng Người của checklist CH (D5, E5) do người thẩm định bấm Đạt"), wfCond(!f.length, "Không còn dòng đỏ"), wfCond(!wfOpenMust("CH"), "Không còn ghi chú CH PHẢI SỬA đang mở")];
+    return [wfCond(R.n && R.taken === R.n, "Người thẩm định đã làm cả bộ khi ẩn đáp án (" + R.taken + "/" + R.n + ")"), wfCond(R.n && R.pass === R.n, "Mọi câu có quyết định Đạt (" + R.pass + "/" + R.n + ")"), wfCond(!hb.length && !by.length, "Dòng Người của checklist CH (D5, E5) do người thẩm định bấm Đạt"), wfCond(!f.length, "Không còn dòng đỏ"), wfCond(!wfOpenMust("CH"), "Không còn ghi chú CH PHẢI SỬA đang mở")].concat(wfSugConds("CH", true));
   }},
   {id:"g3back", only:"RL", from:["Chờ thẩm định câu hỏi"], to:"Câu hỏi cần sửa", role:"tdch", four:"ch", label:"Trả sửa câu hỏi", cond:function(){
     var R = wfReviewState(), w = wfData();
-    return [wfCond(R.n && R.decided === R.n, "Câu nào cũng có quyết định (" + R.decided + "/" + R.n + ")"), wfCond(R.pass < R.n, "Có câu chưa Đạt, kèm nhận xét"), wfCond(w.rounds.ch < WF_MAXROUND, "Chưa quá " + WF_MAXROUND + " lần trả sửa (đã " + w.rounds.ch + "); quá thì Điều phối quyết")];
-  }, act:function(w){ w.rounds.ch++; w.qReviewed = S.slots.questions || ""; }},
-  {id:"g3backc", only:"RL", from:["Chờ thẩm định câu hỏi"], to:"Câu hỏi cần sửa", role:"coord", label:"Điều phối: trả sửa câu hỏi thêm lần nữa", note:true, cond:function(){ var w = wfData(); return [wfCond(w.rounds.ch >= WF_MAXROUND, "Đã trả sửa " + w.rounds.ch + " lần")]; }, act:function(w){ w.rounds.ch++; w.qReviewed = S.slots.questions || ""; }},
+    return [wfCond(R.n && R.decided === R.n, "Câu nào cũng có quyết định (" + R.decided + "/" + R.n + ")"), wfCond(R.pass < R.n || (typeof sugDraftPairs === "function" && sugDraftPairs("CH").length), "Có câu chưa Đạt kèm nhận xét, hoặc có chỗ sửa trực tiếp"), wfCond(w.rounds.ch < WF_MAXROUND, "Chưa quá " + WF_MAXROUND + " lần trả sửa (đã " + w.rounds.ch + "); quá thì Điều phối quyết")];
+  }, act:function(w){ w.rounds.ch++; w.qReviewed = S.slots.questions || ""; wfSugSend("CH"); }},
+  {id:"g3backc", only:"RL", from:["Chờ thẩm định câu hỏi"], to:"Câu hỏi cần sửa", role:"coord", label:"Điều phối: trả sửa câu hỏi thêm lần nữa", note:true, cond:function(){ var w = wfData(); return [wfCond(w.rounds.ch >= WF_MAXROUND, "Đã trả sửa " + w.rounds.ch + " lần")]; }, act:function(w){ w.rounds.ch++; w.qReviewed = S.slots.questions || ""; wfSugSend("CH"); }},
   // quay lại khi một bước chưa ổn (đều phải ghi lý do, ghi vào nhật ký)
   {id:"nlwd", from:["Chờ thẩm định ngữ liệu"], to:"Đang adapt", role:"nl", label:"Rút lại để sửa tiếp", back:true, note:true, ph:"Lý do rút lại (người thẩm định sẽ thấy trong nhật ký)", cond:function(){ return []; }},
   {id:"g2undo", from:["Ngữ liệu đã duyệt (khoá)"], to:"Chờ thẩm định ngữ liệu", role:"tdnl", four:"nl", label:"Mở lại cổng 2 (chưa ai nhận soạn câu hỏi)", back:true, note:true, ph:"Vì sao mở lại: duyệt nhầm, phát hiện lỗi…", cond:function(){ return []; }, act:wfUnlock},
@@ -420,6 +428,7 @@ function wfActHTML(A, isReq, i){
     + '<button type="button" class="btn ' + (A.ok ? "primary" : "quiet") + '" data-wfgo="' + (isReq ? "r" : "t") + i + '"' + (A.ok ? "" : ' disabled title="' + esc(wfWhyText(A)) + '"') + '>' + esc(t.label) + '</button></div>';
 }
 function wfRender(){
+  try{ if(typeof sugRenderAuthor === "function") sugRenderAuthor(); }catch(e){}
   var box = document.getElementById("wfbar"); if(!box) return;
   // đang mở bảng chọn ngày ở thanh Quy trình: hoãn vẽ lại tới khi rời ô (vẽ lại làm bảng chọn ngày tự tắt)
   var ae = document.activeElement;
@@ -669,12 +678,12 @@ function rvLead(g){
   var w = wfData(), st = w.st || "";
   if(g === 2){
     var rq = w.req && w.req.st === "chờ duyệt", mine = rvState().mine;
-    return '<div class="rvlead"><p class="small muted">' + (rq ? "Người soạn câu hỏi yêu cầu sửa bài đã khoá; người soạn ngữ liệu đã sửa xong. Xem phần khác so với bản khoá, rồi duyệt hoặc trả lại." : (mine ? "Đọc bài ở bên trái (bước Viết bài hoặc Chất liệu), bấm Đạt hoặc Chưa đạt cho từng dòng checklist dưới đây. Lỗi nào cũng ghi chú để người soạn sửa, không sửa thẳng vào bài. Xong thì chọn duyệt hoặc trả sửa ở cuối phiếu." : "Người thẩm định ngữ liệu (" + esc(wfWhoName("tdnl")) + ") đang xét. Thầy cô xem được phiếu.")) + '</p>'
+    return '<div class="rvlead"><p class="small muted">' + (rq ? "Người soạn câu hỏi yêu cầu sửa bài đã khoá; người soạn ngữ liệu đã sửa xong. Xem phần khác so với bản khoá, rồi duyệt hoặc trả lại." : (mine ? "Đọc bài ở bên trái (bước Viết bài hoặc Chất liệu), bấm Đạt hoặc Chưa đạt cho từng dòng checklist dưới đây. Chỗ nào sửa nhanh hơn giải thích thì sửa thẳng ở ô Sửa trực tiếp cuối phiếu (người soạn sẽ nhận hoặc bỏ); chỗ cần giải thích thì ghi chú. Xong thì chọn duyệt hoặc trả sửa ở cuối phiếu." : "Người thẩm định ngữ liệu (" + esc(wfWhoName("tdnl")) + ") đang xét. Thầy cô xem được phiếu.")) + '</p>'
       + (w.g1self ? '<div class="note small">Cổng 1 của bài này do Điều phối kiêm người soạn tự duyệt: xét kỹ các dòng NL-A (chủ đề, nguồn, giấy phép).</div>' : '') + '</div>';
   }
   if(g === 3){
     var mine3 = rvState().mine;
-    return '<div class="rvlead"><p class="small muted">' + (mine3 ? "Làm bài khi ẩn đáp án trước, rồi quyết định từng câu và xét checklist CH. Không sửa câu hỏi: góp ý để người soạn sửa. Xong thì chọn duyệt hoặc trả sửa ở cuối phiếu." : "Người thẩm định câu hỏi (" + esc(wfWhoName("tdch")) + ") đang xét. Thầy cô xem được phiếu.") + '</p></div>';
+    return '<div class="rvlead"><p class="small muted">' + (mine3 ? "Làm bài khi ẩn đáp án trước, rồi quyết định từng câu và xét checklist CH. Câu cần đổi chữ thì sửa thẳng ở ô Sửa trực tiếp cuối phiếu (người soạn nhận hoặc bỏ). Xong thì chọn duyệt hoặc trả sửa ở cuối phiếu." : "Người thẩm định câu hỏi (" + esc(wfWhoName("tdch")) + ") đang xét. Thầy cô xem được phiếu.") + '</p></div>';
   }
   if(g === 4){
     var mine4 = rvState().mine, ws = wfIsWS(), sc = ws ? ["WS"] : ["NL", "CH"], lines = [];
@@ -699,6 +708,7 @@ function rvRender(){
   if(g2){ var cb = g2.querySelector(".clbox"), want = wfIsWS() ? "WS" : "NL"; if(cb && cb.getAttribute("data-cl") !== want){ cb.setAttribute("data-cl", want); cb.innerHTML = ""; delete cb.dataset.drawn; setTimeout(function(){ try{ clRender(); }catch(e){} }, 0); } }
   if(g2){ g2.classList.toggle("hidden", R.g !== 2); if(R.g === 2){ document.getElementById("wf-g2h").innerHTML = rvLead(2); document.getElementById("wf-g2a").innerHTML = rvActsHTML(["g2ok","g2back","g2backc","g2no","rqok","rqback","rqfull"]); } }
   if(g3){ g3.classList.toggle("hidden", R.g !== 3); if(R.g === 3){ document.getElementById("wf-g3h").innerHTML = rvLead(3); document.getElementById("wf-g3a").innerHTML = rvActsHTML(["g3ok","g3back","g3backc"]); } }
+  [2, 3].forEach(function(g){ var sb = document.getElementById("wf-g" + g + "s"); if(!sb) return; if(R.g !== g){ sb.innerHTML = ""; return; } if(sb.contains(document.activeElement)) return; var hh = typeof sugEditorHTML === "function" ? sugEditorHTML(g) : ""; if(sb.getAttribute("data-h") !== hh){ var op = sb.querySelector("details"); sb.innerHTML = hh; sb.setAttribute("data-h", hh); if(op && op.open){ var nd = sb.querySelector("details"); if(nd) nd.open = true; } } });
   var gx = document.getElementById("wf-gx"), gxOn = R.g === 4 || R.g === 5 || R.g === 6;
   if(gx){ gx.classList.toggle("hidden", !gxOn); if(gxOn){ document.getElementById("wf-gxh").innerHTML = rvLead(R.g); document.getElementById("wf-gxa").innerHTML = rvActsHTML(R.g === 4 ? ["g4","g4ws","g4back","g2undoc","g2noc"] : R.acts); } }
   var g1 = document.getElementById("wf-g1"); if(g1 && R.g !== 1) g1.classList.add("hidden");
@@ -830,15 +840,15 @@ function wfModeFor(sid){
   var mine = edit && (wfCan(role) || (X === "D" && wfCan("coord")));
   var extra = [];
   if(st === "Chờ thẩm định ngữ liệu" && w.g1self && wfCan("tdnl") && (X === "A" || X === "B")) extra.push("Cổng 1 của bài này do Điều phối kiêm người soạn tự duyệt: xét kỹ các dòng NL-A (chủ đề, nguồn, giấy phép) vì chưa có người thứ hai xem.");
-  if(st === "Chờ thẩm định ngữ liệu" && wfCan("tdnl") && (X === "A" || X === "B")) extra.push("Bạn là người thẩm định ngữ liệu: đọc bài, rồi xét checklist NL và duyệt trong Phiếu duyệt (góc dưới bên phải). Lỗi nào cũng ghi chú để người soạn sửa, không sửa thẳng vào bài.");
+  if(st === "Chờ thẩm định ngữ liệu" && wfCan("tdnl") && (X === "A" || X === "B")) extra.push("Bạn là người thẩm định ngữ liệu: đọc bài, rồi xét checklist NL và duyệt trong Phiếu duyệt (góc dưới bên phải). Sửa thẳng ở ô Sửa trực tiếp trong phiếu (người soạn nhận hoặc bỏ từng chỗ), hoặc ghi chú khi cần giải thích.");
   if(rq === "chờ duyệt" && wfCan("tdnl") && (X === "A" || X === "B")) extra.push("Bạn duyệt phần sửa ngữ liệu theo yêu cầu: xem phần khác so với bản khoá ở thanh Quy trình.");
-  if(st === "Chờ thẩm định câu hỏi" && wfCan("tdch") && X === "C") extra.push("Bạn là người thẩm định câu hỏi: mở Phiếu duyệt (góc dưới bên phải) để làm bài khi ẩn đáp án, quyết định từng câu và xét checklist CH. Không sửa câu hỏi.");
+  if(st === "Chờ thẩm định câu hỏi" && wfCan("tdch") && X === "C") extra.push("Bạn là người thẩm định câu hỏi: mở Phiếu duyệt (góc dưới bên phải) để làm bài khi ẩn đáp án, quyết định từng câu và xét checklist CH. Sửa chữ thì dùng ô Sửa trực tiếp trong phiếu.");
   if(st === "Ngữ liệu đã duyệt (khoá)" && wfCan("ch") && X === "C") extra.push("Bấm \"Nhận bài, bắt đầu soạn câu hỏi\" ở thanh Quy trình để mở phần soạn.");
   if(lockedNl && !rq && wfCan("ch") && (X === "A" || X === "B")) extra.push("Bài đã khoá. Cần đổi bài thì gửi Yêu cầu sửa ngữ liệu ở thanh Quy trình.");
   if(!open) return {mode:"pending", head:"🔒 Chưa tới bước này", sub:"Bước này " + pend + ". Bạn xem được, chưa ai sửa được.", extra:extra};
   if(mine){ var pd = wfPhaseDue(role), n = pd.d && typeof prjDaysLeft === "function" ? prjDaysLeft(pd.d) : null;
     var subA = wfAdmin() && w.as[role] && w.as[role] !== wfMe() ? "Bạn là quản trị, đang sửa thay " + wfWhoName(role) + ". " : "";
-    return {mode:"edit", head:"✏️ Bạn đang soạn · vai " + WF_ROLES[role], sub:subA + ((st === "Ngữ liệu cần sửa" || st === "Câu hỏi cần sửa") ? "Bài được trả sửa: xem ghi chú, sửa xong thì đo lại và gửi thẩm định lại." : ""), due:pd.d ? {d:pd.d, label:pd.label, n:n} : null, extra:extra}; }
+    return {mode:"edit", head:"✏️ Bạn đang soạn · vai " + WF_ROLES[role], sub:subA + ((st === "Ngữ liệu cần sửa" || st === "Câu hỏi cần sửa") ? "Bài được trả sửa: nhận hoặc bỏ từng đề xuất sửa, xem ghi chú, sửa xong thì đo lại và gửi thẩm định lại." : ""), due:pd.d ? {d:pd.d, label:pd.label, n:n} : null, extra:extra}; }
   var why = edit ? "Người sửa bước này: " + wfWhoName(role) + " (" + WF_ROLES[role] + ")." : (X === "C" && st === "Ngữ liệu đã duyệt (khoá)") ? "Chờ người soạn câu hỏi (" + wfWhoName("ch") + ") nhận bài." : (lockedNl && X !== "C") ? "Bài đã khoá sau cổng 2" + (w.lock ? " (bản " + w.lock.ver + ")" : "") + "." : st ? "Bài đang ở trạng thái: " + st + "." : "";
   return {mode:"view", head:"👁 Chế độ xem", sub:why, extra:extra};
 }
