@@ -4348,7 +4348,8 @@ function clNoteId(){ return "n" + Date.now().toString(36) + Math.random().toStri
 var CL_FIELDS = [["loc","Vị trí"],["quote","Trích"],["issue","Vấn đề"],["target","Cần đạt"],["suggest","Đề xuất (gợi ý)"],["range","Phạm vi"],["keep","Giữ"]];
 function clNoteText(n, num){
   var head = (num ? "GHI CHÚ " + num + " · " : "") + "[" + n.code + "] · " + n.sev;
-  var parts = CL_FIELDS.filter(function(f){ return String(n[f[0]]||"").trim(); }).map(function(f){ return f[1] + ": " + (f[0]==="quote" ? "\"" + n[f[0]] + "\"" : n[f[0]]); });
+  var iss = String(n.issue || "").toLowerCase();
+  var parts = CL_FIELDS.filter(function(f){ var v = String(n[f[0]]||"").trim(); return v && !((f[0] === "quote" || f[0] === "loc") && iss.indexOf(v.toLowerCase()) >= 0); }).map(function(f){ return f[1] + ": " + (f[0]==="quote" ? "\"" + n[f[0]] + "\"" : n[f[0]]); });
   return head + "\n" + parts.join(" | ");
 }
 var CL_HEAD_RE = /^[ \t>*•\-#]*(?:GHI\s*CH[ÚU]\s*\d+\s*[·|:\-–]\s*)?\[?\s*((?:NL|CH)\s*-\s*[A-Z]\s*\d+|KH[ÁA]C)\s*\]?\s*(?:[·|:\-–]\s*\[?\s*(PH[ẢA]I\s+S[ỬU]A|G[ỢO]I\s+[ÝY])\s*\]?)?(.*)$/i;
@@ -4653,17 +4654,46 @@ function clNoteHTML(n, i){
     + '<select data-nst="' + n.id + '" aria-label="Trạng thái ghi chú">' + ["Mở","Đã sửa","Đã xác nhận"].map(function(s){ return '<option' + (s===n.st ? " selected" : "") + '>' + s + '</option>'; }).join("") + '</select>'
     + (n.by ? '<span class="small muted">' + esc(n.by) + '</span>' : '') + (n.from && n.from!=="tay" ? '<span class="small muted">· ' + esc(n.from) + '</span>' : '') + (n.sevGuess ? '<span class="small warnc">· chưa ghi mức, tạm xếp PHẢI SỬA</span>' : '')
     + '<span style="margin-left:auto"></span><button type="button" class="btn quiet sm" data-nedit="' + n.id + '">Sửa</button><button type="button" class="btn quiet sm" data-ndel="' + n.id + '">Xoá</button></div>'
-    + CL_FIELDS.filter(function(f){ return String(n[f[0]]||"").trim(); }).map(function(f){ return '<div class="row"><b>' + f[1] + ':</b> ' + (f[0]==="quote" ? "<i>\"" + esc(n[f[0]]) + "\"</i>" : esc(n[f[0]])) + '</div>'; }).join("")
+    + (function(){ var iss = String(n.issue || ""), low = iss.toLowerCase();
+        return (iss ? '<div class="row" style="white-space:pre-wrap">' + esc(iss) + '</div>' : '')
+          + CL_FIELDS.filter(function(f){ var v = String(n[f[0]]||"").trim(); return f[0] !== "issue" && v && !((f[0] === "quote" || f[0] === "loc") && low.indexOf(v.toLowerCase()) >= 0); }).map(function(f){ return '<div class="row"><b>' + f[1] + ':</b> ' + (f[0]==="quote" ? "<i>\"" + esc(n[f[0]]) + "\"</i>" : esc(n[f[0]])) + '</div>'; }).join(""); })()
     + (where ? '<div>' + where + '</div>' : '') + '</div>';
 }
 var clForm = {NL:null, CH:null, WS:null};
+/* ghi chú viết tự do trong một ô; trang tự lấy ra chỗ trích, vị trí, phần cần giữ để khoanh vùng sửa và đưa vào câu lệnh AI */
+var CL_FREE_PH = {
+  NL:'Viết tự do: ở đâu, trích chỗ lỗi trong ngoặc kép, vấn đề là gì. Ví dụ:\nĐoạn 3, câu 2: "The scheme, which was launched in 2021 by the city council that..." dài 31 từ, hai mệnh đề quan hệ.\nCần đạt: dưới 25 từ.\nGiữ: "insulation" (từ để hỏi VO).',
+  CH:'Viết tự do: câu nào, trích chỗ lỗi trong ngoặc kép, vấn đề là gì. Ví dụ:\nCâu 4, phương án C: "a cheaper option" cũng đúng theo đoạn 2, câu có hai đáp án.\nCần đạt: C sai rõ theo bài.',
+  WS:'Viết tự do: ở đâu, trích chỗ lỗi trong ngoặc kép, vấn đề là gì. Ví dụ:\nChủ đề 1, câu 2: "Do you like music?" hỏi trùng ý với câu 1.\nCần đạt: hỏi một khía cạnh khác của chủ đề.'
+};
+function clFreeParse(text){
+  var out = {loc:"", quote:"", issue:"", target:"", suggest:"", range:"", keep:""}, rest = [];
+  var LAB = {"cần đạt":"target", "giữ":"keep", "phạm vi":"range", "đề xuất":"suggest", "gợi ý":"suggest", "vị trí":"loc"};
+  String(text || "").split(/\n/).forEach(function(line){
+    var m = line.match(/^\s*(cần đạt|giữ|phạm vi|đề xuất|gợi ý|vị trí)\s*:\s*(.*)$/i);
+    if(m){ var k = LAB[m[1].toLowerCase().normalize("NFC")]; out[k] = (out[k] ? out[k] + "; " : "") + m[2].trim(); } else rest.push(line);
+  });
+  var body = rest.join("\n").trim();
+  var q = body.match(/["“]([^"”]{2,})["”]/); if(q) out.quote = q[1].trim();
+  if(!out.loc){ var l = body.match(/((?:đoạn|câu|dòng|phương án|chủ đề|lượt lời|ý)\s*[0-9A-D]+(?:\s*(?:,|và)\s*(?:đoạn|câu|dòng|phương án|ý)\s*[0-9A-D]+)*)/i); if(l) out.loc = l[1]; }
+  out.issue = body;
+  return out;
+}
+function clNoteToFree(n){
+  if(!n) return "";
+  var iss = String(n.issue || ""), head = [];
+  if(n.loc && iss.toLowerCase().indexOf(String(n.loc).toLowerCase()) < 0) head.push(n.loc);
+  if(n.quote && iss.indexOf(n.quote) < 0) head.push('"' + n.quote + '"');
+  var t = (head.length ? head.join(": ") + (iss ? ": " : "") : "") + iss;
+  [["target","Cần đạt"],["keep","Giữ"],["range","Phạm vi"],["suggest","Đề xuất"]].forEach(function(x){ if(String(n[x[0]] || "").trim()) t += "\n" + x[1] + ": " + n[x[0]]; });
+  return t.trim();
+}
 function clFormHTML(sc){
   var f = clForm[sc] || {code:"", sev:"PHẢI SỬA"}, codes = clRows(sc).map(function(r){ return r.c; }).concat(["KHÁC"]);
   return '<div class="clform" data-clform="' + sc + '">' + (sc === "WS" && typeof wsPickHTML === "function" ? wsPickHTML() : "") + '<div class="grid2">'
     + '<label class="small">Mã tiêu chí<select data-ff="code">' + codes.map(function(c){ var r = clRows(sc).filter(function(x){ return x.c===c; })[0]; return '<option value="' + c + '"' + (c===f.code ? " selected" : "") + '>' + c + (r ? " · " + esc(r.t.slice(0,60)) : " · chưa có mã phù hợp") + '</option>'; }).join("") + '</select></label>'
     + '<label class="small">Mức<select data-ff="sev"><option' + (f.sev==="PHẢI SỬA" ? " selected" : "") + '>PHẢI SỬA</option><option' + (f.sev==="GỢI Ý" ? " selected" : "") + '>GỢI Ý</option></select></label></div>'
-    + CL_FIELDS.map(function(x){ var ph = {loc:sc==="NL" ? "đoạn 3, câu 2" : sc==="WS" ? "ví dụ: Chủ đề 1, câu 2" : "câu 4, phương án C", quote:"chép nguyên văn chỗ có lỗi (tiếng Anh)", issue:sc==="WS" ? "sự kiện kiểm được, ví dụ: hỏi trùng ý với câu 1" : "sự kiện kiểm được, ví dụ: câu 31 từ, có hai mệnh đề quan hệ", target:sc==="WS" ? "ví dụ: câu hỏi về một khía cạnh khác của chủ đề" : "ví dụ: dưới 25 từ; Flesch ≥ 60", suggest:"không bắt buộc", range:sc==="NL" ? "chỉ đoạn 3" : sc==="WS" ? "chỉ câu này" : "chỉ câu 4", keep:sc==="WS" ? "ví dụ: giữ chủ đề shopping" : "ví dụ: giữ \"insulation\" (từ để hỏi VO)"}[x[0]];
-      return '<label class="small">' + x[1] + (x[0]==="quote" || x[0]==="issue" ? " *" : "") + '<input type="text" data-ff="' + x[0] + '" value="' + esc(f[x[0]]||"") + '" placeholder="' + esc(ph) + '"></label>'; }).join("")
+    + '<label class="small">Ghi chú<textarea rows="5" data-ff="text" placeholder="' + esc(CL_FREE_PH[sc] || CL_FREE_PH.NL) + '">' + esc(clNoteToFree(f)) + '</textarea></label>'
     + '<div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" class="btn primary" data-fsave="' + sc + '">' + (f.id ? "Lưu thay đổi" : "Thêm ghi chú") + '</button>' + (f.id ? '<button type="button" class="btn quiet" data-fcancel="' + sc + '">Huỷ</button>' : '') + '<span class="small muted" data-fmsg></span></div></div>';
 }
 function clPatchHTML(sc){
@@ -4706,7 +4736,7 @@ function clRender(){
       h += '<details class="clgrp" data-k="g' + g + '"' + (keepOpen["g"+g]!==undefined ? (keepOpen["g"+g] ? " open" : "") : (bad ? " open" : "")) + '><summary><b>' + sc + "-" + g + '. ' + esc(CL_GROUPS[sc][g]) + '</b> <span class="small muted">' + (rows.length - bad) + "/" + rows.length + ' ổn</span></summary><table class="cltab"><tbody>' + rows.map(function(r){ return clRowHTML(sc, ev[r.c], mode); }).join("") + '</tbody></table></details>';
     });
     // ghi chú
-    h += '<h3 style="margin-top:14px">Ghi chú thẩm định</h3>';
+    h += '<h3 style="margin-top:14px">' + (mode === "self" ? "Ghi chú sửa bài" : "Ghi chú thẩm định") + '</h3>';
     var base = S.cl && S.cl.base && S.cl.base[sc];
     if(base && notes.length){ var Dd = clDiff({NL:sc==="NL" ? base.st : null, CH:sc==="CH" ? base.st : null}, {NL:sc==="NL" ? clStates("NL") : null, CH:sc==="CH" ? clStates("CH") : null}); if(Dd.worse.length || Dd.better.length) h += clDiffHTML(Dd, "So với lúc bắt đầu ghi chú:"); }
     var la = S.cl && S.cl.lastApply;
@@ -4748,11 +4778,11 @@ function bindCl(){
       save(); if(v==="no" && tk[a]){ clForm[sc] = {code:a, sev:"PHẢI SỬA"}; clRender(); var fm = box.querySelector('[data-k="form"]'); if(fm){ fm.open = true; fm.scrollIntoView({block:"center"}); } } else clRender();
       updateStepper(); return;
     }
-    if((a = t.getAttribute("data-clnote"))){ clForm[sc] = {code:a, sev:"PHẢI SỬA"}; clRender(); var f2 = box.querySelector('[data-k="form"]'); if(f2){ f2.open = true; f2.scrollIntoView({block:"center"}); var q = f2.querySelector('[data-ff="loc"]'); if(q) q.focus(); } return; }
+    if((a = t.getAttribute("data-clnote"))){ clForm[sc] = {code:a, sev:"PHẢI SỬA"}; clRender(); var f2 = box.querySelector('[data-k="form"]'); if(f2){ f2.open = true; f2.scrollIntoView({block:"center"}); var q = f2.querySelector('[data-ff="text"]'); if(q) q.focus(); } return; }
     if(t.hasAttribute("data-fsave")){
-      var fb = box.querySelector("[data-clform]"), f = clFormRead(fb), msg = fb.querySelector("[data-fmsg]");
-      if(!f.issue){ msg.textContent = "Cần ghi Vấn đề."; return; }
-      if(!f.quote && !f.loc){ msg.textContent = "Cần ghi Trích (nguyên văn) hoặc Vị trí."; return; }
+      var fb = box.querySelector("[data-clform]"), f0 = clFormRead(fb), msg = fb.querySelector("[data-fmsg]");
+      if(!String(f0.text || "").trim()){ msg.textContent = "Ghi chú đang trống."; return; }
+      var f = clFreeParse(f0.text); Object.keys(f0).forEach(function(k){ if(k !== "text") f[k] = f0[k]; });
       var ed = clForm[sc] && clForm[sc].id;
       if(ed){ var n0 = (S.notes||[]).filter(function(x){ return x.id===ed; })[0]; if(n0){ Object.keys(f).forEach(function(k){ n0[k] = f[k]; }); n0.sevGuess = false; } save(); }
       else clAddNotes([f], sc, "tay");
