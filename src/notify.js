@@ -106,15 +106,33 @@ var NTF_WF = {
   rqok:[["ch","nl"], "duyệt phần sửa ngữ liệu bài {t}, khoá bản mới", "turn"],
   rqback:[["nl"], "trả lại phần sửa ngữ liệu bài {t}", "back"],
   rqfull:[["nl","ch"], "chuyển bài {t} về thẩm định lại toàn bài vì phần sửa lớn", "back"],
-  rqcancel:[["nl","tdnl"], "huỷ yêu cầu sửa ngữ liệu bài {t}", "req"]
+  rqcancel:[["nl","tdnl"], "huỷ yêu cầu sửa ngữ liệu bài {t}", "req"],
+  // Viết, Nói: không có phần câu hỏi; duyệt đề xong thì đến lượt Điều phối duyệt hoàn thiện
+  g2okws:[["coord"], "đã duyệt và khoá đề {t}: chờ bạn duyệt hoàn thiện", "turn", ["nl"], "đã duyệt đề {t} của bạn", "done"],
+  g4ws:[["nl","tdnl"], "duyệt hoàn thiện đề {t} 🎉", "done"]
 };
 function ntfWorkflow(t, note){
-  var m = NTF_WF[t.id]; if(!m || !S.lib || !S.lib.id) return;
-  var w = wfData(), me = ntfMe(), title = ntfItemTitle(), out = [];
+  var key = t.id === "g2ok" && typeof wfIsWS === "function" && wfIsWS() ? "g2okws" : t.id;
+  var m = NTF_WF[key]; if(!m || !S.lib || !S.lib.id) return;
+  var w = wfData(), me = ntfMe(), title = ntfItemTitle(), out = [], told = [], miss = [];
   var who = function(r){ return r === "coord" ? (w.as.coord || "") : (w.as[r] || ""); };
+  var link = {kind:"item", item:S.lib.id, prj:(S.prj && S.prj.id) || ""};
   var g1 = t.id === "nlsub" && w.g1self ? " (cổng 1 do Điều phối tự duyệt: xét kỹ chủ đề, nguồn, giấy phép)" : "";
-  for(var i = 0; i + 2 < m.length; i += 3) m[i].forEach(function(r){ out.push({to:who(r), type:m[i + 2], text:peopleName(me) + " " + m[i + 1].replace("{t}", title) + (r === "tdnl" ? g1 : ""), note:note, link:{kind:"item", item:S.lib.id, prj:(S.prj && S.prj.id) || ""}}); });
+  for(var i = 0; i + 2 < m.length; i += 3) m[i].forEach(function(r){
+    var to = who(r), type = m[i + 2];
+    if(type === "turn" && r !== "coord"){ if(!to) miss.push(r); else if(to !== me) told.push(peopleName(to) + " (" + WF_ROLES[r] + ")"); }
+    if(type === "turn" && r === "coord" && to && to !== me) told.push(peopleName(to) + " (Điều phối)");
+    out.push({to:to, type:type, text:peopleName(me) + " " + m[i + 1].replace("{t}", title) + (r === "tdnl" ? g1 : ""), note:note, link:link});
+  });
+  // bước kế chưa giao người: báo Điều phối để giao, không để thông báo rơi mất
+  var co = w.as.coord || "";
+  if(miss.length && co && co !== me) out.push({to:co, type:"assign", text:peopleName(me) + " " + m[1].replace("{t}", title).replace(/: .*$/, "") + ". Phần " + miss.map(function(r){ return WF_ROLES[r]; }).join(", ") + " chưa giao người: cần giao để làm tiếp.", note:note, link:link});
   ntfSend(out);
+  if(typeof toast === "function" && !(typeof wfDevOn === "function" && wfDevOn())){
+    var msg = told.length ? "Đã báo " + told.join(", ") + "." : "";
+    if(miss.length) msg += (msg ? " " : "") + "Chưa giao " + miss.map(function(r){ return WF_ROLES[r]; }).join(", ") + (co && co !== me ? ": đã báo Điều phối để giao người." : ": vào Phân công để giao người.");
+    if(msg) setTimeout(function(){ toast(msg); }, 400);
+  }
 }
 // giao việc từ thanh Quy trình của một bài
 function ntfAssignOne(role, email){

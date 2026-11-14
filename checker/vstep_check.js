@@ -6367,19 +6367,44 @@ function bindWfG1(){
 /* ---- phiếu duyệt nổi: một khung bên phải cho cả 3 cổng, bài vẫn hiện bên trái ---- */
 var RV = {open:false, key:""};
 function rvState(){
-  var w = wfData(), st = w.st || "", me = wfMe();
+  var w = wfData(), st = w.st || "", me = wfMe(), ws = wfIsWS();
   if(!wfModeActive()) return {g:0};
   if(st === "Chờ thẩm định ngữ liệu" || (w.req && w.req.st === "chờ duyệt")) return {g:2, title:w.req && w.req.st === "chờ duyệt" ? "Cổng 2 · Duyệt phần sửa ngữ liệu" : "Cổng 2 · Thẩm định ngữ liệu", mine:wfCan("tdnl") && (wfDevOn() || w.as.nl !== me)};
   if(st === "Chờ thẩm định câu hỏi") return {g:3, title:"Cổng 3 · Thẩm định câu hỏi", mine:wfCan("tdch") && (wfDevOn() || w.as.ch !== me)};
-  return {g:0};
+  if(st === "Đã hoàn thiện" || st === "Thay bài / Loại") return {g:0};
+  if(st === (ws ? "Ngữ liệu đã duyệt (khoá)" : "Câu hỏi đã duyệt")) return {g:4, title:ws ? "Duyệt hoàn thiện đề" : "Cổng 4 · Duyệt hoàn thiện", mine:wfDevOn() ? wfDevRole() === "coord" : wfIsCoordUser()};
+  // người soạn: khung "Chốt và gửi" (chỉ hiện với người giữ vai, hoặc vai chưa giao mà mình nhận được)
+  var own = function(r){ return wfDevOn() ? wfDevRole() === r : (!!me && (w.as[r] === me || (!w.as[r] && wfCan(r)))); };
+  var c = [];
+  if(w.req && (w.req.st === "chờ sửa" || w.req.st === "đang sửa")) c.push({g:5, role:"nl", acts:["rqopen","rqsend"], title:"Chốt và gửi · Phần sửa ngữ liệu"});
+  if(["", "Chủ đề đề xuất", "Đang adapt", "Ngữ liệu cần sửa"].indexOf(st) >= 0) c.push({g:5, role:"nl", acts:["nlsub"], title:ws ? "Chốt và gửi · Đề" : "Chốt và gửi · Ngữ liệu"});
+  if(!ws && ["Ngữ liệu đã duyệt (khoá)", "Đang soạn câu hỏi", "Câu hỏi cần sửa"].indexOf(st) >= 0) c.push({g:6, role:"ch", acts:["chstart","chsub"], title:"Chốt và gửi · Câu hỏi"});
+  var pick = c.filter(function(x){ return own(x.role); })[0];
+  if(!pick) return {g:0};
+  pick.send = true; pick.mine = true; return pick;
 }
-function rvActsHTML(ids, roles){
+function rvActs(ids){
   var w = wfData(), out = [];
   WF_T.forEach(function(t, i){ if(ids.indexOf(t.id) >= 0 && wfApplies(t) && t.from.indexOf(w.st || "") >= 0) out.push({A:wfAvail(t), i:i, r:false}); });
-  WF_R.forEach(function(t, i){ if(ids.indexOf(t.id) >= 0 && t.when(w)) out.push({A:wfAvail(t), i:i, r:true}); });
-  out = out.filter(function(x){ return wfDevOn() ? wfDevRole() === x.A.t.role : (x.A.t.role === "coord" ? wfIsCoordUser() : wfCan(x.A.t.role)); });
-  return out.map(function(x){ return wfActHTML(x.A, x.r, x.i); }).join("");
+  WF_R.forEach(function(t, i){ if(ids.indexOf(t.id) >= 0 && wfApplies(t) && t.when(w)) out.push({A:wfAvail(t), i:i, r:true}); });
+  // giữ thứ tự của danh sách gọi: việc chính trước, việc trả về sau
+  return out.filter(function(x){ return wfDevOn() ? wfDevRole() === x.A.t.role : (x.A.t.role === "coord" ? wfIsCoordUser() : wfCan(x.A.t.role)); }).sort(function(a, b){ return ids.indexOf(a.A.t.id) - ids.indexOf(b.A.t.id); });
 }
+/* ai nhận thông báo khi bấm: vai kế tiếp và tên người giữ vai */
+var RV_NEXT = {nlsub:"tdnl", rqsend:"tdnl", chsub:"tdch", g2ok:"ch", g3ok:"coord"};
+function rvNextLine(ids){
+  var w = wfData(), out = [];
+  ids.forEach(function(id){
+    var r = RV_NEXT[id]; if(!r) return; var T = wfFind(id); if(!T || !wfApplies(T)) return;
+    if(id === "g2ok" && wfIsWS()) r = "coord";
+    var who = w.as[r] || "", name = who ? (typeof peopleName === "function" ? peopleName(who) : who) : "";
+    if(r === "coord" && !who) out.push("<b>" + esc(T.label) + "</b>: trang báo cho quản trị thư viện (bài chưa có Điều phối).");
+    else if(who) out.push("<b>" + esc(T.label) + "</b>: trang báo ngay cho " + esc(WF_ROLES[r]) + " <b>" + esc(name) + "</b> ở chuông thông báo.");
+    else out.push('<span class="warnc"><b>' + esc(T.label) + "</b>: chưa giao " + esc(WF_ROLES[r]) + ". Bấm gửi thì trang báo Điều phối (" + esc(wfWhoName("coord")) + ") để giao người.</span>");
+  });
+  return out.length ? '<p class="small">' + out.join("<br>") + "</p>" : "";
+}
+function rvActsHTML(ids){ return rvActs(ids).map(function(x){ return wfActHTML(x.A, x.r, x.i); }).join(""); }
 function rvLead(g){
   var w = wfData(), st = w.st || "";
   if(g === 2){
@@ -6391,6 +6416,19 @@ function rvLead(g){
     var mine3 = rvState().mine;
     return '<div class="rvlead"><p class="small muted">' + (mine3 ? "Làm bài khi ẩn đáp án trước, rồi quyết định từng câu và xét checklist CH. Không sửa câu hỏi: góp ý để người soạn sửa. Xong thì chọn duyệt hoặc trả sửa ở cuối phiếu." : "Người thẩm định câu hỏi (" + esc(wfWhoName("tdch")) + ") đang xét. Thầy cô xem được phiếu.") + '</p></div>';
   }
+  if(g === 4){
+    var mine4 = rvState().mine, ws = wfIsWS(), sc = ws ? ["WS"] : ["NL", "CH"], lines = [];
+    var last = function(re){ for(var i = (w.log || []).length - 1; i >= 0; i--){ var e = w.log[i]; if(re.test(e.act || "")) return e; } return null; };
+    var fmt = function(e){ return e ? esc(typeof peopleName === "function" && e.by && e.by.indexOf("@") > 0 ? peopleName(e.by) : (e.by || "")) + ", " + new Date(e.at).toLocaleDateString("vi-VN") : "chưa thấy trong lịch sử"; };
+    lines.push((ws ? "Thẩm định đề" : "Cổng 2 (ngữ liệu)") + ": " + fmt(last(/^Duyệt cổng 2|^Duyệt phần sửa/)));
+    if(!ws) lines.push("Cổng 3 (câu hỏi): " + fmt(last(/^Duyệt cổng 3/)));
+    sc.forEach(function(k){ try{ var f = wfMachineFails(k, clEval(k)), m = wfOpenMust(k); lines.push("Checklist " + k + ": " + (f.length ? '<span class="warnc">máy báo chưa đạt ' + esc(f.join(", ")) + "</span>" : "máy kiểm đạt") + (m ? '; <span class="warnc">' + m + " ghi chú PHẢI SỬA còn mở</span>" : "")); }catch(e){} });
+    return '<div class="rvlead"><p class="small muted">' + (mine4 ? "Bài đã qua thẩm định. Xem lại bài" + (ws ? "" : " và bộ câu hỏi") + ", phiếu nộp, rồi duyệt hoàn thiện hoặc trả về sửa. Duyệt xong, trang báo cho cả nhóm của bài." : "Điều phối (" + esc(wfWhoName("coord")) + ") đang duyệt hoàn thiện.") + '</p><ul class="small">' + lines.map(function(x){ return "<li>" + x + "</li>"; }).join("") + "</ul></div>";
+  }
+  if(g === 5 || g === 6){
+    var R = rvState();
+    return '<div class="rvlead"><p class="small muted">' + (g === 5 ? (wfIsWS() ? "Soạn xong đề và checklist máy kiểm đạt thì gửi thẩm định." : "Viết xong bài, sửa hết dòng đỏ, ghi đủ nguồn thì gửi thẩm định ngữ liệu.") : "Soạn xong bộ câu hỏi, sửa hết lỗi máy báo thì gửi thẩm định câu hỏi.") + " Điều kiện chưa đạt hiện ngay dưới nút.</p>" + rvNextLine(R.acts || []) + "</div>";
+  }
   return "";
 }
 function rvRender(){
@@ -6401,6 +6439,8 @@ function rvRender(){
   if(g2){ var cb = g2.querySelector(".clbox"), want = wfIsWS() ? "WS" : "NL"; if(cb && cb.getAttribute("data-cl") !== want){ cb.setAttribute("data-cl", want); cb.innerHTML = ""; delete cb.dataset.drawn; setTimeout(function(){ try{ clRender(); }catch(e){} }, 0); } }
   if(g2){ g2.classList.toggle("hidden", R.g !== 2); if(R.g === 2){ document.getElementById("wf-g2h").innerHTML = rvLead(2); document.getElementById("wf-g2a").innerHTML = rvActsHTML(["g2ok","g2back","g2backc","g2no","rqok","rqback","rqfull"]); } }
   if(g3){ g3.classList.toggle("hidden", R.g !== 3); if(R.g === 3){ document.getElementById("wf-g3h").innerHTML = rvLead(3); document.getElementById("wf-g3a").innerHTML = rvActsHTML(["g3ok","g3back","g3backc"]); } }
+  var gx = document.getElementById("wf-gx"), gxOn = R.g === 4 || R.g === 5 || R.g === 6;
+  if(gx){ gx.classList.toggle("hidden", !gxOn); if(gxOn){ document.getElementById("wf-gxh").innerHTML = rvLead(R.g); document.getElementById("wf-gxa").innerHTML = rvActsHTML(R.g === 4 ? ["g4","g4ws","g4back","g2undoc","g2noc"] : R.acts); } }
   var g1 = document.getElementById("wf-g1"); if(g1 && R.g !== 1) g1.classList.add("hidden");
   Object.keys(keep).forEach(function(k){ var t = d.querySelector('[data-wfnote="' + k + '"]'); if(t) t.value = keep[k]; });
   d.classList.toggle("wftaking", !!wfTaking);
@@ -6411,15 +6451,20 @@ function rvSync(){
   var R = rvState();
   // vào bài đang chờ mình duyệt thì mở sẵn phiếu (màn hình rộng)
   var key = R.g ? ((S.lib && S.lib.id) || "") + "|" + R.g : "";
-  if(key !== RV.key){ RV.key = key; if(R.g && R.mine && window.innerWidth >= 900) RV.open = true; var rb = d.querySelector(".rvbody"); if(rb) rb.scrollTop = 0; }
+  // khung "Chốt và gửi" của người soạn không tự mở (người soạn đang làm bài); đổi bài hay đổi bước thì đóng
+  if(key !== RV.key){ RV.key = key; RV.open = !!(R.g && R.mine && !R.send && window.innerWidth >= 900); var rb = d.querySelector(".rvbody"); if(rb) rb.scrollTop = 0; }
   if(!R.g) RV.open = false;
-  var fh = R.g ? '<span aria-hidden="true">📋</span> Phiếu duyệt <span class="rvsub">· Cổng ' + R.g + '</span>' + (R.mine ? ' <span class="rvchip">Đến lượt bạn</span>' : '') : "";
+  var fh = "";
+  if(R.send){ var nOk = rvActs(R.acts).filter(function(x){ return x.A.ok; }).length; fh = '<span aria-hidden="true">📤</span> Chốt và gửi <span class="rvsub">· ' + (R.g === 5 ? (wfIsWS() ? "đề" : "ngữ liệu") : "câu hỏi") + '</span> <span class="rvchip' + (nOk ? " rvready" : "") + '">' + (nOk ? "Sẵn sàng gửi" : "Chưa đủ điều kiện") + '</span>'; }
+  else if(R.g) fh = '<span aria-hidden="true">📋</span> Phiếu duyệt <span class="rvsub">· ' + (R.g === 4 ? (wfIsWS() ? "Hoàn thiện" : "Cổng 4") : "Cổng " + R.g) + '</span>' + (R.mine ? ' <span class="rvchip">Đến lượt bạn</span>' : '');
   if(f.getAttribute("data-h") !== fh){ f.innerHTML = fh; f.setAttribute("data-h", fh); }
   f.classList.toggle("hidden", !R.g); f.classList.toggle("mine", !!R.mine);
   f.setAttribute("aria-expanded", RV.open ? "true" : "false");
   d.classList.toggle("hidden", !RV.open);
   document.body.classList.toggle("rvopen", !!RV.open);
   var tt = document.getElementById("rv-title"); if(tt && tt.textContent !== (R.title || "")) tt.textContent = R.title || "";
+  var kk = document.getElementById("rv-kick"), kt = R.send ? "Chốt và gửi" : "Phiếu duyệt"; if(kk && kk.textContent !== kt) kk.textContent = kt;
+  d.setAttribute("aria-label", kt);
 }
 function rvOpen(on){ RV.open = !!on; rvSync(); if(on){ try{ clRender(); }catch(e){} } }
 function bindRv(){
