@@ -335,7 +335,8 @@ function wsTopicPrompt(){
 function wsRenderTopic(){
   var a = document.getElementById("ws-topicai"), b = document.getElementById("ws-topicbox"); if(!a || !b || !wsOn()) return;
   a.innerHTML = '<p class="small muted">Câu lệnh theo mẫu B1 (lập danh sách chủ đề) của Phụ lục tập huấn, thêm tiêu chí riêng của ' + esc(SPEC[S.spec].label) + ' theo QĐ 730 và ghi chép tập huấn. AI trả về bảng: chủ đề | lĩnh vực | vì sao phù hợp | rủi ro cần tránh. Mở cuộc trò chuyện mới cho mỗi câu lệnh.</p><button class="btn primary" type="button" id="ws-copytopic">Sao chép câu lệnh gợi ý chủ đề</button>';
-  if(b.contains(document.activeElement)) return;
+  // đang gõ trong ô chủ đề thì không vẽ lại ô đó (chỉ khi chính ô này vừa đổi); mở bài khác thì luôn vẽ lại
+  if(wsRenderTopic.hold && b.contains(document.activeElement)) return;
   b.innerHTML = wsFieldHTML({k:"theme", label:"Chủ đề bạn chọn", hint:"Chép một chủ đề trong bảng AI đưa ra. Có thể viết cụ thể hơn." + (S.spec === "W2" ? " Câu lệnh tìm nguồn ở bước sau dùng chủ đề này." : " Câu lệnh soạn nháp ở bước Soạn đề dùng chủ đề này.") + " Thư viện báo khi trùng chủ đề với bài đã có.", ph:S.spec === "S1" ? "ví dụ: your free time; your neighbourhood" : "ví dụ: học kỹ năng mới qua mạng"});
 }
 function wsThemeLine(){ return '<p class="small">Chủ đề: <b>' + esc(wsV("theme") || "chưa chọn") + '</b> <button class="btn sm quiet" type="button" data-wsgo="ws-chude">' + (wsV("theme") ? "Đổi ở bước Chủ đề" : "Chọn ở bước Chủ đề") + '</button></p>'; }
@@ -486,7 +487,7 @@ function bindWs(){
   document.addEventListener("change", function(e){
     var k = e.target.getAttribute && e.target.getAttribute("data-ws"); if(!k || !wsOn()) return;
     wsData()[k] = e.target.type === "checkbox" ? e.target.checked : e.target.value;
-    if(k === "theme"){ wsSync(); wsRenderSrc(); var fm = document.getElementById("ws-form"); if(fm && document.getElementById("ws-soan").classList.contains("hidden")) wsRenderForm(); }
+    if(k === "theme"){ wsSync(); wsRenderSrc(); var fm = document.getElementById("ws-form"); if(fm && document.getElementById("ws-soan").classList.contains("hidden")){ wsRenderTopic.hold = true; try{ wsRenderForm(); } finally { wsRenderTopic.hold = false; } } }
     if(k === "srcTitle" || k === "srcPub" || k === "srcYear"){ wsSync(); var ad = document.querySelector('[data-ws="adapted"]'); if(ad) ad.value = wsV("adapted"); }
     wsAfterEdit(true);
   });

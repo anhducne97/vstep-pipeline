@@ -1247,7 +1247,7 @@ function bindFields(){
   ids.forEach(function(id){
     var el = document.getElementById(id); if(!el || el.dataset.bound) return; el.dataset.bound = "1";
     if(S.fields[id]!==undefined) el.value = S.fields[id];
-    var h = function(){ var sc = el.closest(".screen"); if(sc && typeof wfCanEditScreen === "function" && !wfCanEditScreen(sc.id)){ el.value = S.fields[id] || ""; toast("Chế độ xem: bạn không sửa được ô này."); return; } S.fields[id] = el.value; save(); }; el.addEventListener("input", h); el.addEventListener("change", h);
+    var h = function(){ var sc = el.closest(".screen"); if(sc && typeof wfCanEditScreen === "function" && !wfCanEditScreen(sc.id)){ el.value = S.fields[id] || ""; toast("Chế độ xem: bạn không sửa được ô này."); return; } S.fields[id] = el.value; save(); if(/^pc-(src|url|lic)$/.test(id) && typeof wfRender === "function"){ clearTimeout(bindFields.t); bindFields.t = setTimeout(wfRender, 300); } }; el.addEventListener("input", h); el.addEventListener("change", h);
   });
 }
 function phieuText(){
