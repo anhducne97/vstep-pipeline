@@ -264,7 +264,7 @@ function mapParas(){ var d = S.slots.draft || ""; return qIsR() ? analyze(d).bod
 function mapEval(){
   var M = mapData(), L = mapLines(), d = S.slots.draft || "", passN = qNorm(d), paras = mapParas(), isR = qIsR();
   var res = L.map(function(l, idx){
-    var v = M.rows[l.key] || {}, msgs = [], s = "ok", code = v.code || (l.codes.length === 1 ? l.codes[0] : "");
+    var v = M.rows[l.key] || {}, msgs = [], s = "ok", code = v.code || l.codes[0] || "";
     var fail = function(t){ msgs.push(t); s = "fail"; }, warn = function(t){ msgs.push(t); if(s === "ok") s = "warn"; };
     var out = {l:l, v:v, code:code, idx:idx};
     if(!code) fail("chưa chọn mã");
@@ -338,8 +338,9 @@ function mapParseAI(raw){
       else if((f = p.match(/^T[ỪU]\s*:\s*(.*)$/i))) v.w = qUnq(f[1]);
       else if((f = p.match(/^D[ỰU]\s*PH[ÒO]NG\s*:\s*(.*)$/i))) v.alt = qUnq(f[1]);
       else if((f = p.match(/^NHI[ỄE]U\s*:\s*(.*)$/i))) v.dis = f[1].trim();
-      else { var c = qNormCode(p.replace(/^M[ÃA]\s*:\s*/i, "")); if(c && l.codes.indexOf(c) >= 0) v.code = c; }
+      else { var c = qNormCode(p.replace(/^M[ÃA]\s*:\s*/i, "")); if(c && l.codes.indexOf(c) >= 0){ v.code = c; v.codeAuto = false; v.codeAI = ""; } else if(c && /^[A-Z][A-Z\[\]\(\)]{1,7}$/.test(c)) v.codeAI = c; }
     });
+    if(!v.code && l.codes.length){ v.code = l.codes[0]; v.codeAuto = true; }
     n++;
   });
   save(); return n;
@@ -443,8 +444,11 @@ function wfApplyLock(){
   if(lk) document.querySelectorAll('textarea[data-slot="draft"]').forEach(function(t){ var p = document.createElement("p"); p.className = "wflockmsg small no"; p.textContent = "Bài đã khoá (bản " + S.wf.lock.ver + "). Cần đổi bài thì người soạn câu hỏi gửi yêu cầu sửa ngữ liệu ở thanh Quy trình."; t.parentNode.insertBefore(p, t); });
 }
 /* bản đồ chất liệu: giao diện */
+// dòng đã có chỗ hỏi mà chưa có mã: chọn sẵn mã đầu tiên của dòng trong bảng phân bố; người soạn đổi được
+function mapFillCodes(){ var M = mapData(); mapLines().forEach(function(l){ var v = M.rows[l.key]; if(v && v.q && !v.code && l.codes.length){ v.code = l.codes[0]; v.codeAuto = true; } }); }
 function mapRender(){
   var box = document.getElementById("mapbox"); if(!box) return;
+  if(!wfDraftLocked()) mapFillCodes();
   if(!mapLines().length){ box.innerHTML = '<p class="small warnc">' + esc(qbpWhy()) + '</p>'; return; }
   var M0 = mapData();
   if(!M0.autoDone && wfCanEditScreen("chat-lieu") && (S.slots.draft||"").trim() && !Object.keys(M0.rows).some(function(k){ return M0.rows[k].q; }) && parseAnchors(S.slots.notes)){ M0.autoDone = true; var na = mapFromAnchors(); if(na) toast("Đã điền sẵn " + na + " dòng bản đồ từ điểm neo AI ghi ở bước 4."); }
@@ -457,7 +461,7 @@ function mapRender(){
     + '<table class="cltab maptab"><tbody>' + E.res.map(function(x, i){
       var v = x.v, l = x.l, k = l.key, dis = lk ? " disabled" : "";
       return '<tr class="clr ' + x.s + '"><td class="clc"><b>' + (i+1) + '</b><div class="small muted">' + esc(l.lv + " " + l.m) + '</div></td><td>'
-        + '<div class="mapf"><select data-mk="' + k + '" data-mf="code"' + dis + '><option value="">Mã…</option>' + l.codes.map(function(c){ return '<option' + (x.code === c ? " selected" : "") + '>' + c + '</option>'; }).join("") + '</select>'
+        + '<div class="mapf"><select data-mk="' + k + '" data-mf="code"' + dis + '><option value="">Mã…</option>' + l.codes.map(function(c){ return '<option' + (x.code === c ? " selected" : "") + '>' + c + '</option>'; }).join("") + '</select>' + (v.codeAuto && x.code ? '<span class="small muted" title="Trang chọn sẵn mã đầu tiên của dòng này trong bảng phân bố' + (v.codeAI ? '; AI ghi ' + esc(v.codeAI) + ', mã này không có ở dòng này' : '') + '. Đổi được.">chọn sẵn' + (v.codeAI ? ' (AI ghi ' + esc(v.codeAI) + ')' : '') + '</span>' : '')
         + (l.sk ? '<span class="small muted">' + esc(l.sk.map(function(s){ return LSK[s] ? LSK[s][1] : s; }).join("; ")) + '</span>' : '')
         + (/^(RE|VO|VO\(ID\))$/.test(x.code) ? '<input type="text" data-mk="' + k + '" data-mf="w" placeholder="' + (x.code === "RE" ? "đại từ" : "từ, cụm được hỏi") + '" value="' + esc(v.w||"") + '"' + dis + '>' : '') + (x.lvl ? '<span class="small muted">mức ' + esc(x.lvl) + '</span>' : '') + (x.para ? '<span class="small muted">đoạn ' + x.para + '</span>' : '') + '</div>'
         + '<label class="mapl"><span>Chỗ hỏi</span><input type="text" class="mapq" data-mk="' + k + '" data-mf="q" placeholder="chép nguyên văn trong bài" value="' + esc(v.q||"") + '"' + dis + '></label>'
@@ -699,7 +703,7 @@ function bindWf(){
   if(mb){
     var mt; mb.addEventListener("input", function(e){
       var t = e.target, k = t.getAttribute("data-mk"); if(!k) return;
-      var M = mapData(); M.rows[k] = M.rows[k] || {}; M.rows[k][t.getAttribute("data-mf")] = t.value; save();
+      var M = mapData(); M.rows[k] = M.rows[k] || {}; M.rows[k][t.getAttribute("data-mf")] = t.value; if(t.getAttribute("data-mf") === "code"){ M.rows[k].codeAuto = false; M.rows[k].codeAI = ""; } save();
       clearTimeout(mt); mt = setTimeout(function(){ mapRender(); try{ clRender(); renderKeepCheck(); }catch(x){} }, t.tagName === "SELECT" ? 0 : 500);
     });
     mb.addEventListener("change", function(e){ if(e.target.tagName === "SELECT"){ mapRender(); try{ clRender(); }catch(x){} } });
