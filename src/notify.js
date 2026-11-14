@@ -114,13 +114,13 @@ var NTF_WF = {
 function ntfWorkflow(t, note){
   var key = t.id === "g2ok" && typeof wfIsWS === "function" && wfIsWS() ? "g2okws" : t.id;
   var m = NTF_WF[key]; if(!m || !S.lib || !S.lib.id) return;
-  var w = wfData(), me = ntfMe(), title = ntfItemTitle(), out = [], told = [], miss = [];
+  var w = wfData(), me = ntfMe(), title = ntfItemTitle(), out = [], told = [], miss = [], selfNext = [];
   var who = function(r){ return r === "coord" ? (w.as.coord || "") : (w.as[r] || ""); };
   var link = {kind:"item", item:S.lib.id, prj:(S.prj && S.prj.id) || ""};
   var g1 = t.id === "nlsub" && w.g1self ? " (cổng 1 do Điều phối tự duyệt: xét kỹ chủ đề, nguồn, giấy phép)" : "";
   for(var i = 0; i + 2 < m.length; i += 3) m[i].forEach(function(r){
     var to = who(r), type = m[i + 2];
-    if(type === "turn" && r !== "coord"){ if(!to) miss.push(r); else if(to !== me) told.push(peopleName(to) + " (" + WF_ROLES[r] + ")"); }
+    if(type === "turn" && r !== "coord"){ if(!to) miss.push(r); else if(to !== me) told.push(peopleName(to) + " (" + WF_ROLES[r] + ")"); else selfNext.push(WF_ROLES[r]); }
     if(type === "turn" && r === "coord" && to && to !== me) told.push(peopleName(to) + " (Điều phối)");
     out.push({to:to, type:type, text:peopleName(me) + " " + m[i + 1].replace("{t}", title) + (r === "tdnl" ? g1 : ""), note:note, link:link});
   });
@@ -130,6 +130,7 @@ function ntfWorkflow(t, note){
   ntfSend(out);
   if(typeof toast === "function" && !(typeof wfDevOn === "function" && wfDevOn())){
     var msg = told.length ? "Đã báo " + told.join(", ") + "." : "";
+    if(selfNext.length) msg += (msg ? " " : "") + "Bước kế cũng là việc của bạn (kiêm " + selfNext.join(", ") + ").";
     if(miss.length) msg += (msg ? " " : "") + "Chưa giao " + miss.map(function(r){ return WF_ROLES[r]; }).join(", ") + (co && co !== me ? ": đã báo Điều phối để giao người." : ": vào Phân công để giao người.");
     if(msg) setTimeout(function(){ toast(msg); }, 400);
   }

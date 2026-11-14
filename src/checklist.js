@@ -234,7 +234,7 @@ function clCanTick(sc, mode){
     return wfCan(au) ? {ok:true} : {ok:false, why:"Phần tự đánh giá của " + WF_ROLES[au] + " (" + wfWhoName(au) + "). Người thẩm định chấm riêng trong Phiếu duyệt."};
   }
   if(wfDevOn()) return wfDevRole() === rv ? {ok:true} : {ok:false, why:"Đổi vai sang " + WF_ROLES[rv] + " để chấm."};
-  if(me && w.as[au] === me) return {ok:false, why:"Bạn là người soạn bài này: không tự chấm phần thẩm định."};
+  if(me && w.as[au] === me && w.as[rv] !== me) return {ok:false, why:"Bạn là người soạn bài này: chỉ chấm phần thẩm định khi Điều phối giao bạn kiêm cả vai " + WF_ROLES[rv] + "."};
   return wfCan(rv) ? {ok:true} : {ok:false, why:"Phần chấm của " + WF_ROLES[rv] + " (" + wfWhoName(rv) + ")."};
 }
 

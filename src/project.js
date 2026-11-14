@@ -312,8 +312,11 @@ function prjSaveEdits(p){
 }
 function prjConflicts(as){
   var hard = [], soft = [];
-  if(as.nl && as.nl === as.tdnl) hard.push("Soạn NL trùng TĐ NL");
-  if(as.ch && as.ch === as.tdch) hard.push("Soạn CH trùng TĐ CH");
+  // một người được kiêm mọi vai (Nick chốt 14/11/2026); trang chỉ nhắc, không chặn
+  var R = ["nl","tdnl","ch","tdch"].filter(function(r){ return as[r]; });
+  if(R.length >= 2 && R.every(function(r){ return as[r] === as[R[0]]; })){ soft.push("Một người kiêm mọi vai"); return {hard:hard, soft:soft}; }
+  if(as.nl && as.nl === as.tdnl) soft.push("Kiêm soạn và thẩm định ngữ liệu");
+  if(as.ch && as.ch === as.tdch) soft.push("Kiêm soạn và thẩm định câu hỏi");
   if(as.nl && as.nl === as.ch) soft.push("Soạn CH nên khác Soạn NL");
   return {hard:hard, soft:soft};
 }
@@ -347,7 +350,7 @@ function prjSchedule(p, start, days){
 function prjAuto(p){
   // Điều phối đã giữ cổng 1 và 4: chỉ nhận việc soạn, thẩm định khi dự án có dưới 3 thành viên
   var mem = (p.members || []).slice(), people = mem.length >= 3 ? mem : prjPeople(p.id);
-  if(people.length < 2){ PRJ.msg = "Cần ít nhất 2 người trong dự án để chia việc mà không ai tự duyệt bài của mình (nên có từ 3 người để người soạn câu hỏi khác người soạn ngữ liệu)."; hubRender(); return; }
+  if(!people.length){ PRJ.msg = "Dự án chưa có người."; hubRender(); return; }
   var xs = prjItems(p.id).filter(function(x){ return !prjDone(x) && !prjStop(x); }), selIds = [];
   var load = {}; people.forEach(function(e){ load[e] = 0; });
   prjItems(p.id).forEach(function(x){ var as = prjAs(x); PRJ_ROLES.forEach(function(r){ if(as[r] && load[as[r]] !== undefined) load[as[r]]++; }); });
@@ -358,7 +361,7 @@ function prjAuto(p){
       if(as[r] || prjNoRole(x, r)) return;
       var avoid = {nl:[as.tdnl], tdnl:[as.nl], ch:[as.tdch], tdch:[as.ch]}[r], prefer = {ch:[as.nl], nl:[as.ch]}[r] || [];
       var cand = people.filter(function(e){ return avoid.indexOf(e) < 0; }), better = cand.filter(function(e){ return prefer.indexOf(e) < 0; });
-      if(better.length) cand = better; if(!cand.length) return;
+      if(better.length) cand = better; if(!cand.length) cand = people.slice(); // ít người: cho kiêm vai
       cand.sort(function(a, b){ return load[a] - load[b] || ((people.indexOf(a) - turn + people.length) % people.length) - ((people.indexOf(b) - turn + people.length) % people.length); });
       as[r] = cand[0]; load[cand[0]]++; turn = (turn + 1) % people.length; prjSetEdit(x, r, cand[0]); filled++;
     });

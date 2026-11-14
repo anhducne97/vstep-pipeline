@@ -4272,7 +4272,7 @@ function clCanTick(sc, mode){
     return wfCan(au) ? {ok:true} : {ok:false, why:"Phần tự đánh giá của " + WF_ROLES[au] + " (" + wfWhoName(au) + "). Người thẩm định chấm riêng trong Phiếu duyệt."};
   }
   if(wfDevOn()) return wfDevRole() === rv ? {ok:true} : {ok:false, why:"Đổi vai sang " + WF_ROLES[rv] + " để chấm."};
-  if(me && w.as[au] === me) return {ok:false, why:"Bạn là người soạn bài này: không tự chấm phần thẩm định."};
+  if(me && w.as[au] === me && w.as[rv] !== me) return {ok:false, why:"Bạn là người soạn bài này: chỉ chấm phần thẩm định khi Điều phối giao bạn kiêm cả vai " + WF_ROLES[rv] + "."};
   return wfCan(rv) ? {ok:true} : {ok:false, why:"Phần chấm của " + WF_ROLES[rv] + " (" + wfWhoName(rv) + ")."};
 }
 
@@ -5934,7 +5934,7 @@ function wfWSCond(id){
   if(id === "propose"){ var d = (typeof LIB !== "undefined" && LIB.items.length) ? libDupes() : []; return [wfCond(wsV("theme"), "Có chủ đề (bước Soạn đề)"), wfCond(!d.length, d.length ? "Trùng chủ đề với bài trong thư viện: " + d.map(function(x){ return x.x.title; }).join(", ") : "Không trùng chủ đề với bài trong thư viện")]; }
   if(id === "g1ok") return [wfCond(wsV("theme"), "Có chủ đề")];
   if(id === "nlsub"){ var ev = clEval("WS"), f = wfMachineFails("WS", ev); return [wfCond(wsV("theme"), "Có chủ đề (bước Chủ đề)"), wfCond(wsHasContent(), "Có đề"), wfCond(!f.length, "Mọi dòng máy kiểm của checklist WS không đỏ" + (f.length ? ": còn " + f.join(", ") : "")), wfSelfCond("WS")]; }
-  if(id === "g2ok"){ var sum = clSummary("WS"), by = wfTickBy(wfWSHuman(), w.as.nl); return [wfCond(sum.pass, "Checklist WS đạt: không đỏ, mọi dòng Người đã bấm Đạt, không còn ghi chú PHẢI SỬA mở"), wfCond(!by.length, by.length ? "Các dòng " + by.join(", ") + " do chính người soạn bấm Đạt: người thẩm định phải tự xét" : "Các dòng Người do người thẩm định xét")]; }
+  if(id === "g2ok"){ var sum = clSummary("WS"), by = wfTickBy(wfWSHuman(), w.as.nl === w.as.tdnl ? "" : w.as.nl); return [wfCond(sum.pass, "Checklist WS đạt: không đỏ, mọi dòng Người đã bấm Đạt, không còn ghi chú PHẢI SỬA mở"), wfCond(!by.length, by.length ? "Các dòng " + by.join(", ") + " do chính người soạn bấm Đạt: người thẩm định phải tự xét" : "Các dòng Người do người thẩm định xét")]; }
   return null;
 }
 
@@ -5956,7 +5956,7 @@ var WF_T = [
     return [wfCond((S.slots.topic||"").trim(), "Có chủ đề (bước Chủ đề)"), wfCond(ev["NL-A4"] && ev["NL-A4"].d.indexOf("Chưa ghi") < 0, "Có nguồn, URL, giấy phép (khung Thông tin nguồn ở bước Nguồn)"), wfCond((S.slots.draft||"").trim(), "Có bài"), wfCond(!f.length, "Mọi dòng máy kiểm của checklist NL không đỏ" + (f.length ? ": còn " + f.join(", ") : "")), wfSelfCond("NL"), wfCond(b7, "Đã đối chiếu nguồn (bước Nội dung, 3 ô cuối bước)"), wfCond(m.full, "Bản đồ chất liệu phủ đủ mọi dòng của bảng phân bố" + (m.full ? "" : ": " + m.why)), wfCond(!wfOpenMust("NL"), "Không còn ghi chú NL PHẢI SỬA đang mở")].concat(wfDupCond());
   }},
   {id:"g2ok", from:["Chờ thẩm định ngữ liệu"], to:"Ngữ liệu đã duyệt (khoá)", role:"tdnl", four:"nl", label:"Duyệt cổng 2 và khoá bài", cond:function(){ var _ws = wfIsWS() ? wfWSCond("g2ok") : null; if(_ws) return _ws;
-    var sum = clSummary("NL"), by = wfTickBy(["NL-C1","NL-C2","NL-C3","NL-C4","NL-C5","NL-D1","NL-D2","NL-D5"], wfData().as.nl);
+    var sum = clSummary("NL"), by = wfTickBy(["NL-C1","NL-C2","NL-C3","NL-C4","NL-C5","NL-D1","NL-D2","NL-D5"], wfData().as.nl === wfData().as.tdnl ? "" : wfData().as.nl);
     return [wfCond(sum.pass, "Checklist NL đạt: không đỏ, mọi dòng Người đã bấm Đạt, không còn ghi chú PHẢI SỬA mở"), wfCond(!by.length, by.length ? "Các dòng " + by.join(", ") + " do chính người soạn bấm Đạt: người thẩm định phải tự xét" : "Các dòng Người do người thẩm định bấm")];
   }, act:function(w){ var d = S.slots.draft||""; w.lock = {ver:(w.lock ? w.lock.ver : (w.lockVerMax || 0)) + 1, hash:qHash(d), text:d, at:Date.now(), by:wfWho()}; w.req = null; }},
   {id:"g2back", from:["Chờ thẩm định ngữ liệu"], to:"Ngữ liệu cần sửa", role:"tdnl", four:"nl", label:"Trả sửa ngữ liệu", cond:function(){
@@ -5971,7 +5971,7 @@ var WF_T = [
     return [wfCond(wfQItems().length, "Có bộ câu hỏi"), wfCond(!f.length, "Mọi dòng máy kiểm của checklist CH không đỏ" + (f.length ? ": còn " + f.join(", ") : "")), wfCond(!self.length, "Đã tự soát 4 mục từng câu (CH-E1 đến E4)" + (self.length ? ": chưa xong " + self.join(", ") : "")), wfSelfCond("CH"), wfCond(!w.req, "Không có yêu cầu sửa ngữ liệu đang mở"), wfCond(w.lock && w.qVer === w.lock.ver, "Câu hỏi soạn trên bản khoá mới nhất" + (w.lock ? " (bản " + w.lock.ver + ")" : "")), wfCond(!wfOpenMust("CH"), "Không còn ghi chú CH PHẢI SỬA đang mở")];
   }},
   {id:"g3ok", only:"RL", from:["Chờ thẩm định câu hỏi"], to:"Câu hỏi đã duyệt", role:"tdch", four:"ch", label:"Duyệt cổng 3", cond:function(){
-    var R = wfReviewState(), ev = clEval("CH"), f = wfMachineFails("CH", ev), hb = wfRowsOk(ev, ["CH-D5","CH-E5"]), by = wfTickBy(["CH-D5","CH-E5"], wfData().as.ch);
+    var R = wfReviewState(), ev = clEval("CH"), f = wfMachineFails("CH", ev), hb = wfRowsOk(ev, ["CH-D5","CH-E5"]), by = wfTickBy(["CH-D5","CH-E5"], wfData().as.ch === wfData().as.tdch ? "" : wfData().as.ch);
     return [wfCond(R.n && R.taken === R.n, "Người thẩm định đã làm cả bộ khi ẩn đáp án (" + R.taken + "/" + R.n + ")"), wfCond(R.n && R.pass === R.n, "Mọi câu có quyết định Đạt (" + R.pass + "/" + R.n + ")"), wfCond(!hb.length && !by.length, "Dòng Người của checklist CH (D5, E5) do người thẩm định bấm Đạt"), wfCond(!f.length, "Không còn dòng đỏ"), wfCond(!wfOpenMust("CH"), "Không còn ghi chú CH PHẢI SỬA đang mở")];
   }},
   {id:"g3back", only:"RL", from:["Chờ thẩm định câu hỏi"], to:"Câu hỏi cần sửa", role:"tdch", four:"ch", label:"Trả sửa câu hỏi", cond:function(){
@@ -6050,7 +6050,7 @@ function wfAvail(t){
   if(!wfApplies(t) || (t.when ? !t.when(w) : t.from.indexOf(w.st || "") < 0)) return {t:t, why:["không áp dụng ở trạng thái hiện tại"], conds:[], ok:false};
   var claim = !wfDevOn() && !!me && t.role !== "coord" && !w.as[t.role];
   if(!wfHas(t.role) && !claim) why.push(wfDevOn() ? "đổi vai sang " + WF_ROLES[t.role] : "việc của " + WF_ROLES[t.role] + (t.role !== "coord" && w.as[t.role] ? " (" + w.as[t.role] + ")" : (t.role === "coord" ? " (" + (w.as.coord || "quản trị thư viện") + ")" : " (chưa phân công)")));
-  if(t.four && !wfDevOn() && me && (w.as[t.four] === me)) why.push("bạn là " + WF_ROLES[t.four] + " của bài này: không tự duyệt");
+  if(t.four && !wfDevOn() && me && w.as[t.four] === me && w.as[t.role] !== me) why.push("bạn là " + WF_ROLES[t.four] + " của bài này: chỉ tự duyệt được khi Điều phối giao bạn kiêm cả vai " + WF_ROLES[t.role]);
   if(!wfDevOn() && !me) why.push("đăng nhập Thư viện (hoặc bật chế độ nhà phát triển để chạy thử một mình)");
   var conds = t.cond ? t.cond() : [];
   return {t:t, why:why, conds:conds, ok:!why.length && conds.every(function(c){ return c.ok; })};
@@ -6066,7 +6066,8 @@ function wfDo(t, note, isReq){
   var g1self = t.id === "g1ok" && !wfDevOn() && !!wfMe() && w.as.nl === wfMe();
   if(t.id === "g1ok") w.g1self = g1self;
   if(!isReq){ w.st = t.toFn ? t.toFn(w) : t.to; }
-  w.log.push({at:Date.now(), by:wfWho(), dev:wfDevOn(), from:from, to:w.st, act:t.label + (g1self ? " (Điều phối kiêm soạn ngữ liệu, tự duyệt)" : "") + forWho, note:note||""});
+  var dual = t.four && !wfDevOn() && wfMe() && w.as[t.four] === wfMe() && w.as[t.role] === wfMe();
+  w.log.push({at:Date.now(), by:wfWho(), dev:wfDevOn(), from:from, to:w.st, act:t.label + (g1self ? " (Điều phối kiêm soạn ngữ liệu, tự duyệt)" : "") + (dual ? " (kiêm " + WF_ROLES[t.four] + ", tự thẩm định)" : "") + forWho, note:note||""});
   save(); wfRender(); try{ clRender(); renderQ(); }catch(e){} updateStepper();
   if(typeof LIB !== "undefined" && LIB.user && LIB.role && LIB.role !== "none"){ var pr = libSave(false); if(pr && pr.then && typeof ntfWorkflow === "function") pr.then(function(){ if(!LIB.err && S.lib && S.lib.id) ntfWorkflow(t, note); }); }
   else toast(t.label + ": đã ghi trên máy này" + (wfDevOn() ? " (chế độ nhà phát triển)." : ". Lưu lên Thư viện để người khác thấy."));
@@ -6494,8 +6495,8 @@ var RV = {open:false, key:""};
 function rvState(){
   var w = wfData(), st = w.st || "", me = wfMe(), ws = wfIsWS();
   if(!wfModeActive()) return {g:0};
-  if(st === "Chờ thẩm định ngữ liệu" || (w.req && w.req.st === "chờ duyệt")) return {g:2, title:w.req && w.req.st === "chờ duyệt" ? "Cổng 2 · Duyệt phần sửa ngữ liệu" : "Cổng 2 · Thẩm định ngữ liệu", mine:wfCan("tdnl") && (wfDevOn() || w.as.nl !== me)};
-  if(st === "Chờ thẩm định câu hỏi") return {g:3, title:"Cổng 3 · Thẩm định câu hỏi", mine:wfCan("tdch") && (wfDevOn() || w.as.ch !== me)};
+  if(st === "Chờ thẩm định ngữ liệu" || (w.req && w.req.st === "chờ duyệt")) return {g:2, title:w.req && w.req.st === "chờ duyệt" ? "Cổng 2 · Duyệt phần sửa ngữ liệu" : "Cổng 2 · Thẩm định ngữ liệu", mine:wfCan("tdnl") && (wfDevOn() || w.as.nl !== me || w.as.tdnl === me)};
+  if(st === "Chờ thẩm định câu hỏi") return {g:3, title:"Cổng 3 · Thẩm định câu hỏi", mine:wfCan("tdch") && (wfDevOn() || w.as.ch !== me || w.as.tdch === me)};
   if(st === "Đã hoàn thiện" || st === "Thay bài / Loại") return {g:0};
   if(st === (ws ? "Ngữ liệu đã duyệt (khoá)" : "Câu hỏi đã duyệt")) return {g:4, title:ws ? "Duyệt hoàn thiện đề" : "Cổng 4 · Duyệt hoàn thiện", mine:wfDevOn() ? wfDevRole() === "coord" : wfIsCoordUser()};
   // người soạn: khung "Chốt và gửi" (chỉ hiện với người giữ vai, hoặc vai chưa giao mà mình nhận được)
