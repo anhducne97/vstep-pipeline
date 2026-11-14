@@ -210,7 +210,10 @@ tr.prjbad td{background:var(--bad-soft)}
 .modebar{border-radius:12px;padding:10px 14px;margin:6px 0 14px;display:grid;gap:4px;position:sticky;top:calc(var(--toph, 132px) + 8px);z-index:3;box-shadow:0 2px 10px rgba(20,30,50,.06)}
 .modebar.edit{background:var(--good-soft);border:1.5px solid var(--good);color:var(--ink)}
 .modebar.view{background:var(--bg);border:1.5px solid var(--muted)}
-.modebar.pending{background:var(--bg);border:1.5px dashed var(--muted)}
+.modebar.pending{background:var(--warn-soft);border:2px solid var(--warn);border-left-width:8px;color:var(--ink);box-shadow:0 4px 16px rgba(180,100,0,.18)}
+.modebar.pending .modehead{color:var(--warn);font-size:1.12rem}
+.modebar.pending .modehead b{font-weight:800}
+.screen.mode-pending{border-left:4px solid var(--warn);padding-left:14px;border-radius:4px}
 .modehead{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .modeextra{color:var(--accent);font-weight:600}
 .screen.mode-view textarea[readonly],.screen.mode-view input[readonly],.screen.mode-view select:disabled{background:var(--bg);color:var(--muted);cursor:not-allowed}
