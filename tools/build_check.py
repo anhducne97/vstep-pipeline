@@ -8,5 +8,8 @@ parts = [rd('tools','check_prelude.js'), rd('src','core.js'), rd('src','vocab.js
          rd('src','ui.js'), rd('src','qstep.js'), rd('src','lib.js'), rd('src','checklist.js'), rd('src','cefr.js'), rd('src','ws.js'), rd('src','compare.js'), rd('src','workflow.js'),
          rd('tools','check_cli.js')]
 os.makedirs(os.path.join(ROOT,'dist'), exist_ok=True)
-with open(os.path.join(ROOT,'dist','vstep_check.js'),'w',encoding='utf-8') as f: f.write("\n;\n".join(parts))
+txt = "\n;\n".join(parts)
+for d in ('dist', 'checker'):
+    os.makedirs(os.path.join(ROOT, d), exist_ok=True)
+    with open(os.path.join(ROOT, d, 'vstep_check.js'), 'w', encoding='utf-8') as f: f.write(txt)
 print("Đã tạo dist/vstep_check.js")
