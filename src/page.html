@@ -24,6 +24,8 @@
   --bad-soft:#fbe9e4;
   --warn:#7a5600;
   --warn-soft:#fff4d4;
+  --info:#2456b8;
+  --info-soft:#e7effd;
   --font:"Be Vietnam Pro","Segoe UI",system-ui,sans-serif;
   --hl-b:#fde68a; --hl-a:#bbf7d0; --hl-x:#fecaca; --hl-t:#bfdbfe; --hl-u:#f59e0b;
   color-scheme:light;
@@ -32,7 +34,7 @@
   :root:not([data-theme="light"]){
     --bg:#10161f; --card:#18212e; --ink:#e7ecf3; --muted:#9ba7b9; --line:#2b3647;
     --accent:#5cc3cb; --accent-ink:#0b1a1c; --accent-soft:#163338;
-    --good:#6fcf95; --good-soft:#173324; --bad:#f2907a; --bad-soft:#3a221c; --warn:#f1d27c; --warn-soft:#352c12;
+    --good:#6fcf95; --good-soft:#173324; --bad:#f2907a; --bad-soft:#3a221c; --warn:#f1d27c; --warn-soft:#352c12; --info:#8fb4ff; --info-soft:#1a2740;
     --hl-b:#5c4b0e; --hl-a:#1d5236; --hl-x:#5e2620; --hl-t:#1d3a63; --hl-u:#f1d27c;
     color-scheme:dark;
   }
@@ -40,7 +42,7 @@
 :root[data-theme="dark"]{
   --bg:#10161f; --card:#18212e; --ink:#e7ecf3; --muted:#9ba7b9; --line:#2b3647;
   --accent:#5cc3cb; --accent-ink:#0b1a1c; --accent-soft:#163338;
-  --good:#6fcf95; --good-soft:#173324; --bad:#f2907a; --bad-soft:#3a221c; --warn:#f1d27c; --warn-soft:#352c12;
+  --good:#6fcf95; --good-soft:#173324; --bad:#f2907a; --bad-soft:#3a221c; --warn:#f1d27c; --warn-soft:#352c12; --info:#8fb4ff; --info-soft:#1a2740;
   --hl-b:#5c4b0e; --hl-a:#1d5236; --hl-x:#5e2620; --hl-t:#1d3a63; --hl-u:#f1d27c;
   color-scheme:dark;
 }
@@ -200,23 +202,26 @@ tr.prjbad td{background:var(--bad-soft)}
 
 
 /* ===== chế độ soạn / xem ===== */
-[data-step].stlock{opacity:.55}
+[data-step].stlock{background:var(--warn-soft);border-color:var(--warn);color:var(--warn)}
 [data-step].stlock::after{content:"🔒";font-size:.75rem;margin-left:4px}
 [data-step].stmine::after{content:"";width:7px;height:7px;border-radius:50%;background:var(--good);display:inline-block;margin-left:6px;vertical-align:middle}
-.screen.mode-edit,.screen.mode-view{border-left:4px solid var(--good);padding-left:14px;border-radius:4px}
-.screen.mode-view{border-left-color:var(--muted)}
-.screen.mode-pending{border-left-color:var(--line)}
+/* khung chế độ của từng bước: ba màu rõ ràng, chữ đầu to, viền trái dày (Nick: khoá, xem phải nổi bật) */
+.screen.mode-edit,.screen.mode-view,.screen.mode-pending{border-left:5px solid var(--good);padding-left:14px;border-radius:4px}
+.screen.mode-view{border-left-color:var(--info)}
+.screen.mode-pending{border-left-color:var(--warn)}
 .modestep{font-size:.8rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
-.modebar{border-radius:12px;padding:10px 14px;margin:6px 0 14px;display:grid;gap:4px;position:sticky;top:calc(var(--toph, 132px) + 8px);z-index:3;box-shadow:0 2px 10px rgba(20,30,50,.06)}
-.modebar.edit{background:var(--good-soft);border:1.5px solid var(--good);color:var(--ink)}
-.modebar.view{background:var(--bg);border:1.5px solid var(--muted)}
-.modebar.pending{background:var(--warn-soft);border:2px solid var(--warn);border-left-width:8px;color:var(--ink);box-shadow:0 4px 16px rgba(180,100,0,.18)}
-.modebar.pending .modehead{color:var(--warn);font-size:1.12rem}
-.modebar.pending .modehead b{font-weight:800}
-.screen.mode-pending{border-left:4px solid var(--warn);padding-left:14px;border-radius:4px}
+.modebar{border-radius:12px;padding:12px 16px;margin:6px 0 14px;display:grid;gap:4px;position:sticky;top:calc(var(--toph, 132px) + 8px);z-index:3;border:2px solid;border-left-width:8px;color:var(--ink);box-shadow:0 4px 16px rgba(20,30,50,.14)}
+.modebar .modehead{font-size:1.12rem}
+.modebar .modehead b{font-weight:800}
+.modebar.edit{background:var(--good-soft);border-color:var(--good)}
+.modebar.edit .modehead{color:var(--good)}
+.modebar.view{background:var(--info-soft);border-color:var(--info)}
+.modebar.view .modehead{color:var(--info)}
+.modebar.pending{background:var(--warn-soft);border-color:var(--warn);box-shadow:0 4px 16px rgba(180,100,0,.18)}
+.modebar.pending .modehead{color:var(--warn)}
 .modehead{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .modeextra{color:var(--accent);font-weight:600}
-.screen.mode-view textarea[readonly],.screen.mode-view input[readonly],.screen.mode-view select:disabled{background:var(--bg);color:var(--muted);cursor:not-allowed}
+.screen.mode-view textarea[readonly],.screen.mode-view input[readonly],.screen.mode-view select:disabled{background:var(--bg);color:var(--ink);cursor:not-allowed}
 .screen.mode-view .clbox textarea,.screen.mode-view .clbox input{cursor:auto}
 @media (max-width:700px){ .modebar{position:static} .screen.mode-edit,.screen.mode-view{padding-left:8px} }
 /* ===== Thông báo ===== */
