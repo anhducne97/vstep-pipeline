@@ -445,6 +445,7 @@ function wfApplyLock(){
 /* bản đồ chất liệu: giao diện */
 function mapRender(){
   var box = document.getElementById("mapbox"); if(!box) return;
+  if(!mapLines().length){ box.innerHTML = '<p class="small warnc">' + esc(qbpWhy()) + '</p>'; return; }
   var M0 = mapData();
   if(!M0.autoDone && wfCanEditScreen("chat-lieu") && (S.slots.draft||"").trim() && !Object.keys(M0.rows).some(function(k){ return M0.rows[k].q; }) && parseAnchors(S.slots.notes)){ M0.autoDone = true; var na = mapFromAnchors(); if(na) toast("Đã điền sẵn " + na + " dòng bản đồ từ điểm neo AI ghi ở bước 4."); }
   var E = mapEval(), M = mapData(), lk = wfDraftLocked();
@@ -692,7 +693,7 @@ function bindWf(){
     if(!mp.value.trim()){ msg.textContent = ""; return; }
     var n = mapParseAI(mp.value); mapRender(); try{ clRender(); renderKeepCheck(); }catch(x){}
     var E = mapEval(), bad = E.res.filter(function(x){ return x.s === "fail"; }).length;
-    msg.textContent = n ? "Đã điền " + n + " dòng vào bản đồ bên dưới. " + (bad ? bad + " dòng còn đỏ: xem lý do ở từng dòng và sửa tay, hoặc nhờ AI đề xuất lại." : "Không còn dòng đỏ; vẫn đọc lại từng dòng.") : !mapLines().length ? "Dạng bài này chưa có bảng phân bố câu hỏi nên chưa điền được bản đồ. Kiểm tra lại dạng bài (Part) đã chọn ở bước đầu." : /^\s*[-•>]*\s*D[ÒO]NG\s+\d+\s*\|/im.test(cleanPaste(mp.value)) ? "Có dòng \"DÒNG số |\" nhưng số dòng vượt quá " + mapLines().length + " dòng của bảng phân bố. Kiểm tra lại dạng bài (Part) đã chọn." : "Không thấy dòng nào bắt đầu bằng \"DÒNG số |\". Hãy nhắc AI trình bày đúng khuôn trong một khối code.";
+    msg.textContent = n ? "Đã điền " + n + " dòng vào bản đồ bên dưới. " + (bad ? bad + " dòng còn đỏ: xem lý do ở từng dòng và sửa tay, hoặc nhờ AI đề xuất lại." : "Không còn dòng đỏ; vẫn đọc lại từng dòng.") : !mapLines().length ? "Chưa điền được bản đồ. " + qbpWhy() : /^\s*[-•>]*\s*D[ÒO]NG\s+\d+\s*\|/im.test(cleanPaste(mp.value)) ? "Có dòng \"DÒNG số |\" nhưng số dòng vượt quá " + mapLines().length + " dòng của bảng phân bố. Kiểm tra lại dạng bài (Part) đã chọn." : "Không thấy dòng nào bắt đầu bằng \"DÒNG số |\". Hãy nhắc AI trình bày đúng khuôn trong một khối code.";
   }, 400); }); }
   var mb = document.getElementById("mapbox");
   if(mb){

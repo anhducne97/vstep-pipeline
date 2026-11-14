@@ -102,6 +102,12 @@ function qRows(){
   if(S.spec==="L1"){ var i = Math.max(0, Math.min(7, (parseInt(S.l1slot,10)||1) - 1)); return [rows[i]]; }
   return rows;
 }
+// không có bảng phân bố: bài Đọc thì bảng nằm trong đặc tả riêng (chưa tải cho tài khoản này), không phải lỗi chọn phần thi
+function qbpWhy(){
+  if(qRows().length) return "";
+  if(qIsR() && typeof SPECS !== "undefined" && !SPECS.loaded) return "Bảng phân bố câu hỏi bài Đọc thuộc đặc tả riêng của VNCETA (tài liệu tập huấn) nên không có sẵn trong trang. Tài khoản này chưa được xem đặc tả riêng" + (SPECS.err ? " (" + SPECS.err + ")" : "") + ". Nhờ Quản trị bật \"Cho xem đặc tả riêng\" cho tài khoản ở trang Nhóm › Thành viên (hoặc đổi sang Thành viên nội bộ), rồi tải lại trang.";
+  return "Phần thi này chưa có bảng phân bố câu hỏi. Kiểm tra lại phần thi đã chọn ở bước Bắt đầu.";
+}
 function qExpected(){ return qRows().reduce(function(s,r){ return s + r[2]; }, 0); }
 function qRowCodes(r){ return qIsR() ? r[3] : r[3].map(function(k){ return LSK[k][0][0]; }); }
 function qBlueprintText(){
@@ -1119,6 +1125,7 @@ function renderQ(){
   var bp = document.getElementById("q-blueprint"); if(!bp) return;
   var sk = qSK(), rows = qRows(), isR = qIsR();
   var grp = SPEC[S.spec].grp;
+  if(!rows.length){ bp.innerHTML = '<p class="small warnc">' + esc(qbpWhy()) + '</p>'; return; }
   bp.innerHTML = (!isR && grp ? '<p class="small muted">' + esc(QPART["L"+grp]) + '</p>' : "")
     + '<table class="qbp"><tr><th>Số câu</th><th>Bậc, mức</th><th>' + (isR ? 'Chọn một mã' : 'Chọn một trong các tiểu kĩ năng') + '</th></tr>'
     + rows.map(function(r){ return '<tr><td>' + r[2] + '</td><td>Bậc ' + r[0].slice(1) + ' ' + esc(r[1]) + '<br><span class="muted">' + LV_CEFR[r[0]] + '.' + ({"thấp":1,"trung bình":2,"cao":3})[r[1]] + '</span></td><td>' + (isR ? '<b>' + esc(r[3].join(", ")) + '</b><br><span class="small muted">' + esc(RLVNOTE[r[0] + " " + r[1]]) + '</span>' : r[3].map(function(k){ return '<b>' + esc(sk[k][0].join("/")) + '</b> ' + esc(sk[k][1]); }).join("<br>")) + '</td></tr>'; }).join("") + '</table>'
