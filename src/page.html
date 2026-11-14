@@ -640,6 +640,9 @@ textarea.wflocked{background:var(--bg);color:var(--muted)}
 .rvbody .cltab .cla .btn{margin:0}
 .rvbody .grid2{grid-template-columns:1fr}
 @media (min-width:900px){ body.rvopen main{margin-left:auto;margin-right:calc(min(560px,44vw) + 32px)} body.rvopen .rvfab{display:none} }
+/* phiếu duyệt mở: khung soát câu hỏi không tràn ra ngoài cột bài (nếu không, cột câu hỏi bị phiếu che) */
+@media (min-width:900px){ body.rvopen .qwide{width:auto;margin-left:0} }
+@media (min-width:900px) and (max-width:1500px){ body.rvopen .qreview{grid-template-columns:1fr} body.rvopen .qpass{max-height:46vh} }
 @media (max-width:899px){ .rvdrawer{left:0;right:0;bottom:0;top:auto;width:auto;height:86vh;border-radius:16px 16px 0 0} body.rvopen .rvfab{display:none} }
 .lvinner{display:grid;gap:10px;margin-top:10px}
 .lvedit{position:relative;height:540px;border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden}
