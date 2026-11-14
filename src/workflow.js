@@ -492,7 +492,7 @@ function mapRender(){
         + '<label class="mapl"><span>Nhiễu</span><input type="text" class="mapq" data-mk="' + k + '" data-mf="dis" placeholder="&quot;trích 1&quot;; &quot;trích 2&quot;" value="' + esc(v.dis||"") + '"' + dis + '></label>'
         + (x.msgs.length ? '<div class="small ' + (x.s === "fail" ? "no" : "warnc") + '">' + x.msgs.map(esc).join("; ") + '</div>' : '') + '</td></tr>';
     }).join("") + '</tbody></table>'
-    + (lk ? '<p class="small muted">Bài đã khoá: bản đồ đã duyệt là đề bài giao cho người soạn câu hỏi.</p>' : '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><button type="button" class="btn quiet" id="map-anch">Lấy điểm neo AI ghi ở bước 4 (chỉ điền dòng còn trống)</button><span class="small muted">Kết quả AI dán ở ô 1 phía trên. AI chỉ đề xuất; người soạn chọn và chịu trách nhiệm từng dòng.</span></div>');
+    + (lk ? '<p class="small muted">Bài đã khoá: bản đồ đã duyệt là đề bài giao cho người soạn câu hỏi.</p>' : '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><button type="button" class="btn quiet" id="map-anch">Lấy khung câu hỏi ở bước 4 (chỉ điền dòng còn trống)</button><span class="small muted">Kết quả AI dán ở ô 1 phía trên. AI chỉ đề xuất; người soạn chọn và chịu trách nhiệm từng dòng.</span></div>');
   box.innerHTML = h;
   box.querySelectorAll("[data-ai]").forEach(renderAI);
   if(foc && foc.k){ var el = box.querySelector('[data-mk="' + foc.k + '"][data-mf="' + foc.f + '"]'); if(el){ el.focus(); try{ if(foc.s !== null) el.setSelectionRange(foc.s, foc.s); }catch(e){} } }
