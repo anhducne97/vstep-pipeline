@@ -4206,6 +4206,33 @@ function clStale(r, tk){
   return out;
 }
 function clTicks(){ S.cl = S.cl || {}; S.cl.ticks = S.cl.ticks || {}; return S.cl.ticks; }
+/* Hai bộ dấu riêng: "self" là người soạn tự đánh giá (checklist trên các bước soạn), "rv" là người thẩm định chấm (Phiếu duyệt).
+   Cổng duyệt chỉ tính bộ "rv"; nút Gửi thẩm định của người soạn tính bộ "self". */
+function clSelfTicks(){
+  S.cl = S.cl || {}; S.cl.self = S.cl.self || {};
+  if(!S.cl.selfMig){
+    S.cl.selfMig = 1;
+    // dữ liệu cũ: dấu do chính người soạn bấm thì chuyển sang bộ tự đánh giá
+    try{ var w = S.wf && S.wf.as ? S.wf.as : {}, tk = clTicks(); Object.keys(tk).forEach(function(c){ var au = /^CH-/.test(c) ? w.ch : w.nl; if(au && tk[c] && tk[c].by === au){ if(!S.cl.self[c]) S.cl.self[c] = tk[c]; delete tk[c]; } }); }catch(e){}
+  }
+  return S.cl.self;
+}
+function clTicksOf(mode){ return mode === "self" ? clSelfTicks() : clTicks(); }
+function clAuthorRole(sc){ return sc === "CH" ? "ch" : "nl"; }
+function clReviewRole(sc){ return sc === "CH" ? "tdch" : "tdnl"; }
+/* ai được bấm Đạt / Chưa đạt ở bộ dấu nào */
+function clCanTick(sc, mode){
+  if(typeof wfModeActive !== "function" || !wfModeActive()) return {ok:true};
+  var w = wfData(), me = wfMe(), au = clAuthorRole(sc), rv = clReviewRole(sc);
+  if(mode === "self"){
+    if(wfDevOn()) return wfDevRole() === au ? {ok:true} : {ok:false, why:"Đổi vai sang " + WF_ROLES[au] + " để tự đánh giá."};
+    if(me && w.as[rv] === me && w.as[au] !== me) return {ok:false, why:"Bạn là " + WF_ROLES[rv] + " của bài này: chấm trong Phiếu duyệt, không bấm vào phần tự đánh giá của người soạn."};
+    return wfCan(au) ? {ok:true} : {ok:false, why:"Phần tự đánh giá của " + WF_ROLES[au] + " (" + wfWhoName(au) + "). Người thẩm định chấm riêng trong Phiếu duyệt."};
+  }
+  if(wfDevOn()) return wfDevRole() === rv ? {ok:true} : {ok:false, why:"Đổi vai sang " + WF_ROLES[rv] + " để chấm."};
+  if(me && w.as[au] === me) return {ok:false, why:"Bạn là người soạn bài này: không tự chấm phần thẩm định."};
+  return wfCan(rv) ? {ok:true} : {ok:false, why:"Phần chấm của " + WF_ROLES[rv] + " (" + wfWhoName(rv) + ")."};
+}
 
 /* ---- đọc toàn bài trước khi xét ---- */
 function clReadUnits(sc){ return sc === "CH" ? wfQItems().map(function(it){ return {k:"câu " + it.n, t:qSig(it)}; }) : clUnits(); }
@@ -4254,8 +4281,8 @@ function clLegendHTML(sc){
 /* ---- chấm ---- */
 var clQCache = null;
 function clQ(){ var t = S.slots.questions||"", key = qHash(t + "|" + (S.slots.draft||"") + "|" + S.spec + "|" + (S.slots.qblind||"")); if(clQCache && clQCache.key===key) return clQCache.R; var R = null; try{ R = t.trim() ? checkQ() : null; }catch(e){ R = null; } clQCache = {key:key, R:R}; return R; }
-function clEval(sc){
-  var rows = clRows(sc), out = {}, tk = clTicks(), R = sc==="CH" ? clQ() : null, byCode = {};
+function clEval(sc, mode){
+  var rows = clRows(sc), out = {}, tk = clTicksOf(mode), R = sc==="CH" ? clQ() : null, byCode = {};
   if(sc==="CH" && R){
     R.global.forEach(function(g){ var c = clQCode(g.t, CL_QGMAP); (byCode[c] = byCode[c] || []).push({n:0, s:g.c==="b" ? "fail" : "warn", t:g.t}); });
     R.items.forEach(function(x){
@@ -4307,8 +4334,9 @@ function clEval(sc){
   return out;
 }
 var CL_SLAB = {ok:"Đạt", fail:"Phải sửa", warn:"Nên xem", na:"Chưa áp dụng", todo:"Chờ người soát", recheck:"Soát lại"};
-function clSummary(sc, ev){
-  ev = ev || clEval(sc); var cnt = {ok:0, fail:0, warn:0, na:0, todo:0, recheck:0};
+var CL_SLAB_SELF = {todo:"Chưa tự đánh giá", recheck:"Tự đánh giá lại"};
+function clSummary(sc, ev, mode){
+  ev = ev || clEval(sc, mode); var cnt = {ok:0, fail:0, warn:0, na:0, todo:0, recheck:0};
   Object.keys(ev).forEach(function(k){ cnt[ev[k].s]++; });
   var open = clNotes(sc).filter(function(n){ return n.st==="Mở" && n.sev==="PHẢI SỬA"; }).length;
   return {cnt:cnt, open:open, pass: !cnt.fail && !cnt.todo && !cnt.recheck && !open && (sc!=="CH" || !!(S.slots.questions||"").trim()) && (sc==="CH" || !!(S.slots.draft||"").trim())};
@@ -4598,9 +4626,9 @@ var CL_TIER = {qd:["QĐ 730","qd"], spec:["Specs","sp"], dx:["Đề xuất","dx"
 function clTierHTML(r){ var t = CL_TIER[r.tier || (/QĐ 730/.test(r.src||"") ? "qd" : "dx")]; return '<span class="cltier ' + t[1] + '" title="Thứ tự ưu tiên khi hai tiêu chí đá nhau: QĐ 730, rồi Specs, rồi Đề xuất. Quy trình là cách trang kiểm, không phải tiêu chí nội dung.">' + t[0] + '</span> '; }
 var CL_WHO = {M:"Máy", H:"Người", MH:"Máy + người", Q:"Soát từng câu"};
 var CL_IC = {ok:"✓", fail:"!", warn:"?", na:"–", todo:"○", recheck:"↺"};
-function clStatusHTML(e){ return '<span class="cls ' + e.s + '">' + CL_IC[e.s] + " " + CL_SLAB[e.s] + '</span>'; }
-function clRowHTML(sc, e){
-  var r = e.r, tk = clTicks()[r.c], human = r.who==="H" || r.who==="MH";
+function clStatusHTML(e, mode){ return '<span class="cls ' + e.s + '">' + CL_IC[e.s] + " " + ((mode === "self" && CL_SLAB_SELF[e.s]) || CL_SLAB[e.s]) + '</span>'; }
+function clRowHTML(sc, e, mode){
+  var r = e.r, tk = clTicksOf(mode)[r.c], human = r.who==="H" || r.who==="MH", can = clCanTick(sc, mode);
   var notesN = clNotes(sc).filter(function(n){ return n.code===r.c && n.st==="Mở"; }).length;
   var det = esc(e.d || "");
   if(e.stale) det += (det ? " " : "") + '<span class="warnc">Đã sửa sau khi đánh dấu: ' + esc(e.stale.join(", ")) + '. Soát lại phần này.</span>';
@@ -4608,12 +4636,15 @@ function clRowHTML(sc, e){
   var act = "";
   var needRead = r.full && !clReadState(sc).ok;
   if(human && e.s!=="na"){
-    act += '<button type="button" class="btn quiet sm' + (tk && tk.v==="ok" && e.h!=="recheck" ? " on" : "") + '" data-cltick="' + r.c + '" data-v="ok"' + (needRead ? ' disabled title="Đọc toàn ' + (sc === "CH" ? "bộ" : "bài") + ' trước (khung ở đầu checklist)"' : '') + '>Đạt</button>'
-      + '<button type="button" class="btn quiet sm' + (tk && tk.v==="no" ? " on no" : "") + '" data-cltick="' + r.c + '" data-v="no">Chưa đạt</button>';
+    var dis = !can.ok ? ' disabled title="' + esc(can.why) + '"' : '';
+    act += '<button type="button" class="btn quiet sm' + (tk && tk.v==="ok" && e.h!=="recheck" ? " on" : "") + '" data-cltick="' + r.c + '" data-v="ok"' + (dis || (needRead ? ' disabled title="Đọc toàn ' + (sc === "CH" ? "bộ" : "bài") + ' trước (khung ở đầu checklist)"' : '')) + '>Đạt</button>'
+      + '<button type="button" class="btn quiet sm' + (tk && tk.v==="no" ? " on no" : "") + '" data-cltick="' + r.c + '" data-v="no"' + dis + '>Chưa đạt</button>';
+    // phiếu thẩm định: xem được người soạn tự đánh giá thế nào, nhưng chấm riêng
+    if(mode !== "self"){ var st0 = clSelfTicks()[r.c]; if(st0) det += (det ? " " : "") + '<span class="muted">Người soạn tự đánh giá: ' + (st0.v === "ok" ? "Đạt" : "Chưa đạt") + (st0.note ? " (" + esc(st0.note) + ")" : "") + '.</span>'; }
   }
   act += '<button type="button" class="btn quiet sm" data-clnote="' + r.c + '" title="Thêm ghi chú cho tiêu chí này">+ Ghi chú</button>';
   var aid = (r.who === "H" || r.who === "MH") && CL_AIDS[r.c] ? '<details class="claid" data-aid="' + r.c + '"' + (clAidOpen[r.c] ? " open" : "") + '><summary class="small">Xem để xét</summary><div class="claidb">' + (clAidOpen[r.c] ? (function(){ try{ return clAid(r.c); }catch(x){ return ""; } })() : "") + '</div></details>' : '';
-  return '<tr class="clr ' + e.s + '"><td class="clc"><b>' + esc(r.c) + '</b></td><td>' + esc(r.t) + '<div class="small muted">' + clTierHTML(r) + esc(r.src) + ' · ' + CL_WHO[r.who] + (r.full ? ' · <span class="cls na">đọc toàn ' + (sc === "CH" ? "bộ" : "bài") + '</span>' : '') + (notesN ? ' · <span class="no">' + notesN + ' ghi chú mở</span>' : '') + '</div></td><td>' + clStatusHTML(e) + (det ? '<div class="small">' + det + '</div>' : '') + '</td><td class="cla">' + act + '</td></tr>' + (aid ? '<tr class="claidrow"><td></td><td colspan="3">' + aid + '</td></tr>' : '');
+  return '<tr class="clr ' + e.s + '"><td class="clc"><b>' + esc(r.c) + '</b></td><td>' + esc(r.t) + '<div class="small muted">' + clTierHTML(r) + esc(r.src) + ' · ' + CL_WHO[r.who] + (r.full ? ' · <span class="cls na">đọc toàn ' + (sc === "CH" ? "bộ" : "bài") + '</span>' : '') + (notesN ? ' · <span class="no">' + notesN + ' ghi chú mở</span>' : '') + '</div></td><td>' + clStatusHTML(e, mode) + (det ? '<div class="small">' + det + '</div>' : '') + '</td><td class="cla">' + act + '</td></tr>' + (aid ? '<tr class="claidrow"><td></td><td colspan="3">' + aid + '</td></tr>' : '');
 }
 function clNoteHTML(n, i){
   var L = clLocate(n), cls = n.st==="Mở" ? (n.sev==="PHẢI SỬA" ? "must" : "see") : "done";
@@ -4657,19 +4688,22 @@ function clGateSync(sc, sum){
 }
 function clRender(){
   document.querySelectorAll("[data-cl]").forEach(function(box){
-    var sc = box.getAttribute("data-cl"), scr = box.closest(".screen");
-    var ev = clEval(sc), sum = clSummary(sc, ev); clGateSync(sc, sum);
+    var sc = box.getAttribute("data-cl"), scr = box.closest(".screen"), mode = box.getAttribute("data-rv") ? "rv" : "self";
+    var ev = clEval(sc, mode), sum = clSummary(sc, ev, mode); if(mode === "self") clGateSync(sc, sum);
     if(scr && scr.classList.contains("hidden") && box.dataset.drawn) return;
     var keepOpen = {}; box.querySelectorAll("details[data-k]").forEach(function(d){ keepOpen[d.getAttribute("data-k")] = d.open; });
     var c = sum.cnt, notes = clNotes(sc), nOpen = notes.filter(function(n){ return n.st==="Mở"; }).length;
     var h = '<h3>Checklist ' + CL_SCOPE_NAME[sc] + ' (' + sc + ')</h3>'
-      + '<div class="clsum"><span class="cls ok">✓ ' + c.ok + ' đạt</span><span class="cls fail">! ' + c.fail + ' phải sửa</span><span class="cls warn">? ' + c.warn + ' nên xem</span><span class="cls todo">○ ' + (c.todo + c.recheck) + ' chờ người soát</span>' + (c.na ? '<span class="cls na">– ' + c.na + ' chưa áp dụng</span>' : '') + (sum.open ? '<span class="cls fail">' + sum.open + ' ghi chú PHẢI SỬA còn mở</span>' : '') + '</div>'
+      + '<div class="clsum"><span class="cls ok">✓ ' + c.ok + ' đạt</span><span class="cls fail">! ' + c.fail + ' phải sửa</span><span class="cls warn">? ' + c.warn + ' nên xem</span><span class="cls todo">○ ' + (c.todo + c.recheck) + ' ' + (mode === "self" ? "chưa tự đánh giá" : "chờ người soát") + '</span>' + (c.na ? '<span class="cls na">– ' + c.na + ' chưa áp dụng</span>' : '') + (sum.open ? '<span class="cls fail">' + sum.open + ' ghi chú PHẢI SỬA còn mở</span>' : '') + '</div>'
       + clLegendHTML(sc) + clReadHTML(sc)
-      + '<p class="small muted">Dòng "Máy" trang tự chấm. Dòng "Người" do người thẩm định bấm Đạt hoặc Chưa đạt; chưa đạt thì ghi chú theo khuôn để người soạn sửa tay hoặc dán vào câu lệnh sửa bằng AI. Khi bài hoặc câu hỏi bị sửa, chỉ dấu Đạt ở phần bị sửa phải soát lại.</p>';
+      + (mode === "self" && typeof wfModeActive === "function" && wfModeActive()
+        ? '<p class="small"><b>Người soạn tự đánh giá.</b> <span class="muted">Dòng "Máy" trang tự chấm. Dòng "Người": người soạn tự xét rồi bấm Đạt hoặc Chưa đạt, xong hết mới gửi thẩm định. Người thẩm định chấm riêng trong Phiếu duyệt, có quan điểm riêng; dấu ở đây không thay cho dấu của họ. Khi bài hoặc câu hỏi bị sửa, chỉ dấu Đạt ở phần bị sửa phải xét lại.</span></p>'
+        : mode === "self" ? '<p class="small muted">Dòng "Máy" trang tự chấm. Dòng "Người" bạn tự xét rồi bấm Đạt hoặc Chưa đạt; chưa đạt thì ghi chú theo khuôn để sửa tay hoặc dán vào câu lệnh sửa bằng AI. Khi bài hoặc câu hỏi bị sửa, chỉ dấu Đạt ở phần bị sửa phải xét lại.</p>'
+        : '<p class="small"><b>Phiếu chấm của người thẩm định.</b> <span class="muted">Dòng "Máy" trang tự chấm. Dòng "Người" do người thẩm định tự xét và bấm, độc lập với phần tự đánh giá của người soạn (hiện dòng nhỏ để tham khảo). Chưa đạt thì ghi chú theo khuôn để người soạn sửa.</span></p>');
     Object.keys(CL_GROUPS[sc]).forEach(function(g){
       var rows = clRows(sc).filter(function(r){ return r.g===g; }); if(!rows.length) return;
       var bad = rows.filter(function(r){ return ev[r.c].s!=="ok" && ev[r.c].s!=="na"; }).length;
-      h += '<details class="clgrp" data-k="g' + g + '"' + (keepOpen["g"+g]!==undefined ? (keepOpen["g"+g] ? " open" : "") : (bad ? " open" : "")) + '><summary><b>' + sc + "-" + g + '. ' + esc(CL_GROUPS[sc][g]) + '</b> <span class="small muted">' + (rows.length - bad) + "/" + rows.length + ' ổn</span></summary><table class="cltab"><tbody>' + rows.map(function(r){ return clRowHTML(sc, ev[r.c]); }).join("") + '</tbody></table></details>';
+      h += '<details class="clgrp" data-k="g' + g + '"' + (keepOpen["g"+g]!==undefined ? (keepOpen["g"+g] ? " open" : "") : (bad ? " open" : "")) + '><summary><b>' + sc + "-" + g + '. ' + esc(CL_GROUPS[sc][g]) + '</b> <span class="small muted">' + (rows.length - bad) + "/" + rows.length + ' ổn</span></summary><table class="cltab"><tbody>' + rows.map(function(r){ return clRowHTML(sc, ev[r.c], mode); }).join("") + '</tbody></table></details>';
     });
     // ghi chú
     h += '<h3 style="margin-top:14px">Ghi chú thẩm định</h3>';
@@ -4695,8 +4729,8 @@ function clRender(){
   try{ wfRender(); }catch(e){}
   try{ cmpRenderMounts(); }catch(e){}
 }
-function clReport(sc){
-  var ev = clEval(sc), sum = clSummary(sc, ev), L = ["CHECKLIST " + CL_SCOPE_NAME[sc].toUpperCase() + " · " + SPEC[S.spec].label + " · " + S.level + (S.code ? " · " + S.code : "") + (S.slots.topic ? " · " + S.slots.topic : ""), "Đạt " + sum.cnt.ok + " · Phải sửa " + sum.cnt.fail + " · Nên xem " + sum.cnt.warn + " · Chờ người soát " + (sum.cnt.todo + sum.cnt.recheck) + " · Chưa áp dụng " + sum.cnt.na, ""];
+function clReport(sc, mode){
+  var ev = clEval(sc, mode), sum = clSummary(sc, ev, mode), L = ["CHECKLIST " + CL_SCOPE_NAME[sc].toUpperCase() + " · " + SPEC[S.spec].label + " · " + S.level + (S.code ? " · " + S.code : "") + (S.slots.topic ? " · " + S.slots.topic : ""), "Đạt " + sum.cnt.ok + " · Phải sửa " + sum.cnt.fail + " · Nên xem " + sum.cnt.warn + " · Chờ người soát " + (sum.cnt.todo + sum.cnt.recheck) + " · Chưa áp dụng " + sum.cnt.na, ""];
   clRows(sc).forEach(function(r){ var e = ev[r.c]; L.push(r.c + " | " + CL_SLAB[e.s] + " | " + r.t + (e.d ? " | " + e.d : "") + (e.stale ? " | soát lại: " + e.stale.join(", ") : "")); });
   var notes = clNotes(sc); if(notes.length){ L.push("", "GHI CHÚ"); notes.forEach(function(n){ L.push(clNoteText(n) + " | Trạng thái: " + n.st + (n.by ? " | " + n.by : "")); }); }
   return L.join("\n");
@@ -4708,7 +4742,8 @@ function bindCl(){
     var t = ev.target.closest("button, [data-cltick]"); if(!t || !t.closest("[data-cl]")) return;
     var box = t.closest("[data-cl]"), sc = box.getAttribute("data-cl"), a;
     if((a = t.getAttribute("data-cltick"))){
-      var r = CL_ROWS[sc].filter(function(x){ return x.c===a; })[0], v = t.getAttribute("data-v"), tk = clTicks();
+      var mode = box.getAttribute("data-rv") ? "rv" : "self", can = clCanTick(sc, mode); if(!can.ok){ toast(can.why); return; }
+      var r = CL_ROWS[sc].filter(function(x){ return x.c===a; })[0], v = t.getAttribute("data-v"), tk = clTicksOf(mode);
       if(tk[a] && tk[a].v===v && !(v==="ok" && clStale(r, tk[a]).length)) delete tk[a]; else tk[a] = {v:v, sig:clSig(r), at:Date.now(), by:wfMe(), dev:wfDevOn()};
       save(); if(v==="no" && tk[a]){ clForm[sc] = {code:a, sev:"PHẢI SỬA"}; clRender(); var fm = box.querySelector('[data-k="form"]'); if(fm){ fm.open = true; fm.scrollIntoView({block:"center"}); } } else clRender();
       updateStepper(); return;
@@ -4732,7 +4767,7 @@ function bindCl(){
       var k = clAddNotes(L, sc, "dán"); ta.value = ""; clRender(); updateStepper(); toast("Đã thêm " + k + " ghi chú."); return;
     }
     if(t.hasAttribute("data-clread")){ clReadMark(sc); clRender(); toast("Đã ghi nhận đọc toàn " + (sc === "CH" ? "bộ" : "bài") + "."); return; }
-    if(t.hasAttribute("data-clcopy")){ copyText(clReport(sc), t, "Sao chép báo cáo checklist và ghi chú"); return; }
+    if(t.hasAttribute("data-clcopy")){ copyText(clReport(sc, box.getAttribute("data-rv") ? "rv" : "self"), t, "Sao chép báo cáo checklist và ghi chú"); return; }
     if(t.hasAttribute("data-clbase")){ S.cl = S.cl || {}; S.cl.base = S.cl.base || {}; S.cl.base[sc] = {at:Date.now(), st:clStates(sc)}; save(); clRender(); toast("Đã lấy trạng thái hiện tại làm mốc."); return; }
     if(t.hasAttribute("data-clprompt")){ copyText(clFixPrompt(sc, true), t, "Sao chép câu lệnh", "Đã sao chép. Dán vào AI, rồi dán kết quả vào ô bên dưới"); return; }
     if(t.hasAttribute("data-papply")){ clApplyPatches(sc); updateStepper(); return; }
@@ -5445,7 +5480,7 @@ function wsSelfHTML(){
   var ico = {ok:"✓", fail:"✗", warn:"!", na:"–"}, nf = M.filter(function(r){ return ev[r.c] && ev[r.c].s === "fail"; }).length;
   var h = '<div class="small ' + (nf ? "no" : "ok") + '" style="margin-bottom:6px"><b>' + (nf ? nf + " dòng máy kiểm phải sửa trước khi gửi thẩm định." : "Các dòng máy kiểm không còn đỏ.") + '</b></div><div class="wsself">';
   h += M.map(function(r){ var e = ev[r.c] || {s:"na", d:""}, st = e.s === "todo" || e.s === "recheck" ? "na" : e.s; return '<div class="wsr ' + st + '"><span class="wsi">' + (ico[st] || "–") + '</span><div><b>' + r.c + '</b> ' + esc(r.t) + ' ' + clTierHTML(r) + (e.d ? '<div class="small muted">' + esc(e.d) + '</div>' : '') + '</div></div>'; }).join("");
-  h += '</div><div class="small" style="margin:10px 0 4px"><b>Tự rà trước khi gửi</b> <span class="muted">(người thẩm định sẽ xét các dòng này)</span></div><ul class="wshum">'
+  h += '</div><div class="small" style="margin:10px 0 4px"><b>Dòng Người: tự đánh giá trước khi gửi</b> <span class="muted">(bấm Đạt / Chưa đạt ở checklist bước Kiểm và xuất; người thẩm định chấm riêng)</span></div><ul class="wshum">'
     + H.map(function(r){ return '<li><b>' + r.c + '</b> ' + esc(r.t) + ' ' + clTierHTML(r) + '</li>'; }).join("") + '</ul>';
   return h;
 }
@@ -5809,6 +5844,16 @@ function wfCond(ok, text){ return {ok:!!ok, t:text}; }
 /* Viết, Nói: cùng quy trình đề xuất → soạn → thẩm định → khoá, rồi Điều phối duyệt hoàn thiện (không có phần câu hỏi) */
 function wfIsWS(){ var k = (SPEC[S.spec] || {}).skill; return k === "W" || k === "S"; }
 function wfSc(){ return wfIsWS() ? "WS" : "NL"; }
+/* người soạn tự đánh giá đủ các dòng Người trước khi gửi (bộ dấu riêng, không tính vào cổng duyệt) */
+function wfSelfCond(sc){
+  var ev = clEval(sc, "self"), tk = clSelfTicks(), miss = [], no = [];
+  clRows(sc).forEach(function(r){
+    if(!(r.who === "H" || r.who === "MH") || !ev[r.c] || ev[r.c].s === "na") return;
+    var t = tk[r.c];
+    if(!t || clStale(r, t).length) miss.push(r.c); else if(t.v === "no") no.push(r.c);
+  });
+  return wfCond(!miss.length && !no.length, "Đã tự đánh giá mọi dòng Người của checklist " + sc + " và bấm Đạt" + (miss.length ? ": chưa xét " + miss.join(", ") : "") + (no.length ? (miss.length ? "; " : ": ") + "đang tự chấm Chưa đạt " + no.join(", ") + " (sửa rồi chấm lại)" : ""));
+}
 function wfDupCond(){ var d = (typeof LIB !== "undefined" && LIB.items && LIB.items.length) ? libDupes() : []; return [wfCond(!d.length, d.length ? "Trùng bài trong thư viện: " + d.map(function(x){ return x.x.title; }).join("; ") : "Không trùng bài trong thư viện")]; }
 function wfApplies(t){ return !t.off && (!t.only || t.only === (wfIsWS() ? "WS" : "RL")); }
 function wfWSHuman(){ return clRows("WS").filter(function(r){ return r.who === "H" || r.who === "MH"; }).map(function(r){ return r.c; }); }
@@ -5816,7 +5861,7 @@ function wfWSCond(id){
   var w = wfData();
   if(id === "propose"){ var d = (typeof LIB !== "undefined" && LIB.items.length) ? libDupes() : []; return [wfCond(wsV("theme"), "Có chủ đề (bước Soạn đề)"), wfCond(!d.length, d.length ? "Trùng chủ đề với bài trong thư viện: " + d.map(function(x){ return x.x.title; }).join(", ") : "Không trùng chủ đề với bài trong thư viện")]; }
   if(id === "g1ok") return [wfCond(wsV("theme"), "Có chủ đề")];
-  if(id === "nlsub"){ var ev = clEval("WS"), f = wfMachineFails("WS", ev); return [wfCond(wsV("theme"), "Có chủ đề (bước Chủ đề)"), wfCond(wsHasContent(), "Có đề"), wfCond(!f.length, "Mọi dòng máy kiểm của checklist WS không đỏ" + (f.length ? ": còn " + f.join(", ") : ""))]; }
+  if(id === "nlsub"){ var ev = clEval("WS"), f = wfMachineFails("WS", ev); return [wfCond(wsV("theme"), "Có chủ đề (bước Chủ đề)"), wfCond(wsHasContent(), "Có đề"), wfCond(!f.length, "Mọi dòng máy kiểm của checklist WS không đỏ" + (f.length ? ": còn " + f.join(", ") : "")), wfSelfCond("WS")]; }
   if(id === "g2ok"){ var sum = clSummary("WS"), by = wfTickBy(wfWSHuman(), w.as.nl); return [wfCond(sum.pass, "Checklist WS đạt: không đỏ, mọi dòng Người đã bấm Đạt, không còn ghi chú PHẢI SỬA mở"), wfCond(!by.length, by.length ? "Các dòng " + by.join(", ") + " do chính người soạn bấm Đạt: người thẩm định phải tự xét" : "Các dòng Người do người thẩm định xét")]; }
   return null;
 }
@@ -5836,7 +5881,7 @@ var WF_T = [
   // "Chủ đề đề xuất" chỉ còn ở bài cũ: coi như đang soạn.
   {id:"nlsub", from:["", "Chủ đề đề xuất", "Đang adapt","Ngữ liệu cần sửa"], to:"Chờ thẩm định ngữ liệu", role:"nl", label:"Gửi thẩm định ngữ liệu", cond:function(){ var _ws = wfIsWS() ? wfWSCond("nlsub") : null; if(_ws) return _ws.concat(wfDupCond());
     var ev = wfNL(), f = wfMachineFails("NL", ev), b7 = ["nd-1","nd-2","nd-3"].every(function(g){ return S.gates && S.gates[g]; }), m = mapStatus();
-    return [wfCond((S.slots.topic||"").trim(), "Có chủ đề (bước Chủ đề)"), wfCond(ev["NL-A4"] && ev["NL-A4"].d.indexOf("Chưa ghi") < 0, "Có nguồn, URL, giấy phép (khung Thông tin nguồn ở bước Nguồn)"), wfCond((S.slots.draft||"").trim(), "Có bài"), wfCond(!f.length, "Mọi dòng máy kiểm của checklist NL không đỏ" + (f.length ? ": còn " + f.join(", ") : "")), wfCond(b7, "Đã đối chiếu nguồn (bước Nội dung, 3 ô cuối bước)"), wfCond(m.full, "Bản đồ chất liệu phủ đủ mọi dòng của bảng phân bố" + (m.full ? "" : ": " + m.why)), wfCond(!wfOpenMust("NL"), "Không còn ghi chú NL PHẢI SỬA đang mở")].concat(wfDupCond());
+    return [wfCond((S.slots.topic||"").trim(), "Có chủ đề (bước Chủ đề)"), wfCond(ev["NL-A4"] && ev["NL-A4"].d.indexOf("Chưa ghi") < 0, "Có nguồn, URL, giấy phép (khung Thông tin nguồn ở bước Nguồn)"), wfCond((S.slots.draft||"").trim(), "Có bài"), wfCond(!f.length, "Mọi dòng máy kiểm của checklist NL không đỏ" + (f.length ? ": còn " + f.join(", ") : "")), wfSelfCond("NL"), wfCond(b7, "Đã đối chiếu nguồn (bước Nội dung, 3 ô cuối bước)"), wfCond(m.full, "Bản đồ chất liệu phủ đủ mọi dòng của bảng phân bố" + (m.full ? "" : ": " + m.why)), wfCond(!wfOpenMust("NL"), "Không còn ghi chú NL PHẢI SỬA đang mở")].concat(wfDupCond());
   }},
   {id:"g2ok", from:["Chờ thẩm định ngữ liệu"], to:"Ngữ liệu đã duyệt (khoá)", role:"tdnl", four:"nl", label:"Duyệt cổng 2 và khoá bài", cond:function(){ var _ws = wfIsWS() ? wfWSCond("g2ok") : null; if(_ws) return _ws;
     var sum = clSummary("NL"), by = wfTickBy(["NL-C1","NL-C2","NL-C3","NL-C4","NL-C5","NL-D1","NL-D2","NL-D5"], wfData().as.nl);
@@ -5851,7 +5896,7 @@ var WF_T = [
   {id:"chstart", only:"RL", from:["Ngữ liệu đã duyệt (khoá)"], to:"Đang soạn câu hỏi", role:"ch", label:"Nhận bài, bắt đầu soạn câu hỏi", cond:function(){ return [wfCond(wfData().lock, "Bài đã khoá")]; }, act:function(w){ w.qVer = w.lock.ver; }},
   {id:"chsub", only:"RL", from:["Đang soạn câu hỏi","Câu hỏi cần sửa"], to:"Chờ thẩm định câu hỏi", role:"ch", label:"Gửi thẩm định câu hỏi", cond:function(){
     var w = wfData(), ev = clEval("CH"), f = wfMachineFails("CH", ev), self = wfRowsOk(ev, ["CH-E1","CH-E2","CH-E3","CH-E4"]);
-    return [wfCond(wfQItems().length, "Có bộ câu hỏi"), wfCond(!f.length, "Mọi dòng máy kiểm của checklist CH không đỏ" + (f.length ? ": còn " + f.join(", ") : "")), wfCond(!self.length, "Đã tự soát 4 mục từng câu (CH-E1 đến E4)" + (self.length ? ": chưa xong " + self.join(", ") : "")), wfCond(!w.req, "Không có yêu cầu sửa ngữ liệu đang mở"), wfCond(w.lock && w.qVer === w.lock.ver, "Câu hỏi soạn trên bản khoá mới nhất" + (w.lock ? " (bản " + w.lock.ver + ")" : "")), wfCond(!wfOpenMust("CH"), "Không còn ghi chú CH PHẢI SỬA đang mở")];
+    return [wfCond(wfQItems().length, "Có bộ câu hỏi"), wfCond(!f.length, "Mọi dòng máy kiểm của checklist CH không đỏ" + (f.length ? ": còn " + f.join(", ") : "")), wfCond(!self.length, "Đã tự soát 4 mục từng câu (CH-E1 đến E4)" + (self.length ? ": chưa xong " + self.join(", ") : "")), wfSelfCond("CH"), wfCond(!w.req, "Không có yêu cầu sửa ngữ liệu đang mở"), wfCond(w.lock && w.qVer === w.lock.ver, "Câu hỏi soạn trên bản khoá mới nhất" + (w.lock ? " (bản " + w.lock.ver + ")" : "")), wfCond(!wfOpenMust("CH"), "Không còn ghi chú CH PHẢI SỬA đang mở")];
   }},
   {id:"g3ok", only:"RL", from:["Chờ thẩm định câu hỏi"], to:"Câu hỏi đã duyệt", role:"tdch", four:"ch", label:"Duyệt cổng 3", cond:function(){
     var R = wfReviewState(), ev = clEval("CH"), f = wfMachineFails("CH", ev), hb = wfRowsOk(ev, ["CH-D5","CH-E5"]), by = wfTickBy(["CH-D5","CH-E5"], wfData().as.ch);

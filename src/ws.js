@@ -430,7 +430,7 @@ function wsSelfHTML(){
   var ico = {ok:"✓", fail:"✗", warn:"!", na:"–"}, nf = M.filter(function(r){ return ev[r.c] && ev[r.c].s === "fail"; }).length;
   var h = '<div class="small ' + (nf ? "no" : "ok") + '" style="margin-bottom:6px"><b>' + (nf ? nf + " dòng máy kiểm phải sửa trước khi gửi thẩm định." : "Các dòng máy kiểm không còn đỏ.") + '</b></div><div class="wsself">';
   h += M.map(function(r){ var e = ev[r.c] || {s:"na", d:""}, st = e.s === "todo" || e.s === "recheck" ? "na" : e.s; return '<div class="wsr ' + st + '"><span class="wsi">' + (ico[st] || "–") + '</span><div><b>' + r.c + '</b> ' + esc(r.t) + ' ' + clTierHTML(r) + (e.d ? '<div class="small muted">' + esc(e.d) + '</div>' : '') + '</div></div>'; }).join("");
-  h += '</div><div class="small" style="margin:10px 0 4px"><b>Tự rà trước khi gửi</b> <span class="muted">(người thẩm định sẽ xét các dòng này)</span></div><ul class="wshum">'
+  h += '</div><div class="small" style="margin:10px 0 4px"><b>Dòng Người: tự đánh giá trước khi gửi</b> <span class="muted">(bấm Đạt / Chưa đạt ở checklist bước Kiểm và xuất; người thẩm định chấm riêng)</span></div><ul class="wshum">'
     + H.map(function(r){ return '<li><b>' + r.c + '</b> ' + esc(r.t) + ' ' + clTierHTML(r) + '</li>'; }).join("") + '</ul>';
   return h;
 }
