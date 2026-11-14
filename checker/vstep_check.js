@@ -4059,7 +4059,7 @@ var CL_GROUPS = {
 var CL_SCOPE_NAME = {NL:"ngữ liệu", CH:"câu hỏi"};
 var clECache = null;
 function clE(){
-  var sl = S.slots||{}, key = qHash([sl.draft, sl.keep, sl.pfCov, sl.pfLvl95, sl.pfCovBelow, S.pfSig, S.spec, S.level, S.floor, S.spelling, S.paras].join("\u0001"));
+  var sl = S.slots||{}, key = qHash([sl.draft, sl.keep, (typeof mapKeep === "function" ? mapKeep().join("|") : ""), sl.pfCov, sl.pfLvl95, sl.pfCovBelow, S.pfSig, S.spec, S.level, S.floor, S.spelling, S.paras].join("\u0001"));
   if(clECache && clECache.key===key) return clECache.v;
   var v; try{ v = evalChecks(); }catch(e){ v = null; } clECache = {key:key, v:v}; return v;
 }
@@ -6209,7 +6209,7 @@ function mapOrder(E){
 }
 /* từ giữ lại lấy từ bản đồ chất liệu, kèm dòng và mã để báo đúng chỗ sửa */
 function mapKeepSrc(){ var M = S.map; if(!M) return []; var L = mapLines(), out = []; L.forEach(function(l, i){ var v = M.rows[l.key]; if(!v) return; if(v.w && /^(RE|VO|VO\(ID\))$/.test(v.code||"")) out.push({w:v.w, line:i + 1, code:v.code, f:"ô Từ"}); if(v.code === "IS" && v.q) out.push({w:v.q, line:i + 1, code:"IS", f:"ô Chỗ hỏi"}); }); return out; }
-function mapKeep(){ var M = S.map; if(!M) return []; var out = []; Object.keys(M.rows).forEach(function(k){ var v = M.rows[k]; if(v.w && /^(RE|VO|VO\(ID\))$/.test(v.code||"")) out.push(v.w); if(v.code === "IS" && v.q) out.push(v.q); }); return out; }
+function mapKeep(){ var M = S.map; if(!M) return []; var out = []; mapLines().map(function(l){ return l.key; }).forEach(function(k){ var v = M.rows[k]; if(!v) return; if(v.w && /^(RE|VO|VO\(ID\))$/.test(v.code||"")) out.push(v.w); if(v.code === "IS" && v.q) out.push(v.q); }); return out; }
 function mapText(){
   var E = mapEval(); if(!E.res.some(function(x){ return x.v.q; })) return "";
   var O = mapOrder(E), line = function(x){ var v = x.v; return x.l.lv + " " + x.l.m + " | " + (x.code || "?") + (MAP_GLOBAL[x.code] ? " | cả bài" : x.para ? " | đoạn " + x.para : "") + " | CHỖ HỎI: \"" + (v.q||"") + "\"" + (v.w ? " | TỪ: " + v.w : "") + (v.alt ? " | DỰ PHÒNG: \"" + v.alt + "\"" : "") + (v.dis ? " | NHIỄU: " + v.dis : ""); };

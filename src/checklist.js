@@ -21,7 +21,7 @@ var CL_GROUPS = {
 var CL_SCOPE_NAME = {NL:"ngữ liệu", CH:"câu hỏi"};
 var clECache = null;
 function clE(){
-  var sl = S.slots||{}, key = qHash([sl.draft, sl.keep, sl.pfCov, sl.pfLvl95, sl.pfCovBelow, S.pfSig, S.spec, S.level, S.floor, S.spelling, S.paras].join("\u0001"));
+  var sl = S.slots||{}, key = qHash([sl.draft, sl.keep, (typeof mapKeep === "function" ? mapKeep().join("|") : ""), sl.pfCov, sl.pfLvl95, sl.pfCovBelow, S.pfSig, S.spec, S.level, S.floor, S.spelling, S.paras].join("\u0001"));
   if(clECache && clECache.key===key) return clECache.v;
   var v; try{ v = evalChecks(); }catch(e){ v = null; } clECache = {key:key, v:v}; return v;
 }
